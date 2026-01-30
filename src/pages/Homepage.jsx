@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Heart, Menu, X, Users, HandHeart, TrendingUp, Calendar, ChevronRight, Phone, Mail, MapPin } from 'lucide-react';
+
 
 export default function Homepage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [countersVisible, setCountersVisible] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
 
   const campaigns = [
     {
@@ -31,7 +38,7 @@ export default function Homepage() {
 
   const impactStats = [
     { number: 5000, label: 'Lives Touched', suffix: '+' },
-    { number: 2000000, label: 'Funds Raised', prefix: '₱', suffix: '+' },
+    { number: 200000, label: 'Funds Raised', prefix: '₱', suffix: '+' },
     { number: 100, label: 'Communities Served', suffix: '+' },
     { number: 50, label: 'Active Campaigns', suffix: '+' }
   ];
@@ -141,20 +148,15 @@ export default function Homepage() {
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-8">
-              <a href="#" className="text-gray-700 hover:text-teal-600 font-medium transition">Home</a>
-              <a href="#" className="text-gray-700 hover:text-teal-600 font-medium transition">About SVRTV</a>
+              <a href="/" className={`font-medium transition relative ${isActive('/') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Home{isActive('/') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
+              <a href="/about" className={`font-medium transition relative ${isActive('/about') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>About SVRTV{isActive('/about') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
               <a href="#" className="text-gray-700 hover:text-teal-600 font-medium transition">Campaigns</a>
-              <a href="#" className="text-gray-700 hover:text-teal-600 font-medium transition">Contact Us</a>
-              <button className="bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition shadow-md hover:shadow-lg">
-                Donate
-              </button>
+              <a href="/contact" className={`font-medium transition relative ${isActive('/contact') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us{isActive('/contact') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
+              <button onClick={() => navigate('/login')}className="bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition shadow-md hover:shadow-lg">Donate</button>
             </div>
 
             {/* Mobile Menu Button */}
-            <button 
-              className="md:hidden p-2"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
+            <button className="md:hidden p-2"onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
@@ -164,13 +166,10 @@ export default function Homepage() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t">
             <div className="px-4 py-4 space-y-3">
-              <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">Home</a>
+            <a href="/" className={`block font-medium transition ${isActive('/') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Home</a>
               <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">About SVRTV</a>
               <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">Campaigns</a>
-              <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">Contact Us</a>
-              <button className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition">
-                Donate
-              </button>
+              <a href="/contact" className={`block font-medium transition ${isActive('/contact') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us</a><button onClick={() => navigate('/login')}className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition">Donate</button>
             </div>
           </div>
         )}
