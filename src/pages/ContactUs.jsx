@@ -1,8 +1,18 @@
 import React, { useState } from 'react';
-import { Phone, Mail, MapPin, Facebook, Twitter, Instagram, Youtube, Menu, X, Heart } from 'lucide-react';
+import { Phone, Mail, MapPin, Facebook, Twitter, Instagram, Youtube, Menu, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function ContactUs() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -18,10 +28,69 @@ export default function ContactUs() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission logic here
-    console.log('Form submitted:', formData);
+    
+    // Validation
+    if (!formData.firstName.trim()) {
+      toast.error('First name is required');
+      return;
+    }
+    
+    if (!formData.lastName.trim()) {
+      toast.error('Last name is required');
+      return;
+    }
+    
+    if (!formData.email.trim()) {
+      toast.error('Email is required');
+      return;
+    }
+    
+    // Email validation
+    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    
+    if (!formData.phone.trim()) {
+      toast.error('Phone number is required');
+      return;
+    }
+    
+    if (!formData.message.trim()) {
+      toast.error('Message is required');
+      return;
+    }
+    
+    if (formData.message.trim().length < 10) {
+      toast.error('Message must be at least 10 characters long');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      // Simulate API call - replace with actual API endpoint
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toast.success('Message sent successfully! We will get back to you soon.');
+      
+      // Reset form
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        message: ''
+      });
+      
+    } catch (error) {
+      toast.error('Failed to send message. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -41,13 +110,11 @@ export default function ContactUs() {
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-8">
-              <a href="/" className="text-gray-700 hover:text-teal-600 font-medium transition">Home</a>
-              <a href="#" className="text-gray-700 hover:text-teal-600 font-medium transition">About SVRTV</a>
+            <a href="/" className={`font-medium transition relative ${isActive('/') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Home{isActive('/') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
+              <a href="/about" className={`font-medium transition relative ${isActive('/about') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>About SVRTV{isActive('/about') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
               <a href="#" className="text-gray-700 hover:text-teal-600 font-medium transition">Campaigns</a>
-              <a href="/contact" className="text-gray-700 hover:text-teal-600 font-medium transition">Contact Us</a>
-              <button className="bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition shadow-md hover:shadow-lg">
-                Donate
-              </button>
+              <a href="/contact" className={`font-medium transition relative ${isActive('/contact') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us{isActive('/contact') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
+              <button onClick={() => navigate('/login')}className="bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition shadow-md hover:shadow-lg">Donate</button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -64,11 +131,32 @@ export default function ContactUs() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t">
             <div className="px-4 py-4 space-y-3">
-              <a href="/" className="block text-gray-700 hover:text-teal-600 font-medium">Home</a>
+              <a 
+                href="/" 
+                className={`block font-medium transition ${
+                  isActive('/') 
+                    ? 'text-[#63A6B2] font-bold' 
+                    : 'text-gray-700 hover:text-teal-600'
+                }`}
+              >
+                Home
+              </a>
               <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">About SVRTV</a>
               <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">Campaigns</a>
-              <a href="/contact" className="block text-gray-700 hover:text-teal-600 font-medium">Contact Us</a>
-              <button className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition">
+              <a 
+                href="/contact" 
+                className={`block font-medium transition ${
+                  isActive('/contact') 
+                    ? 'text-[#63A6B2] font-bold' 
+                    : 'text-gray-700 hover:text-teal-600'
+                }`}
+              >
+                Contact Us
+              </a>
+              <button 
+                onClick={() => navigate('/login')}
+                className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition"
+              >
                 Donate
               </button>
             </div>
@@ -85,9 +173,9 @@ export default function ContactUs() {
             </h1>
           </div>
           <p className="text-lg text-white/90 max-w-3xl mx-auto">
-            Thank you for your interest in PortHelp and our mission to uplift underprivileged children. 
-            We value your thoughts, questions, and feedback. Please don't hesitate to reach out to us. 
-            Our dedicated team is here to assist you.
+            Thank you for your interest in Shepherd's Voice Radio and TV Foundation Inc and our mission to uplift 
+            underprivileged communities. We value your thoughts, questions, and feedback. Please don't hesitate to 
+            reach out to us. Our dedicated team is here to assist you.
           </p>
         </div>
       </div>
@@ -110,8 +198,8 @@ export default function ContactUs() {
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900">Call</h3>
                   </div>
-                  <a href="tel:+639876543321" className="text-gray-700 hover:text-[#63A6B2] transition ml-13">
-                    +639876543321
+                  <a href="tel:+63123456789" className="text-gray-700 hover:text-[#63A6B2] transition ml-13">
+                    +63 123 456 7890
                   </a>
                 </div>
 
@@ -123,9 +211,22 @@ export default function ContactUs() {
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900">Email</h3>
                   </div>
-                  <a href="mailto:dareto@email.com" className="text-gray-700 hover:text-[#63A6B2] transition ml-13">
-                    dareto@email.com
+                  <a href="mailto:info@svrtv.org" className="text-gray-700 hover:text-[#63A6B2] transition ml-13">
+                    info@svrtv.org
                   </a>
+                </div>
+
+                {/* Address */}
+                <div className="mb-8">
+                  <div className="flex items-center space-x-3 mb-3">
+                    <div className="w-10 h-10 bg-[#63A6B2]/10 rounded-lg flex items-center justify-center">
+                      <MapPin className="w-5 h-5 text-[#63A6B2]" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">Address</h3>
+                  </div>
+                  <p className="text-gray-700 ml-13">
+                    Quezon City, Philippines
+                  </p>
                 </div>
 
                 {/* Socials */}
@@ -172,7 +273,6 @@ export default function ContactUs() {
                         onChange={handleChange}
                         placeholder="Enter First Name"
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#63A6B2] focus:border-transparent transition"
-                        required
                       />
                     </div>
                     <div>
@@ -186,7 +286,6 @@ export default function ContactUs() {
                         onChange={handleChange}
                         placeholder="Enter Last Name"
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#63A6B2] focus:border-transparent transition"
-                        required
                       />
                     </div>
                   </div>
@@ -204,7 +303,6 @@ export default function ContactUs() {
                         onChange={handleChange}
                         placeholder="Enter your Email"
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#63A6B2] focus:border-transparent transition"
-                        required
                       />
                     </div>
                     <div>
@@ -218,7 +316,6 @@ export default function ContactUs() {
                         onChange={handleChange}
                         placeholder="Enter Phone Number"
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#63A6B2] focus:border-transparent transition"
-                        required
                       />
                     </div>
                   </div>
@@ -235,29 +332,15 @@ export default function ContactUs() {
                       placeholder="Enter your Message"
                       rows="5"
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#63A6B2] focus:border-transparent transition resize-none"
-                      required
                     ></textarea>
-                  </div>
-
-                  {/* Terms and Submit */}
-                  <div className="flex items-start justify-between mb-6">
-                    <label className="flex items-start cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="mt-1 w-4 h-4 text-[#63A6B2] border-gray-300 rounded focus:ring-[#63A6B2]"
-                        required
-                      />
-                      <span className="ml-2 text-sm text-gray-600">
-                        I agree with Terms of Use and Privacy Policy
-                      </span>
-                    </label>
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white font-semibold py-4 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
+                    disabled={isLoading}
+                    className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white font-semibold py-4 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Send your Message
+                    {isLoading ? 'Sending...' : 'Send your Message'}
                   </button>
                 </form>
               </div>
@@ -267,33 +350,34 @@ export default function ContactUs() {
       </div>
 
       {/* CTA Section */}
-      <div className="relative bg-gradient-to-br from-[#63A6B2] to-[#5a959f] py-20 overflow-hidden">
+      <div className="relative bg-teal-50 py-20 overflow-hidden">
         {/* Decorative Elements */}
         <div className="absolute top-0 left-0 w-32 h-32 opacity-20">
           <div className="grid grid-cols-3 gap-2">
             {[...Array(9)].map((_, i) => (
-              <div key={i} className="w-3 h-8 bg-white transform -rotate-45"></div>
+              <div key={i} className="w-3 h-8 bg-[#63A6B2] transform -rotate-45"></div>
             ))}
           </div>
         </div>
         <div className="absolute bottom-0 right-0 w-32 h-32 opacity-20">
           <div className="grid grid-cols-3 gap-2">
             {[...Array(9)].map((_, i) => (
-              <div key={i} className="w-3 h-8 bg-white transform -rotate-45"></div>
+              <div key={i} className="w-3 h-8 bg-[#63A6B2] transform -rotate-45"></div>
             ))}
           </div>
         </div>
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-            Donate Now and Help Level Up the Lives of Children in Need
+          <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6">
+            Donate Now and Help Transform Lives in Our Communities
           </h2>
-          <p className="text-lg text-white/90 mb-8">
-            Your donation will help provide essential services to children in need, such as education, healthcare, nutrition, and enrichment.
+          <p className="text-lg text-gray-700 mb-8">
+            Your donation will help provide essential services to families and communities in need, such as spiritual guidance, 
+            education, healthcare, and community development programs.
           </p>
-          <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 inline-flex items-center">
-            <span className="px-6 py-2 text-gray-700">
-              Click here to donate now and help level up the lives of children in need
+          <div className="bg-white shadow-lg rounded-full p-2 inline-flex items-center flex-col sm:flex-row gap-2 sm:gap-0">
+            <span className="px-6 py-2 text-gray-700 text-sm sm:text-base">
+              Click here to donate now and help transform lives
             </span>
             <button className="bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-semibold transition-all duration-300 flex items-center">
               Donate Now
