@@ -14,7 +14,7 @@ const UserLogin = () => {
     mode: 'onSubmit' // Validate on submit
   });
 
-  const onSubmit = async (data) => {
+    const onSubmit = async (data) => {
     try {
       setIsLoading(true);
 
@@ -23,13 +23,20 @@ const UserLogin = () => {
         password: data.password,
       });
 
+      // Save auth data
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
       toast.success('Login successful! Redirecting...');
-      
+
       setTimeout(() => {
-        navigate('/dashboard');
+        const role = response.data.user.role.toLowerCase();
+
+        if (role === "admin") {
+          navigate("/admin_dashboard");
+        } else {
+          navigate("/");
+        }
       }, 1000);
 
     } catch (err) {
@@ -38,6 +45,7 @@ const UserLogin = () => {
       setIsLoading(false);
     }
   };
+
 
   // Show toast for validation errors
   const onError = (errors) => {

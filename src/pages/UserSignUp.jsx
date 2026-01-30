@@ -63,7 +63,7 @@ const UserSignUp = () => {
     try {
       setIsLoading(true);
 
-      const response = await axios.post('http://localhost:5000/api/auth/register', {
+      const response = await axios.post('http://localhost:5000/api/auth_users/register', {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
