@@ -32,7 +32,7 @@ const UserLogin = () => {
       setTimeout(() => {
         const role = response.data.user.role.toLowerCase();
 
-        if (role === "admin") {
+        if (role === "super_admin") {
           navigate("/admin_dashboard");
         } else {
           navigate("/");

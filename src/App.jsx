@@ -6,6 +6,8 @@ import Homepage from './pages/Homepage';
 import ContactUs from './pages/ContactUs'; // Add this import
 import AboutUs from './pages/AboutUs';
 import PasswordChanged from './pages/PasswordChanged'; // Add this import
+import AdminDashboard from './pages/AdminDashboard';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -16,7 +18,9 @@ function App() {
         <Route path="/signup" element={<UserSignUp />} />
         <Route path="/contact" element={<ContactUs />} /> {/* Add this route */}
         <Route path="/about" element={<AboutUs />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/test" element={<PasswordChanged />} /> {/* Add this route */}        
+        <Route path="/admin_dashboard" element={<AdminRoute> <AdminDashboard /> </AdminRoute> } />
       </Routes>
       <Toaster 
         position="top-right"
@@ -27,5 +31,16 @@ function App() {
     </Router>
   );
 }
+
+// SUPERADMIN - ADMIN ROUTER
+const AdminRoute = ({ children }) => {
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  if (!user) return <Navigate to="/login" />;
+  if (user.role !== "super_admin") return <Navigate to="/" />;
+
+  return children;
+};
+
 
 export default App;

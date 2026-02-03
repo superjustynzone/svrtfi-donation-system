@@ -133,47 +133,58 @@ export default function Homepage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="bg-white/90 backdrop-blur-md shadow-sm fixed w-full top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center space-x-3">
-              <img src="/images/logo.png" alt="Shepherd's Voice Logo" className="h-20 w-20 object-contain"/>
-              <div>
-                <div className="font-bold text-gray-900 text-sm leading-tight">Shepherd's Voice</div>
-                <div className="text-xs text-gray-600">Radio and TV Foundation Inc</div>
-              </div>
-            </div>
-
-            {/* Desktop Menu */}
-            <div className="hidden md:flex items-center space-x-8">
-              <a href="/" className={`font-medium transition relative ${isActive('/') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Home{isActive('/') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
-              <a href="/about" className={`font-medium transition relative ${isActive('/about') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>About SVRTV{isActive('/about') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
-              <a href="#" className="text-gray-700 hover:text-teal-600 font-medium transition">Campaigns</a>
-              <a href="/contact" className={`font-medium transition relative ${isActive('/contact') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us{isActive('/contact') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
-              <button onClick={() => navigate('/login')}className="bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition shadow-md hover:shadow-lg">Donate</button>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button className="md:hidden p-2"onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t">
-            <div className="px-4 py-4 space-y-3">
-            <a href="/" className={`block font-medium transition ${isActive('/') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Home</a>
-              <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">About SVRTV</a>
-              <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">Campaigns</a>
-              <a href="/contact" className={`block font-medium transition ${isActive('/contact') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us</a><button onClick={() => navigate('/login')}className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition">Donate</button>
-            </div>
-          </div>
-        )}
-      </nav>
+       {/* Navigation */}
+                  <nav className="bg-white/90 backdrop-blur-md shadow-sm fixed w-full top-0 z-50">
+                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                          <div className="flex justify-between items-center h-16">
+                              {/* Logo */}
+                              <div className="flex items-center space-x-3">
+                                  <img src="/images/logo.png" alt="Shepherd's Voice Logo" className="h-20 w-20 object-contain" />
+                                  <div>
+                                      <div className="font-bold text-gray-900 text-sm leading-tight">Shepherd's Voice</div>
+                                      <div className="text-xs text-gray-600">Radio and TV Foundation Inc</div>
+                                  </div>
+                              </div>
+      
+      
+                              {/* Desktop Menu */}
+                              <div className="hidden md:flex items-center space-x-8">
+                                  <a href="/" className={`font-medium transition relative ${isActive('/') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Home{isActive('/') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
+                                  <a href="/about" className={`font-medium transition relative ${isActive('/about') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>About SVRTV{isActive('/about') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
+                                  <a href="#" className="text-gray-700 hover:text-teal-600 font-medium transition">Campaigns</a>
+                                  <a href="/contact" className={`font-medium transition relative ${isActive('/contact') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us{isActive('/contact') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
+                                  <button onClick={() => navigate('/login')} className="bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition shadow-md hover:shadow-lg">Donate</button>
+                                  <button
+                                      onClick={() => navigate('/profile')}
+                                      className="w-10 h-10 bg-[#63A6B2] hover:bg-[#5a959f] rounded-full flex items-center justify-center transition shadow-md hover:shadow-lg text-white font-bold text-sm"
+                                      title="Profile"
+                                  >
+                                  </button>
+                              </div>
+      
+      
+                              {/* Mobile Menu Button */}
+                              <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                                  {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                              </button>
+                          </div>
+                      </div>
+      
+      
+                      {/* Mobile Menu */}
+                      {mobileMenuOpen && (
+                          <div className="md:hidden bg-white border-t">
+                              <div className="px-4 py-4 space-y-3">
+                                  <a href="/" className={`block font-medium transition ${isActive('/') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Home</a>
+                                  <a href="/about" className={`block font-medium transition ${isActive('/about') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>About SVRTV</a>
+                                  <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">Campaigns</a>
+                                  <a href="/contact" className={`block font-medium transition ${isActive('/contact') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us</a>
+                                  <a href="/profile" className={`block font-medium transition ${isActive('/profile') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Profile</a>
+                                  <button onClick={() => navigate('/login')} className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition">Donate</button>
+                              </div>
+                          </div>
+                      )}
+                  </nav>
 
       {/* Hero Section */}
       <div className="pt-16 relative overflow-visible">

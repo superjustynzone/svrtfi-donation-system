@@ -17,10 +17,8 @@ const pool = new Pool({
 const loginRoutes = require("./LoginBackend");
 app.use("/api/auth", loginRoutes);
 
-// Test route
-app.get("/", (req, res) => {
-  res.json({ message: "Backend is running!" });
-});
+const profileRoutes = require("./ProfileBackend");
+app.use("/api/user", profileRoutes);
 
 // Get all users example
 app.get("/api/users", async (req, res) => {
@@ -36,6 +34,41 @@ app.get("/api/users", async (req, res) => {
 app.listen(5000, () => console.log("Nagana na yah!"));
 
 const bcrypt = require("bcrypt");
+
+//GET USERS TABLE FOR PROFILE
+app.get("/api/user/profile/:id", async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    const result = await pool.query(
+      `SELECT 
+        u.user_id,
+        u.first_name,
+        u.last_name,
+        u.contact_number,
+        u.address,
+        u.donor_type,
+        u.preferred_contact_method,
+        u.notes,
+        a.email
+      FROM users u
+      LEFT JOIN auth_users a ON u.user_id = a.user_id
+      WHERE u.user_id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+    console.error("PROFILE ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 // REGISTER USER
 app.post("/api/auth_users/register", async (req, res) => {
