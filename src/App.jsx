@@ -5,8 +5,11 @@ import UserSignUp from './pages/UserSignUp';
 import Homepage from './pages/Homepage';
 import ContactUs from './pages/ContactUs'; // Add this import
 import AboutUs from './pages/AboutUs';
+import Foundations from './pages/Foundations';
 import PasswordChanged from './pages/PasswordChanged'; // Add this import
 import AdminDashboard from './pages/AdminDashboard';
+import AdminDonors from './pages/AdminDonors';
+import AdminUserManagement from './pages/AdminUserManagement';
 import Profile from './pages/Profile';
 
 function App() {
@@ -18,11 +21,14 @@ function App() {
         <Route path="/signup" element={<UserSignUp />} />
         <Route path="/contact" element={<ContactUs />} /> {/* Add this route */}
         <Route path="/about" element={<AboutUs />} />
+        <Route path="/foundations" element={<Foundations />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/test" element={<PasswordChanged />} /> {/* Add this route */}        
-        <Route path="/admin_dashboard" element={<AdminRoute> <AdminDashboard /> </AdminRoute> } />
+        <Route path="/test" element={<PasswordChanged />} /> {/* Add this route */}
+        <Route path="/admin_dashboard" element={<AdminDashboard />} />
+        <Route path="/admin_donors" element={<AdminDonors />} />
+        <Route path="/admin_users" element={<AdminUserManagement />} />
       </Routes>
-      <Toaster 
+      <Toaster
         position="top-right"
         richColors={false}
         expand={true}
