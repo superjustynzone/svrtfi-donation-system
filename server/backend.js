@@ -1,12 +1,16 @@
 //Backend.js (Handles the Backend)
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 require("dotenv").config();
 const { Pool } = require("pg");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from uploads directory
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // PostgreSQL connection pool
 const pool = new Pool({
@@ -20,6 +24,22 @@ app.use("/api/auth", loginRoutes);
 const profileRoutes = require("./ProfileBackend");
 app.use("/api/user", profileRoutes);
 
+try {
+  const campaignRoutes = require("./CampaignBackend");
+  app.use("/api/campaigns", campaignRoutes);
+  console.log("✅ Campaign routes loaded successfully");
+} catch (error) {
+  console.error("❌ Error loading Campaign routes:", error.message);
+}
+
+try {
+  const foundationRoutes = require("./FoundationBackend");
+  app.use("/api/foundations", foundationRoutes);
+  console.log("✅ Foundation routes loaded successfully");
+} catch (error) {
+  console.error("❌ Error loading Foundation routes:", error.message);
+}
+
 // Get all users example
 app.get("/api/users", async (req, res) => {
   try {
@@ -30,8 +50,6 @@ app.get("/api/users", async (req, res) => {
     res.status(500).send("Server error");
   }
 });
-
-app.listen(5000, () => console.log("Nagana na yah!"));
 
 const bcrypt = require("bcrypt");
 
@@ -119,4 +137,14 @@ app.post("/api/auth_users/register", async (req, res) => {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
+});
+
+// Start server - MUST be at the end after all routes are defined
+app.listen(5000, () => {
+  console.log("Nagana na yah!");
+  console.log("Server running on http://localhost:5000");
+  console.log("Available routes:");
+  console.log("  - POST /api/campaigns/create");
+  console.log("  - GET  /api/campaigns/all");
+  console.log("  - GET  /api/foundations/all");
 });

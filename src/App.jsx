@@ -7,6 +7,8 @@ import ContactUs from './pages/ContactUs'; // Add this import
 import AboutUs from './pages/AboutUs';
 import PasswordChanged from './pages/PasswordChanged'; // Add this import
 import AdminDashboard from './pages/AdminDashboard';
+import AdminCampaignCreation from './pages/AdminCampaignCreation';
+import AdminFoundationCreation from './pages/AdminFoundationCreation';
 import Profile from './pages/Profile';
 
 function App() {
@@ -19,10 +21,12 @@ function App() {
         <Route path="/contact" element={<ContactUs />} /> {/* Add this route */}
         <Route path="/about" element={<AboutUs />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/test" element={<PasswordChanged />} /> {/* Add this route */}        
-        <Route path="/admin_dashboard" element={<AdminRoute> <AdminDashboard /> </AdminRoute> } />
+        <Route path="/test" element={<PasswordChanged />} /> {/* Add this route */}
+        <Route path="/admin_dashboard" element={<AdminRoute> <AdminDashboard /> </AdminRoute>} />
+        <Route path="/admin/campaigns" element={<AdminRoute> <AdminCampaignCreation /> </AdminRoute>} />
+        <Route path="/admin/foundations" element={<AdminRoute> <AdminFoundationCreation /> </AdminRoute>} />
       </Routes>
-      <Toaster 
+      <Toaster
         position="top-right"
         richColors={false}
         expand={true}
