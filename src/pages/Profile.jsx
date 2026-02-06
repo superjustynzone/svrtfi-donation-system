@@ -51,57 +51,6 @@ export default function Profile() {
 
 
 
-    // Mock user data - replace with actual user data from your auth system
-    const userData = {
-        firstName: 'Juan',
-        lastName: 'Dela Cruz',
-        email: 'juan.delacruz@email.com',
-        phone: '9123456789',
-        address: '123 Sample Street',
-        city: 'Quezon City',
-        province: 'Metro Manila',
-        zipCode: '1100',
-        tinNumber: '123-456-789-000',
-        memberSince: 'November 2025',
-        totalDonations: 4,
-        totalAmount: 15500,
-        lastDonation: 'January 26, 2026',
-        activeDonor: true
-    };
-
-
-    const donationHistory = [
-        {
-            id: 1,
-            date: 'Jan 26, 2026',
-            campaign: 'Build a Memory Chapel',
-            amount: 5000,
-            status: 'Completed'
-        },
-        {
-            id: 2,
-            date: 'Jan 15, 2026',
-            campaign: 'Educational Scholarship Fund 2026',
-            amount: 3000,
-            status: 'Completed'
-        },
-        {
-            id: 3,
-            date: 'Dec 24, 2025',
-            campaign: 'Christmas Feeding Program',
-            amount: 5000,
-            status: 'Completed'
-        },
-        {
-            id: 4,
-            date: 'Nov 10, 2025',
-            campaign: 'Medical Mission Outreach',
-            amount: 2500,
-            status: 'Completed'
-        }
-    ];
-
-
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
@@ -236,9 +185,31 @@ export default function Profile() {
         toast.info(`Viewing receipt for ${campaignName}`);
     };
 
+<<<<<<< HEAD
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem("user"));
         if (!storedUser) return;
+=======
+        const [userData, setUserData] = useState({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        address: "",
+        memberSince: "",
+        totalDonations: 0,
+        totalAmount: 0,
+        lastDonation: "",
+        province: "",
+        city: "",
+        zipCode: "",
+        tinNumber: "",
+    });
+
+        useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    if (!storedUser) return;
+>>>>>>> d89724f15263ac720769867b9c94f7f87a42b3b2
 
         fetch(`http://localhost:5000/api/user/profile/${storedUser.user_id}`)
             .then(res => res.json())
