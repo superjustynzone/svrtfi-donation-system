@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Heart, Edit2, Eye, Download, LogOut, ChevronDown } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { User, Mail, Phone, MapPin, Heart, Menu, X, Users, Edit2, Eye, Download, LogOut, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect } from "react";
-import Navbar from '../components/Navbar';
 
 export default function Profile() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('profile');
     const [isEditMode, setIsEditMode] = useState(false);
     const [editedData, setEditedData] = useState({});
@@ -31,12 +32,12 @@ export default function Profile() {
 
     const citiesByProvince = {
         'Metro Manila': [
-            'Caloocan', 'Las Piñas', 'Makati', 'Malabon', 'Mandaluyong', 'Manila', 'Marikina', 'Muntinlupa',
-            'Navotas', 'Parañaque', 'Pasay', 'Pasig', 'Quezon City', 'San Juan', 'Taguig', 'Valenzuela', 'Pateros'
+            'Caloocan', 'Las Pi単as', 'Makati', 'Malabon', 'Mandaluyong', 'Manila', 'Marikina', 'Muntinlupa',
+            'Navotas', 'Para単aque', 'Pasay', 'Pasig', 'Quezon City', 'San Juan', 'Taguig', 'Valenzuela', 'Pateros'
         ],
         'Cebu': ['Cebu City', 'Mandaue', 'Lapu-Lapu', 'Talisay', 'Toledo', 'Danao', 'Carcar', 'Naga', 'Bogo'],
-        'Cavite': ['Bacoor', 'Cavite City', 'Dasmariñas', 'General Trias', 'Imus', 'Tagaytay', 'Trece Martires'],
-        'Laguna': ['Biñan', 'Calamba', 'San Pablo', 'San Pedro', 'Santa Rosa', 'Cabuyao'],
+        'Cavite': ['Bacoor', 'Cavite City', 'Dasmari単as', 'General Trias', 'Imus', 'Tagaytay', 'Trece Martires'],
+        'Laguna': ['Bi単an', 'Calamba', 'San Pablo', 'San Pedro', 'Santa Rosa', 'Cabuyao'],
         'Rizal': ['Antipolo', 'Cainta', 'Taytay', 'Binangonan', 'San Mateo', 'Rodriguez', 'Angono', 'Morong'],
         'Bulacan': ['Malolos', 'Meycauayan', 'San Jose del Monte', 'Marilao', 'Bocaue', 'Balagtas'],
         'Pampanga': ['Angeles', 'San Fernando', 'Mabalacat'],
@@ -49,6 +50,7 @@ export default function Profile() {
     };
 
 
+    const isActive = (path) => location.pathname === path;
 
 
     const formatCurrency = (amount) => {
@@ -185,11 +187,6 @@ export default function Profile() {
         toast.info(`Viewing receipt for ${campaignName}`);
     };
 
-<<<<<<< HEAD
-    useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (!storedUser) return;
-=======
         const [userData, setUserData] = useState({
         firstName: "",
         lastName: "",
@@ -209,26 +206,77 @@ export default function Profile() {
         useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     if (!storedUser) return;
->>>>>>> d89724f15263ac720769867b9c94f7f87a42b3b2
 
-        fetch(`http://localhost:5000/api/user/profile/${storedUser.user_id}`)
-            .then(res => res.json())
-            .then(data => {
-                setUserData({
-                    firstName: data.first_name,
-                    lastName: data.last_name,
-                    email: data.email,
-                    phone: data.contact_number || "",
-                    address: data.address || "",
-                    memberSince: new Date(data.member_since).toLocaleDateString(),
-                });
-            })
-            .catch(err => console.error("Error fetching profile:", err));
+    fetch(`http://localhost:5000/api/user/profile/${storedUser.user_id}`)
+        .then(res => res.json())
+        .then(data => {
+        setUserData({
+            firstName: data.first_name,
+            lastName: data.last_name,
+            email: data.email,
+            phone: data.contact_number || "",
+            address: data.address || "",
+            memberSince: new Date(data.member_since).toLocaleDateString(),
+        });
+        })
+        .catch(err => console.error("Error fetching profile:", err));
     }, []);
 
     return (
         <div className="min-h-screen bg-[#f5f5f5]">
-            <Navbar userData={userData} />
+            {/* Navigation */}
+            <nav className="bg-white/90 backdrop-blur-md shadow-sm fixed w-full top-0 z-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-16">
+                        {/* Logo */}
+                        <div className="flex items-center space-x-3">
+                            <img src="/images/logo.png" alt="Shepherd's Voice Logo" className="h-20 w-20 object-contain" />
+                            <div>
+                                <div className="font-bold text-gray-900 text-sm leading-tight">Shepherd's Voice</div>
+                                <div className="text-xs text-gray-600">Radio and TV Foundation Inc</div>
+                            </div>
+                        </div>
+
+
+                        {/* Desktop Menu */}
+                        <div className="hidden md:flex items-center space-x-8">
+                            <a href="/" className={`font-medium transition relative ${isActive('/') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Home{isActive('/') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
+                            <a href="/about" className={`font-medium transition relative ${isActive('/about') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>About SVRTV{isActive('/about') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
+                            <a href="#" className="text-gray-700 hover:text-teal-600 font-medium transition">Campaigns</a>
+                            <a href="/contact" className={`font-medium transition relative ${isActive('/contact') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us{isActive('/contact') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
+                            <button onClick={() => navigate('/login')} className="bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition shadow-md hover:shadow-lg">Donate</button>
+                            <button
+                                onClick={() => navigate('/profile')}
+                                className="w-10 h-10 bg-[#63A6B2] hover:bg-[#5a959f] rounded-full flex items-center justify-center transition shadow-md hover:shadow-lg text-white font-bold text-sm"
+                                title="Profile"
+                            >
+                                {userData.firstName.charAt(0)}{userData.lastName.charAt(0)}
+                            </button>
+                        </div>
+
+
+                        {/* Mobile Menu Button */}
+                        <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                        </button>
+                    </div>
+                </div>
+
+
+                {/* Mobile Menu */}
+                {mobileMenuOpen && (
+                    <div className="md:hidden bg-white border-t">
+                        <div className="px-4 py-4 space-y-3">
+                            <a href="/" className={`block font-medium transition ${isActive('/') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Home</a>
+                            <a href="/about" className={`block font-medium transition ${isActive('/about') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>About SVRTV</a>
+                            <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">Campaigns</a>
+                            <a href="/contact" className={`block font-medium transition ${isActive('/contact') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us</a>
+                            <a href="/profile" className={`block font-medium transition ${isActive('/profile') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Profile</a>
+                            <button onClick={() => navigate('/login')} className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition">Donate</button>
+                        </div>
+                    </div>
+                )}
+            </nav>
 
 
             {/* Main Content */}
@@ -387,7 +435,7 @@ export default function Profile() {
                                             <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                                             <div className="relative">
                                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                    <span className="text-gray-500 text-sm font-medium">🇵🇭 +63</span>
+                                                    <span className="text-gray-500 text-sm font-medium">��巨��� +63</span>
                                                 </div>
                                                 <input
                                                     type="tel"
@@ -450,8 +498,8 @@ export default function Profile() {
                                                         onChange={(e) => handleInputChange('city', e.target.value)}
                                                         disabled={!editedData.province}
                                                         className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-[#63A6B2] focus:outline-none appearance-none ${!editedData.province
-                                                            ? 'cursor-not-allowed bg-gray-100 border-gray-300'
-                                                            : 'cursor-pointer border-[#63A6B2]'
+                                                                ? 'cursor-not-allowed bg-gray-100 border-gray-300'
+                                                                : 'cursor-pointer border-[#63A6B2]'
                                                             }`}
                                                     >
                                                         <option value="">
@@ -637,4 +685,3 @@ export default function Profile() {
         </div>
     );
 }
-

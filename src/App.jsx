@@ -8,13 +8,10 @@ import AboutUs from './pages/AboutUs';
 import Foundations from './pages/Foundations';
 import PasswordChanged from './pages/PasswordChanged'; // Add this import
 import AdminDashboard from './pages/AdminDashboard';
-<<<<<<< HEAD
 import AdminDonors from './pages/AdminDonors';
 import AdminUserManagement from './pages/AdminUserManagement';
-=======
 import AdminCampaignCreation from './pages/AdminCampaignCreation';
 import AdminFoundationCreation from './pages/AdminFoundationCreation';
->>>>>>> d89724f15263ac720769867b9c94f7f87a42b3b2
 import Profile from './pages/Profile';
 
 function App() {
@@ -29,15 +26,12 @@ function App() {
         <Route path="/foundations" element={<Foundations />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/test" element={<PasswordChanged />} /> {/* Add this route */}
-<<<<<<< HEAD
         <Route path="/admin_dashboard" element={<AdminDashboard />} />
         <Route path="/admin_donors" element={<AdminDonors />} />
         <Route path="/admin_users" element={<AdminUserManagement />} />
-=======
         <Route path="/admin_dashboard" element={<AdminRoute> <AdminDashboard /> </AdminRoute>} />
         <Route path="/admin/campaigns" element={<AdminRoute> <AdminCampaignCreation /> </AdminRoute>} />
         <Route path="/admin/foundations" element={<AdminRoute> <AdminFoundationCreation /> </AdminRoute>} />
->>>>>>> d89724f15263ac720769867b9c94f7f87a42b3b2
       </Routes>
       <Toaster
         position="top-right"
