@@ -329,6 +329,21 @@ export default function AdminDashboard() {
         });
     };
 
+    const handleLogout = () => {
+        // Clear authentication data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
+        // Show success message
+        toast.success('Logged out successfully');
+
+        // Redirect to login page
+        setTimeout(() => {
+            navigate('/login');
+        }, 500);
+    };
+
+
     // Handle donation submission
     const handleDonationSubmit = async (e) => {
         e.preventDefault();
@@ -449,7 +464,7 @@ export default function AdminDashboard() {
                         <NavItem icon={<Users />} label="Donors" onClick={() => navigate('/admin_donors')} />
                         <NavItem icon={<DollarSign />} label="Donations" onClick={() => navigate('/admin_donations')} />
                         <NavItem icon={<PieChart />} label="Campaigns" onClick={() => navigate('/admin_campaigns')} />
-                        <NavItem icon={<FileText />} label="Receipts" onClick={() => navigate('/admin_receipts')} />
+                        <NavItem icon={<FileText />} label="Foundations" onClick={() => navigate('/admin_foundations')} />
                         <NavItem icon={<BarChart3 />} label="Reports" onClick={() => navigate('/admin_reports')} />
                         <NavItem icon={<UserCog />} label="User Management" onClick={() => navigate('/admin_users')} />
                     </div>
@@ -463,7 +478,10 @@ export default function AdminDashboard() {
 
                 {/* User Profile */}
                 <div className="p-4 border-t border-white/10">
-                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition">
+                    <div
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition"
+                    >
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-white font-bold">
                             JD
                         </div>
