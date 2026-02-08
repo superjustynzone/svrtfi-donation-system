@@ -6,6 +6,8 @@ import Homepage from './pages/Homepage';
 import ContactUs from './pages/ContactUs'; // Add this import
 import AboutUs from './pages/AboutUs';
 import Foundations from './pages/Foundations';
+import Campaigns from './pages/Campaigns';
+import CampaignDetails from './pages/CampaignDetails';
 import PasswordChanged from './pages/PasswordChanged'; // Add this import
 import AdminDashboard from './pages/AdminDashboard';
 import AdminDonors from './pages/AdminDonors';
@@ -24,6 +26,8 @@ function App() {
         <Route path="/contact" element={<ContactUs />} /> {/* Add this route */}
         <Route path="/about" element={<AboutUs />} />
         <Route path="/foundations" element={<Foundations />} />
+        <Route path="/campaigns" element={<Campaigns />} />
+        <Route path="/campaigns/:id" element={<CampaignDetails />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/test" element={<PasswordChanged />} /> {/* Add this route */}
         <Route path="/admin_dashboard" element={<AdminDashboard />} />
