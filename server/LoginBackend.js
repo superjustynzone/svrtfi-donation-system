@@ -19,7 +19,7 @@ router.post("/login", async (req, res) => {
   try {
     // 1. Check if user exists in auth_users
     const userCheck = await pool.query(
-      `SELECT u.user_id, u.first_name, u.last_name, a.hash_password
+      `SELECT u.user_id, u.first_name, u.last_name, u.is_active, a.hash_password
        FROM auth_users a
        JOIN users u ON a.user_id = u.user_id
        WHERE a.email = $1`,
@@ -36,6 +36,11 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.hash_password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid email or password." });
+    }
+
+    // 3. Check if account is active
+    if (user.is_active === false) {
+      return res.status(403).json({ message: "Account deactivated. Please contact administrator." });
     }
 
     // 3. Fetch user role

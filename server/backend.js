@@ -40,6 +40,14 @@ try {
   console.error("❌ Error loading Foundation routes:", error.message);
 }
 
+try {
+  const userManagementRoutes = require("./UserManagementBackend");
+  app.use("/api/admin", userManagementRoutes);
+  console.log("✅ User Management routes loaded successfully");
+} catch (error) {
+  console.error("❌ Error loading User Management routes:", error.message);
+}
+
 // Get all users example
 app.get("/api/users", async (req, res) => {
   try {
@@ -125,7 +133,7 @@ app.post("/api/auth_users/register", async (req, res) => {
 
     await pool.query(
       `INSERT INTO user_roles (user_id, role_id)
-      VALUES ($1, 7)`, // 7 = Viewer/User
+      VALUES ($1, 4)`, // 7 = Viewer/User
       [userId]
     )
 
@@ -142,9 +150,4 @@ app.post("/api/auth_users/register", async (req, res) => {
 // Start server - MUST be at the end after all routes are defined
 app.listen(5000, () => {
   console.log("Nagana na yah!");
-  console.log("Server running on http://localhost:5000");
-  console.log("Available routes:");
-  console.log("  - POST /api/campaigns/create");
-  console.log("  - GET  /api/campaigns/all");
-  console.log("  - GET  /api/foundations/all");
 });
