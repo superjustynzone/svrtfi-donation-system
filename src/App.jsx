@@ -8,6 +8,10 @@ import AboutUs from './pages/AboutUs';
 import Foundations from './pages/Foundations';
 import Campaigns from './pages/Campaigns';
 import CampaignDetails from './pages/CampaignDetails';
+import CampaignDonation from './pages/CampaignDonation';
+import DonationConfirmation from './pages/DonationConfirmation';
+import DonationReceipt from './pages/DonationReceipt';
+import FoundationDetails from './pages/FoundationDetails';
 import PasswordChanged from './pages/PasswordChanged'; // Add this import
 import AdminDashboard from './pages/AdminDashboard';
 import AdminDonors from './pages/AdminDonors';
@@ -28,6 +32,10 @@ function App() {
         <Route path="/foundations" element={<Foundations />} />
         <Route path="/campaigns" element={<Campaigns />} />
         <Route path="/campaigns/:id" element={<CampaignDetails />} />
+        <Route path="/campaigns/:id/donate" element={<CampaignDonation />} />
+        <Route path="/donations/:donationId/confirmation" element={<DonationConfirmation />} />
+        <Route path="/donations/:donationId/receipt" element={<DonationReceipt />} />
+        <Route path="/foundations/:id" element={<FoundationDetails />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/test" element={<PasswordChanged />} /> {/* Add this route */}
         <Route path="/admin_dashboard" element={<AdminDashboard />} />

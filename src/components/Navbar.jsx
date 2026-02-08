@@ -67,10 +67,12 @@ export default function Navbar({ userData = null }) {
                             {isActive('/about') && <span className="absolute -bottom-1 left-0 right-0 h-1 bg-[#63A6B2] rounded-full"></span>}
                         </a>
                         <a
-                            href="#"
-                            className="text-gray-700 hover:text-[#63A6B2] font-medium transition py-2"
+                            href="/campaigns"
+                            className={`font-medium transition relative py-2 ${isActive('/campaigns') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-[#63A6B2]'
+                                }`}
                         >
                             Campaigns
+                            {isActive('/campaigns') && <span className="absolute -bottom-1 left-0 right-0 h-1 bg-[#63A6B2] rounded-full"></span>}
                         </a>
                         <a
                             href="/foundations"
@@ -140,8 +142,9 @@ export default function Navbar({ userData = null }) {
                             About SVRTV
                         </a>
                         <a
-                            href="#"
-                            className="block text-gray-700 hover:bg-gray-50 font-medium py-2 px-3 rounded-lg"
+                            href="/campaigns"
+                            className={`block font-medium transition py-2 px-3 rounded-lg ${isActive('/campaigns') ? 'text-[#63A6B2] bg-teal-50 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                                }`}
                         >
                             Campaigns
                         </a>

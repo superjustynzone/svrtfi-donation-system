@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import Footer from '../components/Footer';
 
 export default function CampaignDetails() {
     const { id } = useParams();
@@ -8,8 +9,6 @@ export default function CampaignDetails() {
     const [campaign, setCampaign] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState(0);
-    const [donationAmount, setDonationAmount] = useState('');
-    const [showDonateModal, setShowDonateModal] = useState(false);
 
     useEffect(() => {
         fetchCampaignDetails();
@@ -65,20 +64,7 @@ export default function CampaignDetails() {
     };
 
     const handleDonate = () => {
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (!user) {
-            toast.error('Please log in to donate');
-            navigate('/login');
-            return;
-        }
-        setShowDonateModal(true);
-    };
-
-    const handleDonateSubmit = () => {
-        // This would integrate with your donation system
-        toast.success('Donation feature coming soon!');
-        setShowDonateModal(false);
-        setDonationAmount('');
+        navigate(`/campaigns/${id}/donate`);
     };
 
     if (isLoading) {
@@ -145,8 +131,8 @@ export default function CampaignDetails() {
                                                         key={media.media_id}
                                                         onClick={() => setSelectedImage(index)}
                                                         className={`flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === index
-                                                                ? 'border-[#63A6B2] shadow-lg scale-105'
-                                                                : 'border-gray-300 hover:border-[#63A6B2] opacity-70 hover:opacity-100'
+                                                            ? 'border-[#63A6B2] shadow-lg scale-105'
+                                                            : 'border-gray-300 hover:border-[#63A6B2] opacity-70 hover:opacity-100'
                                                             }`}
                                                     >
                                                         <img
@@ -232,55 +218,89 @@ export default function CampaignDetails() {
 
                     {/* Right Column - Donation Card */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100 sticky top-24">
+                        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 sticky top-24">
                             {/* Days Remaining */}
                             {daysRemaining !== null && (
                                 <div className="mb-6">
-                                    <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-3 rounded-xl text-center">
-                                        <p className="text-3xl font-bold">{daysRemaining}</p>
-                                        <p className="text-sm font-semibold">Days Remaining</p>
+                                    <div className="bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 text-white px-6 py-5 rounded-2xl text-center shadow-lg">
+                                        <div className="flex items-center justify-center gap-2 mb-2">
+                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                            </svg>
+                                            <p className="text-sm font-bold uppercase tracking-wider">Time Left</p>
+                                        </div>
+                                        <p className="text-4xl font-extrabold mb-1">{daysRemaining}</p>
+                                        <p className="text-sm font-semibold opacity-90">Days Remaining</p>
                                     </div>
                                 </div>
                             )}
 
                             {/* Funding Progress */}
                             <div className="mb-6">
-                                <div className="flex justify-between items-baseline mb-3">
-                                    <p className="text-3xl font-bold text-[#63A6B2]">
-                                        {formatCurrency(campaign.current_amount || 0)}
-                                    </p>
-                                    <p className="text-sm text-gray-500">
-                                        of {formatCurrency(campaign.goal_amount)}
-                                    </p>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-semibold uppercase tracking-wide mb-1">Raised</p>
+                                        <p className="text-3xl font-extrabold bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] bg-clip-text text-transparent">
+                                            {formatCurrency(campaign.current_amount || 0)}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm text-gray-500 font-semibold uppercase tracking-wide mb-1">Goal</p>
+                                        <p className="text-xl font-bold text-gray-700">
+                                            {formatCurrency(campaign.goal_amount)}
+                                        </p>
+                                    </div>
                                 </div>
 
                                 {/* Progress Bar */}
-                                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden mb-2">
-                                    <div
-                                        className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] h-full rounded-full transition-all duration-500"
-                                        style={{ width: `${progress}%` }}
-                                    ></div>
+                                <div className="relative">
+                                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                                        <div
+                                            className="bg-gradient-to-r from-[#63A6B2] via-teal-400 to-[#4a8a95] h-full rounded-full transition-all duration-700 shadow-md relative overflow-hidden"
+                                            style={{ width: `${Math.min(progress, 100)}%` }}
+                                        >
+                                            <div className="absolute inset-0 bg-white opacity-20 animate-pulse"></div>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center mt-2">
+                                        <p className="text-xs text-gray-500 font-semibold">
+                                            {progress.toFixed(0)}% Complete
+                                        </p>
+                                        {progress >= 100 && (
+                                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
+                                                🎉 Goal Reached!
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                <p className="text-sm text-gray-600 text-right font-semibold">
-                                    {progress.toFixed(1)}% funded
-                                </p>
                             </div>
 
-                            {/* Stats */}
-                            <div className="grid grid-cols-2 gap-4 mb-8 pt-6 border-t border-gray-200">
-                                <div className="text-center p-4 bg-gray-50 rounded-xl">
-                                    <p className="text-2xl font-bold text-gray-900">
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-2 gap-3 mb-6 pt-4 border-t border-gray-200">
+                                <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-teal-50 rounded-xl border border-blue-100">
+                                    <div className="flex justify-center mb-2">
+                                        <svg className="w-5 h-5 text-[#63A6B2]" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-lg font-extrabold text-gray-900 mb-1">
                                         {formatCurrency(campaign.goal_amount - (campaign.current_amount || 0))}
                                     </p>
-                                    <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">
+                                    <p className="text-xs text-gray-600 uppercase tracking-wide font-bold">
                                         Still Needed
                                     </p>
                                 </div>
-                                <div className="text-center p-4 bg-gray-50 rounded-xl">
-                                    <p className="text-2xl font-bold text-gray-900">
+                                <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+                                    <div className="flex justify-center mb-2">
+                                        <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-lg font-extrabold text-gray-900 mb-1">
                                         {campaign.donor_count || 0}
                                     </p>
-                                    <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">
+                                    <p className="text-xs text-gray-600 uppercase tracking-wide font-bold">
                                         Donors
                                     </p>
                                 </div>
@@ -289,23 +309,47 @@ export default function CampaignDetails() {
                             {/* Donate Button */}
                             <button
                                 onClick={handleDonate}
-                                className="w-full bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                className="w-full bg-gradient-to-r from-[#63A6B2] via-teal-500 to-[#4a8a95] text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 flex items-center justify-center gap-2 group"
                             >
+                                <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                                </svg>
                                 Donate Now
                             </button>
 
                             {/* Share Section */}
                             <div className="mt-6 pt-6 border-t border-gray-200">
-                                <p className="text-sm font-semibold text-gray-700 mb-3">Share this campaign</p>
-                                <div className="flex gap-3">
-                                    <button className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold">
-                                        Facebook
+                                <div className="flex items-center gap-2 mb-3">
+                                    <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                    </svg>
+                                    <p className="text-sm font-bold text-gray-700">Share Campaign</p>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button className="bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition-all hover:shadow-md text-xs font-bold flex items-center justify-center gap-1">
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                                        </svg>
+                                        FB
                                     </button>
-                                    <button className="flex-1 bg-sky-500 text-white py-2 rounded-lg hover:bg-sky-600 transition-colors text-sm font-semibold">
-                                        Twitter
+                                    <button className="bg-sky-500 text-white py-2.5 rounded-lg hover:bg-sky-600 transition-all hover:shadow-md text-xs font-bold flex items-center justify-center gap-1">
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
+                                        </svg>
+                                        X
                                     </button>
-                                    <button className="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm font-semibold">
-                                        Copy Link
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(window.location.href);
+                                            toast.success('Link copied to clipboard!');
+                                        }}
+                                        className="bg-gray-700 text-white py-2.5 rounded-lg hover:bg-gray-800 transition-all hover:shadow-md text-xs font-bold flex items-center justify-center gap-1"
+                                    >
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
+                                            <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5zM15 11h2a1 1 0 110 2h-2v-2z" />
+                                        </svg>
+                                        Copy
                                     </button>
                                 </div>
                             </div>
@@ -314,64 +358,7 @@ export default function CampaignDetails() {
                 </div>
             </div>
 
-            {/* Donate Modal */}
-            {showDonateModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-4">Make a Donation</h3>
-                        <p className="text-gray-600 mb-6">
-                            Support <span className="font-semibold text-[#63A6B2]">{campaign.campaign_name}</span>
-                        </p>
-
-                        <div className="mb-6">
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Donation Amount (₱)
-                            </label>
-                            <input
-                                type="number"
-                                value={donationAmount}
-                                onChange={(e) => setDonationAmount(e.target.value)}
-                                placeholder="Enter amount"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-transparent outline-none"
-                                min="1"
-                                step="0.01"
-                            />
-                        </div>
-
-                        {/* Quick Amount Buttons */}
-                        <div className="grid grid-cols-4 gap-2 mb-6">
-                            {[100, 500, 1000, 5000].map(amount => (
-                                <button
-                                    key={amount}
-                                    onClick={() => setDonationAmount(amount.toString())}
-                                    className="py-2 px-3 bg-gray-100 hover:bg-[#63A6B2] hover:text-white rounded-lg text-sm font-semibold transition-colors"
-                                >
-                                    ₱{amount}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => {
-                                    setShowDonateModal(false);
-                                    setDonationAmount('');
-                                }}
-                                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleDonateSubmit}
-                                disabled={!donationAmount || parseFloat(donationAmount) <= 0}
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Donate
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <Footer />
         </div>
     );
 }
