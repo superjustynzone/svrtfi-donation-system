@@ -1,0 +1,79 @@
+Database Schema Dump
+====================
+
+Table: users
+--------------------
+user_id                   | integer              | Nullable: NO
+first_name                | character varying    | Nullable: YES
+last_name                 | character varying    | Nullable: YES
+contact_number            | character varying    | Nullable: YES
+address                   | text                 | Nullable: YES
+created_at                | timestamp without time zone | Nullable: YES
+updated_at                | timestamp without time zone | Nullable: YES
+
+Table: auth_users
+--------------------
+auth_id                   | integer              | Nullable: NO
+user_id                   | integer              | Nullable: YES
+email                     | character varying    | Nullable: NO
+hash_password             | text                 | Nullable: NO
+token                     | text                 | Nullable: YES
+reset_password_token      | text                 | Nullable: YES
+created_at                | timestamp without time zone | Nullable: YES
+updated_at                | timestamp without time zone | Nullable: YES
+
+Table: user_roles
+--------------------
+id                        | integer              | Nullable: NO
+user_id                   | integer              | Nullable: YES
+role_id                   | integer              | Nullable: YES
+assigned_at               | timestamp without time zone | Nullable: YES
+
+Table: roles
+--------------------
+role_id                   | integer              | Nullable: NO
+role_name                 | character varying    | Nullable: NO
+
+Table: campaigns
+--------------------
+campaign_id               | integer              | Nullable: NO
+campaign_name             | character varying    | Nullable: NO
+campaign_type             | character varying    | Nullable: YES
+campaign_description      | text                 | Nullable: YES
+goal_amount               | numeric              | Nullable: YES
+current_amount            | numeric              | Nullable: YES
+start_date                | date                 | Nullable: YES
+end_date                  | date                 | Nullable: YES
+created_at                | timestamp without time zone | Nullable: YES
+updated_at                | timestamp without time zone | Nullable: YES
+
+Table: campaign_media
+--------------------
+media_id                  | integer              | Nullable: NO
+campaign_id               | integer              | Nullable: YES
+file_url                  | text                 | Nullable: YES
+media_type                | character varying    | Nullable: YES
+uploaded_at               | timestamp without time zone | Nullable: YES
+
+Table: foundations
+--------------------
+foundation_id             | integer              | Nullable: NO
+foundation_name           | character varying    | Nullable: NO
+foundation_logo           | text                 | Nullable: YES
+foundation_desc           | text                 | Nullable: YES
+foundation_address        | text                 | Nullable: YES
+foundation_contact        | character varying    | Nullable: YES
+foundation_email          | character varying    | Nullable: YES
+accepts_donations         | boolean              | Nullable: YES
+bank_name                 | character varying    | Nullable: YES
+bank_account_name         | character varying    | Nullable: YES
+bank_account_number       | character varying    | Nullable: YES
+created_at                | timestamp without time zone | Nullable: YES
+updated_at                | timestamp without time zone | Nullable: YES
+
+Table: foundation_campaigns
+--------------------
+id                        | integer              | Nullable: NO
+foundation_id             | integer              | Nullable: YES
+campaign_id               | integer              | Nullable: YES
+

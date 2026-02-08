@@ -34,8 +34,8 @@ function App() {
         <Route path="/admin_donors" element={<AdminDonors />} />
         <Route path="/admin_users" element={<AdminUserManagement />} />
         <Route path="/admin_dashboard" element={<AdminRoute> <AdminDashboard /> </AdminRoute>} />
-        <Route path="/admin/campaigns" element={<AdminRoute> <AdminCampaignCreation /> </AdminRoute>} />
-        <Route path="/admin/foundations" element={<AdminRoute> <AdminFoundationCreation /> </AdminRoute>} />
+        <Route path="/admin_campaigns" element={<AdminRoute> <AdminCampaignCreation /> </AdminRoute>} />
+        <Route path="/admin_foundations" element={<AdminRoute> <AdminFoundationCreation /> </AdminRoute>} />
       </Routes>
       <Toaster
         position="top-right"
