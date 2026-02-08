@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import AdminSidebar from '../components/AdminSidebar';
 
 export default function AdminCampaignCreation() {
     const navigate = useNavigate();
@@ -337,70 +338,11 @@ export default function AdminCampaignCreation() {
     return (
         <div className="flex h-screen overflow-hidden bg-[#f8fafb]">
             {/* Sidebar */}
-            <aside className={`
-                fixed lg:static inset-y-0 left-0 z-50
-                w-64 bg-gradient-to-b from-[#63A6B2] to-[#4d8b96]
-                transform transition-transform duration-300 ease-in-out
-                ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-                shadow-2xl flex flex-col
-            `}>
-                {/* Logo */}
-                <div className="p-6 border-b border-white/10">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
-                                <DollarSign className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-white font-bold text-lg leading-tight">SVRTFI</h1>
-                                <p className="text-white/70 text-xs">Donation CRM</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="lg:hidden text-white"
-                        >
-                            <X className="w-6 h-6" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Navigation */}
-                <nav className="flex-1 py-6 overflow-y-auto">
-                    <div className="px-3 space-y-1">
-                        <NavItem icon={<Home />} label="Dashboard" onClick={() => navigate('/admin_dashboard')} />
-                        <NavItem icon={<Users />} label="Donors" onClick={() => navigate('/admin_donors')} />
-                        <NavItem icon={<DollarSign />} label="Donations" onClick={() => navigate('/admin_donations')} />
-                        <NavItem icon={<PieChart />} label="Campaigns" active />
-                        <NavItem icon={<FileText />} label="Foundations" onClick={() => navigate('/admin_foundations')} />
-                        <NavItem icon={<BarChart3 />} label="Reports" onClick={() => navigate('/admin_reports')} />
-                        <NavItem icon={<UserCog />} label="User Management" onClick={() => navigate('/admin_users')} />
-                    </div>
-
-                    <div className="px-3 mt-6 pt-6 border-t border-white/10">
-                        <div className="text-xs font-semibold text-white/50 px-4 mb-3 uppercase tracking-wider">System</div>
-                        <NavItem icon={<Settings />} label="Settings" onClick={() => navigate('/admin_settings')} />
-                        <NavItem icon={<AlertTriangle />} label="Audit Logs" onClick={() => navigate('/admin_audit')} />
-                    </div>
-                </nav>
-
-                {/* User Profile */}
-                <div className="p-4 border-t border-white/10">
-                    <div
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition"
-                    >
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-white font-bold">
-                            JD
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-semibold truncate">John Dela Cruz</p>
-                            <p className="text-white/60 text-xs truncate">Super Admin</p>
-                        </div>
-                        <LogOut className="w-4 h-4 text-white/60" />
-                    </div>
-                </div>
-            </aside>
+            <AdminSidebar
+                activePage="campaigns"
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+            />
 
             {/* Mobile Menu Overlay */}
             {mobileMenuOpen && (

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import AdminSidebar from '../components/AdminSidebar';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -57,20 +58,25 @@ export default function AdminUserManagement() {
         recentLogins: 0
     });
 
-    // Role definitions with descriptions
+    // Role definitions with descriptions (viewer excluded - for normal users only)
     const roles = [
-        { value: 'super_admin', label: 'Super Admin', color: 'from-red-500 to-red-600', description: 'Full system access' },
         { value: 'admin', label: 'Admin', color: 'from-purple-500 to-purple-600', description: 'Administrative access' },
-        { value: 'hr', label: 'HR', color: 'from-blue-500 to-blue-600', description: 'Human resources management' },
         { value: 'finance', label: 'Finance', color: 'from-green-500 to-green-600', description: 'Financial operations' },
         { value: 'encoder', label: 'Encoder', color: 'from-yellow-500 to-yellow-600', description: 'Data entry access' },
-        { value: 'viewer', label: 'Viewer', color: 'from-gray-500 to-gray-600', description: 'Read-only access' },
         { value: 'auditor', label: 'Auditor', color: 'from-orange-500 to-orange-600', description: 'Audit & compliance' }
     ];
 
-    // Get role info
+    // All roles including viewer for display purposes
+    const allRoles = [
+        ...roles,
+        { value: 'viewer', label: 'Viewer', color: 'from-gray-500 to-gray-600', description: 'Read-only access' }
+    ];
+
+    // Get role info (check all roles including viewer)
     const getRoleInfo = (roleValue) => {
-        return roles.find(r => r.value === roleValue) || roles[5]; // Default to viewer
+        const role = allRoles.find(r => r.value === roleValue);
+        // Default to viewer if role not found or is null/undefined
+        return role || allRoles.find(r => r.value === 'viewer') || allRoles[0];
     };
 
     // Fetch users data
@@ -84,11 +90,11 @@ export default function AdminUserManagement() {
 
         // Search filter
         if (searchTerm) {
-            filtered = filtered.filter(user =>
-                user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                user.username.toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            filtered = filtered.filter(user => {
+                const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+                const email = (user.email || '').toLowerCase();
+                return fullName.includes(searchTerm.toLowerCase()) || email.includes(searchTerm.toLowerCase());
+            });
         }
 
         // Role filter
@@ -103,9 +109,9 @@ export default function AdminUserManagement() {
 
         // Sorting
         filtered.sort((a, b) => {
-            if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
-            if (sortBy === 'name') return a.name.localeCompare(b.name);
-            if (sortBy === 'role') return a.role.localeCompare(b.role);
+            if (sortBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+            if (sortBy === 'name') return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
+            if (sortBy === 'role') return (a.role || '').localeCompare(b.role || '');
             return 0;
         });
 
@@ -116,176 +122,45 @@ export default function AdminUserManagement() {
     const fetchUsers = async () => {
         try {
             setIsLoading(true);
-            // Replace with actual API endpoint
-            const response = await fetch('/api/admin/users', {
+            const response = await fetch('http://localhost:5000/api/admin/users', {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
 
-            if (!response.ok) throw new Error('Failed to fetch users');
+            if (!response.ok) {
+                throw new Error('Failed to fetch users');
+            }
 
             const data = await response.json();
-            setUsers(data.users);
+
+            // Transform data to match frontend expectations
+            const transformedUsers = data.users.map(user => {
+                const userRole = user.role || 'viewer'; // Default to viewer if no role
+                const roleInfo = getRoleInfo(userRole);
+
+                return {
+                    ...user,
+                    name: `${user.first_name} ${user.last_name}`,
+                    status: user.is_active !== false ? 'Active' : 'Inactive', // Default to Active (handle null/undefined)
+                    username: user.email?.split('@')[0] || '',
+                    initials: `${user.first_name?.charAt(0) || ''}${user.last_name?.charAt(0) || ''}`,
+                    color: roleInfo.color,
+                    lastLogin: 'N/A',
+                    createdAt: user.created_at,
+                    lastLogin: 'N/A',
+                    createdAt: user.created_at,
+                    address: user.address || '', // Renamed from department
+                    employeeId: user.user_id, // Display user_id directly
+                    role: userRole // Ensure role is set
+                };
+            });
+
+            setUsers(transformedUsers);
             setStats(data.stats);
 
         } catch (error) {
             console.error('Error fetching users:', error);
-            // Mock data for development
-            const mockUsers = [
-                {
-                    id: 1,
-                    name: 'John Dela Cruz',
-                    email: 'john.delacruz@svrtfi.org',
-                    username: 'jdelacruz',
-                    phone: '0917-123-4567',
-                    role: 'super_admin',
-                    status: 'Active',
-                    department: 'Administration',
-                    employeeId: 'EMP-001',
-                    lastLogin: 'Feb 6, 2026 10:30 AM',
-                    createdAt: '2023-01-15',
-                    initials: 'JD',
-                    color: 'from-red-400 to-red-600'
-                },
-                {
-                    id: 2,
-                    name: 'Maria Santos',
-                    email: 'maria.santos@svrtfi.org',
-                    username: 'msantos',
-                    phone: '0918-987-6543',
-                    role: 'admin',
-                    status: 'Active',
-                    department: 'Operations',
-                    employeeId: 'EMP-002',
-                    lastLogin: 'Feb 6, 2026 09:15 AM',
-                    createdAt: '2023-02-20',
-                    initials: 'MS',
-                    color: 'from-purple-400 to-purple-600'
-                },
-                {
-                    id: 3,
-                    name: 'Sarah Lopez',
-                    email: 'sarah.lopez@svrtfi.org',
-                    username: 'slopez',
-                    phone: '0919-555-0000',
-                    role: 'finance',
-                    status: 'Active',
-                    department: 'Finance',
-                    employeeId: 'EMP-003',
-                    lastLogin: 'Feb 6, 2026 08:45 AM',
-                    createdAt: '2023-03-10',
-                    initials: 'SL',
-                    color: 'from-green-400 to-green-600'
-                },
-                {
-                    id: 4,
-                    name: 'Pedro Garcia',
-                    email: 'pedro.garcia@svrtfi.org',
-                    username: 'pgarcia',
-                    phone: '0915-444-3333',
-                    role: 'encoder',
-                    status: 'Active',
-                    department: 'Data Management',
-                    employeeId: 'EMP-004',
-                    lastLogin: 'Feb 5, 2026 04:20 PM',
-                    createdAt: '2023-05-05',
-                    initials: 'PG',
-                    color: 'from-yellow-400 to-yellow-600'
-                },
-                {
-                    id: 5,
-                    name: 'Lisa Tan',
-                    email: 'lisa.tan@svrtfi.org',
-                    username: 'ltan',
-                    phone: '0916-222-1111',
-                    role: 'auditor',
-                    status: 'Active',
-                    department: 'Compliance',
-                    employeeId: 'EMP-005',
-                    lastLogin: 'Feb 5, 2026 02:10 PM',
-                    createdAt: '2023-06-12',
-                    initials: 'LT',
-                    color: 'from-orange-400 to-orange-600'
-                },
-                {
-                    id: 6,
-                    name: 'Mark Santos',
-                    email: 'mark.santos@svrtfi.org',
-                    username: 'msantos2',
-                    phone: '0920-111-2222',
-                    role: 'viewer',
-                    status: 'Active',
-                    department: 'General',
-                    employeeId: 'EMP-006',
-                    lastLogin: 'Feb 4, 2026 11:30 AM',
-                    createdAt: '2023-07-18',
-                    initials: 'MK',
-                    color: 'from-gray-400 to-gray-600'
-                },
-                {
-                    id: 7,
-                    name: 'Anna Reyes',
-                    email: 'anna.reyes@svrtfi.org',
-                    username: 'areyes',
-                    phone: '0921-333-4444',
-                    role: 'hr',
-                    status: 'Active',
-                    department: 'Human Resources',
-                    employeeId: 'EMP-007',
-                    lastLogin: 'Feb 6, 2026 07:00 AM',
-                    createdAt: '2023-08-14',
-                    initials: 'AR',
-                    color: 'from-blue-400 to-blue-600'
-                },
-                {
-                    id: 8,
-                    name: 'Carlos Mendoza',
-                    email: 'carlos.mendoza@svrtfi.org',
-                    username: 'cmendoza',
-                    phone: '0922-555-6666',
-                    role: 'encoder',
-                    status: 'Inactive',
-                    department: 'Data Management',
-                    employeeId: 'EMP-008',
-                    lastLogin: 'Jan 15, 2026 03:45 PM',
-                    createdAt: '2024-01-20',
-                    initials: 'CM',
-                    color: 'from-teal-400 to-teal-600'
-                },
-                {
-                    id: 9,
-                    name: 'Elena Cruz',
-                    email: 'elena.cruz@svrtfi.org',
-                    username: 'ecruz',
-                    phone: '0923-777-8888',
-                    role: 'finance',
-                    status: 'Active',
-                    department: 'Finance',
-                    employeeId: 'EMP-009',
-                    lastLogin: 'Feb 5, 2026 01:20 PM',
-                    createdAt: '2024-02-08',
-                    initials: 'EC',
-                    color: 'from-emerald-400 to-emerald-600'
-                },
-                {
-                    id: 10,
-                    name: 'Roberto Torres',
-                    email: 'roberto.torres@svrtfi.org',
-                    username: 'rtorres',
-                    phone: '0924-999-0000',
-                    role: 'viewer',
-                    status: 'Active',
-                    department: 'General',
-                    employeeId: 'EMP-010',
-                    lastLogin: 'Feb 3, 2026 09:00 AM',
-                    createdAt: '2024-03-22',
-                    initials: 'RT',
-                    color: 'from-cyan-400 to-cyan-600'
-                }
-            ];
-
-            setUsers(mockUsers);
             setStats({
                 totalUsers: mockUsers.length,
                 activeUsers: mockUsers.filter(u => u.status === 'Active').length,
@@ -323,10 +198,10 @@ export default function AdminUserManagement() {
             email: '',
             username: '',
             phone: '',
-            role: 'viewer',
+            role: 'encoder', // Default to encoder
             status: 'Active',
-            department: '',
-            employeeId: '',
+            address: '', // Renamed from department
+            employeeId: '', // No need to generate
             password: '',
             confirmPassword: ''
         });
@@ -371,43 +246,37 @@ export default function AdminUserManagement() {
         try {
             setIsLoading(true);
 
-            // Replace with actual API endpoint
-            const response = await fetch('/api/admin/users', {
+            const response = await fetch('http://localhost:5000/api/admin/users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
-                body: JSON.stringify(userForm)
+                body: JSON.stringify({
+                    firstName: userForm.firstName,
+                    lastName: userForm.lastName,
+                    email: userForm.email,
+                    password: userForm.password,
+                    phone: userForm.phone,
+                    role: userForm.role,
+                    department: userForm.department,
+                    employeeId: userForm.employeeId
+                })
             });
 
-            if (!response.ok) throw new Error('Failed to add user');
+            const result = await response.json();
 
-            // For development - add to mock data
-            const roleInfo = getRoleInfo(userForm.role);
-            const newUser = {
-                id: users.length + 1,
-                name: `${userForm.firstName} ${userForm.lastName}`,
-                email: userForm.email,
-                username: userForm.username,
-                phone: userForm.phone,
-                role: userForm.role,
-                status: userForm.status,
-                department: userForm.department,
-                employeeId: userForm.employeeId,
-                lastLogin: 'Never',
-                createdAt: new Date().toISOString(),
-                initials: `${userForm.firstName[0]}${userForm.lastName[0]}`,
-                color: roleInfo.color
-            };
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to add user');
+            }
 
-            setUsers([newUser, ...users]);
             toast.success('User added successfully!');
+            fetchUsers(); // Refresh the user list
             setIsAddModalOpen(false);
             resetForm();
 
         } catch (error) {
-            toast.error('Failed to add user. Please try again.');
+            toast.error(error.message || 'Failed to add user. Please try again.');
             console.error('Error adding user:', error);
         } finally {
             setIsLoading(false);
@@ -420,46 +289,37 @@ export default function AdminUserManagement() {
         try {
             setIsLoading(true);
 
-            // Replace with actual API endpoint
-            const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+            const response = await fetch(`http://localhost:5000/api/admin/users/${selectedUser.user_id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
-                body: JSON.stringify(userForm)
+                body: JSON.stringify({
+                    firstName: userForm.firstName,
+                    lastName: userForm.lastName,
+                    email: userForm.email,
+                    phone: userForm.phone,
+                    role: userForm.role,
+                    department: userForm.department,
+                    status: userForm.status
+                })
             });
 
-            if (!response.ok) throw new Error('Failed to update user');
+            const result = await response.json();
 
-            // For development - update mock data
-            const roleInfo = getRoleInfo(userForm.role);
-            const updatedUsers = users.map(u => {
-                if (u.id === selectedUser.id) {
-                    return {
-                        ...u,
-                        name: `${userForm.firstName} ${userForm.lastName}`,
-                        email: userForm.email,
-                        username: userForm.username,
-                        phone: userForm.phone,
-                        role: userForm.role,
-                        status: userForm.status,
-                        department: userForm.department,
-                        employeeId: userForm.employeeId,
-                        color: roleInfo.color
-                    };
-                }
-                return u;
-            });
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to update user');
+            }
 
-            setUsers(updatedUsers);
             toast.success('User updated successfully!');
+            fetchUsers(); // Refresh the user list
             setIsEditModalOpen(false);
             setSelectedUser(null);
             resetForm();
 
         } catch (error) {
-            toast.error('Failed to update user. Please try again.');
+            toast.error(error.message || 'Failed to update user. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -470,24 +330,26 @@ export default function AdminUserManagement() {
         try {
             setIsLoading(true);
 
-            // Replace with actual API endpoint
-            const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+            const response = await fetch(`http://localhost:5000/api/admin/users/${selectedUser.user_id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
 
-            if (!response.ok) throw new Error('Failed to delete user');
+            const result = await response.json();
 
-            // For development - remove from mock data
-            setUsers(users.filter(u => u.id !== selectedUser.id));
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to delete user');
+            }
+
             toast.success('User deleted successfully!');
+            fetchUsers(); // Refresh the user list
             setIsDeleteModalOpen(false);
             setSelectedUser(null);
 
         } catch (error) {
-            toast.error('Failed to delete user. Please try again.');
+            toast.error(error.message || 'Failed to delete user. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -496,10 +358,15 @@ export default function AdminUserManagement() {
     // Toggle user status
     const handleToggleUserStatus = async (user) => {
         const newStatus = user.status === 'Active' ? 'Inactive' : 'Active';
+        const originalStatus = user.status;
+
+        // Optimistic update
+        setUsers(prevUsers => prevUsers.map(u =>
+            u.user_id === user.user_id ? { ...u, status: newStatus, is_active: newStatus === 'Active' } : u
+        ));
 
         try {
-            // Replace with actual API endpoint
-            const response = await fetch(`/api/admin/users/${user.id}/status`, {
+            const response = await fetch(`http://localhost:5000/api/admin/users/${user.user_id}/status`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -510,11 +377,14 @@ export default function AdminUserManagement() {
 
             if (!response.ok) throw new Error('Failed to update status');
 
-            // For development - update mock data
-            setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
             toast.success(`User ${newStatus === 'Active' ? 'activated' : 'deactivated'} successfully!`);
+            // fetchUsers(); // No need to fetch if optimistic update is correct, but can keep for sync
 
         } catch (error) {
+            // Revert on error
+            setUsers(prevUsers => prevUsers.map(u =>
+                u.user_id === user.user_id ? { ...u, status: originalStatus, is_active: originalStatus === 'Active' } : u
+            ));
             toast.error('Failed to update user status. Please try again.');
         }
     };
@@ -524,22 +394,25 @@ export default function AdminUserManagement() {
         try {
             setIsLoading(true);
 
-            // Replace with actual API endpoint
-            const response = await fetch(`/api/admin/users/${selectedUser.id}/reset-password`, {
+            const response = await fetch(`http://localhost:5000/api/admin/users/${selectedUser.user_id}/reset-password`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
 
-            if (!response.ok) throw new Error('Failed to reset password');
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to reset password');
+            }
 
             toast.success('Password reset email sent successfully!');
             setIsResetPasswordModalOpen(false);
             setSelectedUser(null);
 
         } catch (error) {
-            toast.error('Failed to reset password. Please try again.');
+            toast.error(error.message || 'Failed to reset password. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -548,16 +421,18 @@ export default function AdminUserManagement() {
     // Open edit modal with user data
     const openEditModal = (user) => {
         setSelectedUser(user);
-        const nameParts = user.name.split(' ');
         setUserForm({
-            firstName: nameParts[0] || '',
-            lastName: nameParts.slice(1).join(' ') || '',
-            email: user.email,
-            username: user.username,
-            phone: user.phone || '',
-            role: user.role,
-            status: user.status,
-            department: user.department || '',
+            firstName: user.first_name || '',
+            lastName: user.last_name || '',
+            email: user.email || '',
+            username: user.username || '',
+            phone: user.contact_number || '',
+            role: user.role || 'viewer',
+            status: user.status || 'Active',
+            phone: user.contact_number || '',
+            role: user.role || 'viewer',
+            status: user.status || 'Active',
+            address: user.address || '', // Renamed from department
             employeeId: user.employeeId || '',
             password: '',
             confirmPassword: ''
@@ -648,70 +523,11 @@ export default function AdminUserManagement() {
     return (
         <div className="flex h-screen overflow-hidden bg-[#f8fafb]">
             {/* Sidebar */}
-            <aside className={`
-                fixed lg:static inset-y-0 left-0 z-50
-                w-64 bg-gradient-to-b from-[#63A6B2] to-[#4d8b96]
-                transform transition-transform duration-300 ease-in-out
-                ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-                shadow-2xl flex flex-col
-            `}>
-                {/* Logo */}
-                <div className="p-6 border-b border-white/10">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
-                                <DollarSign className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-white font-bold text-lg leading-tight">SVRTFI</h1>
-                                <p className="text-white/70 text-xs">Donation CRM</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="lg:hidden text-white"
-                        >
-                            <X className="w-6 h-6" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Navigation */}
-                <nav className="flex-1 py-6 overflow-y-auto">
-                    <div className="px-3 space-y-1">
-                        <NavItem icon={<Home />} label="Dashboard" onClick={() => navigate('/admin_dashboard')} />
-                        <NavItem icon={<Users />} label="Donors" onClick={() => navigate('/admin_donors')} />
-                        <NavItem icon={<DollarSign />} label="Donations" onClick={() => navigate('/admin_donations')} />
-                        <NavItem icon={<PieChart />} label="Campaigns" onClick={() => navigate('/admin_campaigns')} />
-                        <NavItem icon={<FileText />} label="Foundations" onClick={() => navigate('/admin_foundations')} />
-                        <NavItem icon={<BarChart3 />} label="Reports" onClick={() => navigate('/admin_reports')} />
-                        <NavItem icon={<UserCog />} label="User Management" active />
-                    </div>
-
-                    <div className="px-3 mt-6 pt-6 border-t border-white/10">
-                        <div className="text-xs font-semibold text-white/50 px-4 mb-3 uppercase tracking-wider">System</div>
-                        <NavItem icon={<Settings />} label="Settings" onClick={() => navigate('/admin_settings')} />
-                        <NavItem icon={<AlertTriangle />} label="Audit Logs" onClick={() => navigate('/admin_audit')} />
-                    </div>
-                </nav>
-
-                {/* User Profile */}
-                <div className="p-4 border-t border-white/10">
-                    <div
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition"
-                    >
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-white font-bold">
-                            JD
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-semibold truncate">John Dela Cruz</p>
-                            <p className="text-white/60 text-xs truncate">Super Admin</p>
-                        </div>
-                        <LogOut className="w-4 h-4 text-white/60" />
-                    </div>
-                </div>
-            </aside>
+            <AdminSidebar
+                activePage="users"
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+            />
 
             {/* Mobile Menu Overlay */}
             {mobileMenuOpen && (
@@ -838,7 +654,8 @@ export default function AdminUserManagement() {
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">User Profile</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Role & Dept</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Role</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Address</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Status</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Last Login</th>
                                         <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Actions</th>
@@ -864,7 +681,9 @@ export default function AdminUserManagement() {
                                                     <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter bg-gradient-to-br ${roleInfo.color} text-white shadow-sm mb-1 inline-block`}>
                                                         {roleInfo.label}
                                                     </span>
-                                                    <div className="text-xs text-gray-400 font-bold uppercase">{user.department}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-xs text-gray-400 font-bold uppercase">{user.address || 'N/A'}</div>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <button
@@ -899,16 +718,6 @@ export default function AdminUserManagement() {
                                                             title="Edit User"
                                                         >
                                                             <Edit className="w-5 h-5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedUser(user);
-                                                                setIsResetPasswordModalOpen(true);
-                                                            }}
-                                                            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
-                                                            title="Reset Password"
-                                                        >
-                                                            <Key className="w-5 h-5" />
                                                         </button>
                                                         <button
                                                             onClick={() => {
@@ -1211,14 +1020,14 @@ function UserFormModal({ title, formData, handleFormChange, handleSubmit, handle
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Employee ID</label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">{isEdit ? 'User ID' : 'User ID (Auto-generated)'}</label>
                                 <input
                                     type="text"
                                     name="employeeId"
-                                    value={formData.employeeId}
-                                    onChange={handleFormChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 transition-all"
-                                    placeholder="EMP-001"
+                                    value={isEdit ? formData.employeeId : 'Auto-generated'}
+                                    readOnly
+                                    disabled
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed focus:outline-none"
                                 />
                             </div>
                         </div>
@@ -1245,14 +1054,14 @@ function UserFormModal({ title, formData, handleFormChange, handleSubmit, handle
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Department</label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Address</label>
                                 <input
                                     type="text"
-                                    name="department"
-                                    value={formData.department}
+                                    name="address"
+                                    value={formData.address}
                                     onChange={handleFormChange}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 transition-all"
-                                    placeholder="Administration"
+                                    placeholder="123 Main St, City"
                                 />
                             </div>
                         </div>
@@ -1362,8 +1171,8 @@ function ViewUserModal({ user, handleClose, activeTab, setActiveTab, getRoleInfo
                         <p className="text-lg font-bold text-[#63A6B2]">{roleInfo.label}</p>
                     </div>
                     <div className="p-4 border-r border-gray-100 text-center">
-                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Department</p>
-                        <p className="text-lg font-bold text-[#63A6B2]">{user.department}</p>
+                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Address</p>
+                        <p className="text-lg font-bold text-[#63A6B2]">{user.address || 'N/A'}</p>
                     </div>
                     <div className="p-4 border-r border-gray-100 text-center">
                         <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Employee ID</p>
@@ -1451,8 +1260,8 @@ function ViewUserModal({ user, handleClose, activeTab, setActiveTab, getRoleInfo
                                                 <UserCog className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase">Department</p>
-                                                <p className="text-gray-900 font-semibold">{user.department}</p>
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase">Address</p>
+                                                <p className="text-gray-900 font-semibold">{user.address || 'N/A'}</p>
                                             </div>
                                         </div>
                                     </div>

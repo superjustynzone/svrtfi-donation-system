@@ -1,9 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
+
 import UserLogin from './pages/UserLogin';
 import UserSignUp from './pages/UserSignUp';
 import Homepage from './pages/Homepage';
-import ContactUs from './pages/ContactUs'; // Add this import
+import ContactUs from './pages/ContactUs';
 import AboutUs from './pages/AboutUs';
 import Foundations from './pages/Foundations';
 import Campaigns from './pages/Campaigns';
@@ -21,13 +22,38 @@ import AdminFoundationCreation from './pages/AdminFoundationCreation';
 import Profile from './pages/Profile';
 
 function App() {
+
+  // Auto-redirect based on role on mount
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  const getDefaultRoute = () => {
+    if (!user) return "/login";
+
+    // viewer → homepage
+    if (user.role === "viewer") return "/";
+
+    // admins → admin dashboard
+    if (["admin", "finance", "encoder", "auditor"].includes(user.role)) {
+      return "/admin_dashboard";
+    }
+
+    return "/";
+  };
+
   return (
     <Router>
       <Routes>
+
+        {/* Redirect root to correct dashboard */}
         <Route path="/" element={<Homepage />} />
+        <Route path="/home" element={<Navigate to={getDefaultRoute()} replace />} />
+
+        {/* Auth */}
         <Route path="/login" element={<UserLogin />} />
         <Route path="/signup" element={<UserSignUp />} />
-        <Route path="/contact" element={<ContactUs />} /> {/* Add this route */}
+
+        {/* Public pages */}
+        <Route path="/contact" element={<ContactUs />} />
         <Route path="/about" element={<AboutUs />} />
         <Route path="/foundations" element={<Foundations />} />
         <Route path="/campaigns" element={<Campaigns />} />
@@ -37,33 +63,38 @@ function App() {
         <Route path="/donations/:donationId/receipt" element={<DonationReceipt />} />
         <Route path="/foundations/:id" element={<FoundationDetails />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/test" element={<PasswordChanged />} /> {/* Add this route */}
-        <Route path="/admin_dashboard" element={<AdminDashboard />} />
-        <Route path="/admin_donors" element={<AdminDonors />} />
-        <Route path="/admin_users" element={<AdminUserManagement />} />
-        <Route path="/admin_dashboard" element={<AdminRoute> <AdminDashboard /> </AdminRoute>} />
-        <Route path="/admin_campaigns" element={<AdminRoute> <AdminCampaignCreation /> </AdminRoute>} />
-        <Route path="/admin_foundations" element={<AdminRoute> <AdminFoundationCreation /> </AdminRoute>} />
+        <Route path="/test" element={<PasswordChanged />} />
+
+        {/* Admin protected routes */}
+        <Route path="/admin_dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+        <Route path="/admin_donors" element={<AdminRoute><AdminDonors /></AdminRoute>} />
+        <Route path="/admin_users" element={<AdminRoute><AdminUserManagement /></AdminRoute>} />
+        <Route path="/admin_campaigns" element={<AdminRoute><AdminCampaignCreation /></AdminRoute>} />
+        <Route path="/admin_foundations" element={<AdminRoute><AdminFoundationCreation /></AdminRoute>} />
+
       </Routes>
-      <Toaster
-        position="top-right"
-        richColors={false}
-        expand={true}
-        offset={20}
-      />
+
+      <Toaster position="top-right" richColors={false} expand={true} offset={20} />
     </Router>
   );
 }
 
-// SUPERADMIN - ADMIN ROUTER
+
+// ROLE-BASED ADMIN PROTECTION
 const AdminRoute = ({ children }) => {
   const user = JSON.parse(localStorage.getItem('user'));
 
-  if (!user) return <Navigate to="/login" />;
-  if (user.role !== "super_admin") return <Navigate to="/" />;
+  if (!user) return <Navigate to="/login" replace />;
+
+  // viewer cannot enter admin routes
+  if (user.role === "viewer") return <Navigate to="/" replace />;
+
+  // valid admin roles
+  if (!["admin", "finance", "encoder", "auditor"].includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
 
   return children;
 };
-
 
 export default App;

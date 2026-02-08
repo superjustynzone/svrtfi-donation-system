@@ -32,7 +32,9 @@ const UserLogin = () => {
       setTimeout(() => {
         const role = response.data.user.role.toLowerCase();
 
-        if (role === "super_admin") {
+        const adminRoles = ["admin", "super_admin", "finance", "encoder", "auditor"];
+
+        if (adminRoles.includes(role)) {
           navigate("/admin_dashboard");
         } else {
           navigate("/");
