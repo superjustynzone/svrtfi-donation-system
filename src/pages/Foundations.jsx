@@ -1,224 +1,245 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Heart, Users, Building2, Target, Phone, Mail, MapPin } from 'lucide-react';
+import Footer from '../components/Footer';
 
 export default function Foundations() {
-    const foundations = [
-        {
-            id: 1,
-            name: 'Medical Assistance Foundation',
-            description: 'Providing healthcare support and medical missions to underserved communities across the Philippines.',
-            icon: Heart,
-            color: 'bg-pink-100 text-pink-600',
-            stats: { beneficiaries: '5,000+', programs: 12 }
-        },
-        {
-            id: 2,
-            name: 'Education Support Foundation',
-            description: 'Empowering youth through scholarships, school supplies, and educational infrastructure development.',
-            icon: Users,
-            color: 'bg-blue-100 text-blue-600',
-            stats: { beneficiaries: '3,000+', programs: 8 }
-        },
-        {
-            id: 3,
-            name: 'Community Development Foundation',
-            description: 'Building sustainable communities through livelihood programs and infrastructure projects.',
-            icon: Building2,
-            color: 'bg-green-100 text-green-600',
-            stats: { beneficiaries: '7,000+', programs: 15 }
-        },
-        {
-            id: 4,
-            name: 'Disaster Relief Foundation',
-            description: 'Rapid response and recovery assistance for communities affected by natural disasters.',
-            icon: Target,
-            color: 'bg-purple-100 text-purple-600',
-            stats: { beneficiaries: '10,000+', programs: 20 }
+    const navigate = useNavigate();
+    const [foundations, setFoundations] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedFocusArea, setSelectedFocusArea] = useState('All');
+    const [isLoading, setIsLoading] = useState(true);
+
+    const focusAreas = ['All', 'Broadcasting', 'Education', 'Healthcare', 'Community Development', 'Elderly Care'];
+
+    useEffect(() => {
+        fetchFoundations();
+    }, []);
+
+    const fetchFoundations = async () => {
+        try {
+            setIsLoading(true);
+            const response = await fetch('http://localhost:5000/api/foundations/all');
+
+            if (response.ok) {
+                const data = await response.json();
+                setFoundations(data);
+            } else {
+                console.error('Failed to fetch foundations');
+            }
+        } catch (error) {
+            console.error('Error fetching foundations:', error);
+        } finally {
+            setIsLoading(false);
         }
-    ];
+    };
+
+    const filteredFoundations = foundations.filter(foundation => {
+        const matchesSearch =
+            foundation.foundation_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            foundation.foundation_desc?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            foundation.tagline?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        const matchesFocusArea =
+            selectedFocusArea === 'All' ||
+            (foundation.focus_areas || []).includes(selectedFocusArea);
+
+        return matchesSearch && matchesFocusArea;
+    });
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-[#63A6B2]"></div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-teal-50">
             <Navbar />
 
-            {/* Hero Section */}
-            <div className="pt-20 relative overflow-hidden">
-                <div
-                    className="relative h-[400px] flex items-center justify-center"
-                    style={{
-                        backgroundImage: 'url(https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=1600&h=800&fit=crop)',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center'
-                    }}
-                >
-                    {/* Overlay */}
-                    <div className="absolute inset-0 bg-[#63A6B2]/80"></div>
-
-                    {/* Content */}
-                    <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-                        <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-                            Our Foundations
-                        </h1>
-                        <p className="text-lg md:text-xl text-white/95 max-w-2xl mx-auto">
-                            Working together to create lasting impact across multiple sectors of community development
+            {/* Hero Section - Different from Campaigns */}
+            <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] border-gray-200 mt-20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                    <div className="text-center">
+                        <h1 className="text-4xl font-bold text-white mb-3">Partner Foundations</h1>
+                        <p className="text-lg text-white max-w-2xl mx-auto">
+                            Discover organizations making meaningful impact across the Philippines
                         </p>
                     </div>
                 </div>
             </div>
 
-            {/* Foundations Grid */}
-            <section className="py-20 bg-gray-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                            Our Partner Foundations
-                        </h2>
-                        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                            Each foundation focuses on specific areas of community development, working together to create comprehensive support systems.
-                        </p>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="flex gap-8">
+                    {/* Sidebar - Filters on the left */}
+                    <div className="w-64 flex-shrink-0">
+                        <div className="sticky top-24 space-y-6">
+                            {/* Search */}
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">Search</h3>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search foundations..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full px-3 py-2 pl-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none text-sm"
+                                    />
+                                    <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            {/* Focus Area Filter */}
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">Focus Areas</h3>
+                                <div className="space-y-2">
+                                    {focusAreas.map(area => (
+                                        <button
+                                            key={area}
+                                            onClick={() => setSelectedFocusArea(area)}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${selectedFocusArea === area
+                                                ? 'bg-[#63A6B2] text-white'
+                                                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                                                }`}
+                                        >
+                                            {area}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Results Count */}
+                            <div className="bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-lg shadow-sm p-4 text-white">
+                                <div className="text-3xl font-bold">{filteredFoundations.length}</div>
+                                <div className="text-sm text-white/90">
+                                    {filteredFoundations.length === 1 ? 'Foundation' : 'Foundations'} Found
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-8">
-                        {foundations.map((foundation, index) => {
-                            const Icon = foundation.icon;
-                            return (
-                                <div
-                                    key={foundation.id}
-                                    className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-gray-100 hover:border-[#63A6B2]"
-                                    style={{
-                                        animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both`
+                    {/* Main Content - Foundation Cards */}
+                    <div className="flex-1">
+                        {filteredFoundations.length > 0 ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {filteredFoundations.map(foundation => (
+                                    <div
+                                        key={foundation.foundation_id}
+                                        onClick={() => navigate(`/foundations/${foundation.foundation_id}`)}
+                                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer group focus:outline-none active:scale-[0.98]"
+                                    >
+                                        {/* Horizontal Layout - Image on Left */}
+                                        <div className="flex h-full">
+                                            {/* Image Section */}
+                                            <div className="relative w-48 flex-shrink-0">
+                                                <img
+                                                    src={foundation.cover_image_url || foundation.foundation_logo || 'https://via.placeholder.com/400x300/63A6B2/FFFFFF?text=Foundation'}
+                                                    alt={foundation.foundation_name}
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20"></div>
+
+                                                {/* Logo Badge */}
+                                                {foundation.foundation_logo && (
+                                                    <div className="absolute top-3 left-3">
+                                                        <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white shadow-lg bg-white">
+                                                            <img
+                                                                src={foundation.foundation_logo}
+                                                                alt={`${foundation.foundation_name} logo`}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Content Section */}
+                                            <div className="flex-1 p-5">
+                                                <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-[#63A6B2] transition-colors">
+                                                    {foundation.foundation_name}
+                                                </h3>
+
+                                                {foundation.tagline && (
+                                                    <p className="text-sm text-[#63A6B2] italic mb-3">{foundation.tagline}</p>
+                                                )}
+
+                                                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                                                    {foundation.foundation_desc || foundation.description}
+                                                </p>
+
+                                                {/* Focus Areas - Compact */}
+                                                {(foundation.focus_areas || []).length > 0 && (
+                                                    <div className="flex flex-wrap gap-1.5 mb-4">
+                                                        {(foundation.focus_areas || []).slice(0, 2).map((area, index) => (
+                                                            <span
+                                                                key={index}
+                                                                className="px-2 py-1 bg-teal-50 text-[#63A6B2] rounded text-xs font-medium"
+                                                            >
+                                                                {area}
+                                                            </span>
+                                                        ))}
+                                                        {(foundation.focus_areas || []).length > 2 && (
+                                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
+                                                                +{(foundation.focus_areas || []).length - 2} more
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Stats Row */}
+                                                <div className="flex items-center gap-4 pt-3 border-t border-gray-100">
+                                                    <div className="flex items-center gap-1.5 text-sm">
+                                                        <svg className="w-4 h-4 text-[#63A6B2]" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                                        </svg>
+                                                        <span className="text-gray-600 text-xs">
+                                                            {foundation.foundation_address || foundation.address || 'Philippines'}
+                                                        </span>
+                                                    </div>
+
+                                                    {foundation.founded_year && (
+                                                        <div className="flex items-center gap-1.5 text-sm">
+                                                            <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                            </svg>
+                                                            <span className="text-gray-500 text-xs">
+                                                                Since {foundation.founded_year}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-16 text-center">
+                                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">No foundations found</h3>
+                                <p className="text-gray-600 mb-6">Try adjusting your search or filters</p>
+                                <button
+                                    onClick={() => {
+                                        setSearchQuery('');
+                                        setSelectedFocusArea('All');
                                     }}
+                                    className="bg-[#63A6B2] text-white px-6 py-2 rounded-lg font-semibold hover:bg-[#5a959f] transition-all"
                                 >
-                                    <div className={`w-16 h-16 rounded-full ${foundation.color} flex items-center justify-center mb-6`}>
-                                        <Icon className="w-8 h-8" />
-                                    </div>
-
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                                        {foundation.name}
-                                    </h3>
-
-                                    <p className="text-gray-600 mb-6 leading-relaxed">
-                                        {foundation.description}
-                                    </p>
-
-                                    <div className="flex gap-6 pt-6 border-t border-gray-200">
-                                        <div>
-                                            <p className="text-2xl font-bold text-[#63A6B2]">{foundation.stats.beneficiaries}</p>
-                                            <p className="text-sm text-gray-600">Beneficiaries</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-2xl font-bold text-[#63A6B2]">{foundation.stats.programs}</p>
-                                            <p className="text-sm text-gray-600">Active Programs</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </section>
-
-            {/* Mission Statement */}
-            <section className="py-20 bg-white">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="max-w-3xl mx-auto text-center">
-                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-                            United in Purpose
-                        </h2>
-                        <p className="text-lg text-gray-700 leading-relaxed mb-8">
-                            Our foundations work in harmony to address the multifaceted needs of Filipino communities.
-                            Through coordinated efforts in healthcare, education, community development, and disaster relief,
-                            we create sustainable solutions that empower individuals and strengthen families.
-                        </p>
-                        <button className="bg-[#63A6B2] hover:bg-[#5a959f] text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 shadow-md hover:shadow-lg">
-                            Support Our Foundations
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            {/* Footer */}
-            <footer className="bg-[#63A6B2] text-white">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                        {/* About Section */}
-                        <div className="col-span-1 md:col-span-2">
-                            <div className="flex items-center space-x-3 mb-4">
-                                <img src="/images/logov2.png" alt="Shepherd's Voice Logo" className="h-20 w-20 object-contain" />
-                                <div>
-                                    <div className="font-bold text-white text-sm leading-tight">Shepherd's Voice</div>
-                                    <div className="text-xs text-white/90">Radio and TV Foundation Inc</div>
-                                </div>
+                                    Clear Filters
+                                </button>
                             </div>
-                            <p className="text-white/90 text-sm leading-relaxed max-w-md mb-6">
-                                Empowering communities through compassion and service. Together, we can make a difference in the lives of those who need it most.
-                            </p>
-                            <div className="flex space-x-4">
-                                <a href="#" className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition">
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
-                                </a>
-                                <a href="#" className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition">
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" /></svg>
-                                </a>
-                                <a href="#" className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition">
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.646-1.44-1.44 0-.794.646-1.439 1.44-1.439.793-.001 1.44.645 1.44 1.439z" /></svg>
-                                </a>
-                            </div>
-                        </div>
-
-                        {/* Quick Links */}
-                        <div>
-                            <h3 className="font-bold text-white mb-4">Quick Links</h3>
-                            <ul className="space-y-2 text-sm">
-                                <li><a href="/" className="text-white/90 hover:text-white transition">Home</a></li>
-                                <li><a href="/about" className="text-white/90 hover:text-white transition">About SVRTV</a></li>
-                                <li><a href="#" className="text-white/90 hover:text-white transition">Campaigns</a></li>
-                                <li><a href="/contact" className="text-white/90 hover:text-white transition">Contact Us</a></li>
-                                <li><a href="#" className="text-white/90 hover:text-white transition">Privacy Policy</a></li>
-                            </ul>
-                        </div>
-
-                        {/* Contact Info */}
-                        <div>
-                            <h3 className="font-bold text-white mb-4">Contact</h3>
-                            <ul className="space-y-3 text-sm text-white/90">
-                                <li className="flex items-start space-x-2">
-                                    <Mail className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                                    <span>info@svrtv.org</span>
-                                </li>
-                                <li className="flex items-start space-x-2">
-                                    <Phone className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                                    <span>+63 123 456 7890</span>
-                                </li>
-                                <li className="flex items-start space-x-2">
-                                    <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                                    <span>Quezon City, Philippines</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    {/* Copyright */}
-                    <div className="border-t border-white/20 mt-8 pt-8 text-center text-sm text-white/90">
-                        <p>&copy; {new Date().getFullYear()} Shepherd's Voice Radio and TV Foundation Inc. All rights reserved.</p>
+                        )}
                     </div>
                 </div>
-            </footer>
+            </div>
 
-            {/* CSS Animations */}
-            <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
+            <Footer />
         </div>
     );
 }

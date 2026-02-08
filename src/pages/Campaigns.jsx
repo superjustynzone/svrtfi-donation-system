@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+
 
 export default function Campaigns() {
     const [campaigns, setCampaigns] = useState([]);
@@ -87,60 +90,73 @@ export default function Campaigns() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-teal-50">
+            <Navbar />
+
             {/* Hero Section */}
-            <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white py-20 px-8">
-                <div className="max-w-7xl mx-auto">
-                    <h1 className="text-5xl font-bold mb-4 animate-fade-in">Active Campaigns</h1>
-                    <p className="text-xl text-blue-100 max-w-2xl">
-                        Discover meaningful causes and make a difference. Every contribution counts towards creating positive change.
+            <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white py-20 px-8 mt-20">
+                <div className="max-w-7xl mx-auto text-center">
+                    <h1 className="text-5xl font-bold mb-4 animate-fade-in">Make a Difference Today</h1>
+                    <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+                        Support our active campaigns and help us create positive change in communities across the Philippines.
                     </p>
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-8 py-12">
-                {/* Search and Filter Section */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-gray-100">
-                    <div className="flex flex-col md:flex-row gap-4">
-                        {/* Search Bar */}
-                        <div className="flex-1 relative">
-                            <input
-                                type="text"
-                                placeholder="Search campaigns..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-transparent outline-none transition-all shadow-sm"
-                            />
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </div>
-                        </div>
-
-                        {/* Filter Dropdown */}
-                        <div className="relative">
-                            <select
-                                value={filterType}
-                                onChange={(e) => setFilterType(e.target.value)}
-                                className="px-6 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-transparent outline-none transition-all shadow-sm bg-white cursor-pointer appearance-none pr-10"
-                            >
-                                <option value="all">All Types</option>
-                                {uniqueTypes.map(type => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
-                            </select>
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
-                        </div>
+            {/* Search Bar */}
+            <div className="max-w-7xl mx-auto px-8 -mt-8">
+                <div className="bg-white rounded-2xl shadow-2xl p-6">
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Search campaigns..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full px-6 py-4 pl-14 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none text-lg transition-all"
+                        />
+                        <svg
+                            className="absolute left-5 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
                     </div>
+                </div>
+            </div>
 
-                    {/* Results Count */}
-                    <div className="mt-4 text-sm text-gray-600">
-                        Showing <span className="font-semibold text-[#63A6B2]">{filteredCampaigns.length}</span> campaign{filteredCampaigns.length !== 1 ? 's' : ''}
-                    </div>
+            {/* Category Filters */}
+            <div className="max-w-7xl mx-auto px-8 py-8">
+                <div className="flex flex-wrap gap-3 justify-center">
+                    <button
+                        onClick={() => setFilterType('all')}
+                        className={`px-6 py-3 rounded-full font-semibold transition-all transform hover:scale-105 ${filterType === 'all'
+                            ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white shadow-lg'
+                            : 'bg-white text-gray-700 hover:bg-gray-100 shadow-md'
+                            }`}
+                    >
+                        All
+                    </button>
+                    {uniqueTypes.map(type => (
+                        <button
+                            key={type}
+                            onClick={() => setFilterType(type)}
+                            className={`px-6 py-3 rounded-full font-semibold transition-all transform hover:scale-105 ${filterType === type
+                                ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white shadow-lg'
+                                : 'bg-white text-gray-700 hover:bg-gray-100 shadow-md'
+                                }`}
+                        >
+                            {type}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Campaigns Grid */}
+            <div className="max-w-7xl mx-auto px-8 pb-16">
+                {/* Results Count */}
+                <div className="mb-8 text-center text-gray-600">
+                    Showing <span className="font-semibold text-[#63A6B2]">{filteredCampaigns.length}</span> campaign{filteredCampaigns.length !== 1 ? 's' : ''}
                 </div>
 
                 {/* Loading State */}
@@ -189,7 +205,7 @@ export default function Campaigns() {
                                                 </svg>
                                             </div>
                                         )}
-                                        
+
                                         {/* Campaign Type Badge */}
                                         {campaign.campaign_type && (
                                             <div className="absolute top-4 right-4">
@@ -219,9 +235,15 @@ export default function Campaigns() {
                                                         {campaign.foundation_name.charAt(0).toUpperCase()}
                                                     </span>
                                                 </div>
-                                                <span className="text-sm font-medium text-gray-600">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/foundations/${campaign.foundation_id}`);
+                                                    }}
+                                                    className="text-sm font-medium text-[#63A6B2] hover:underline transition-all"
+                                                >
                                                     {campaign.foundation_name}
-                                                </span>
+                                                </button>
                                             </div>
                                         )}
 
@@ -274,6 +296,8 @@ export default function Campaigns() {
                     </div>
                 )}
             </div>
+
+            <Footer />
         </div>
     );
 }
