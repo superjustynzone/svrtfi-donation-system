@@ -1,57 +1,22 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Heart, Menu, X, Users, Edit2, Eye, Download, LogOut, ChevronDown } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Heart, Users, Edit2, Eye, Download, LogOut, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect } from "react";
+import { provinces, citiesByProvince } from '../data/philippineLocations';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 export default function Profile() {
     const navigate = useNavigate();
     const location = useLocation();
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('profile');
     const [isEditMode, setIsEditMode] = useState(false);
     const [editedData, setEditedData] = useState({});
-
-
-    // Philippine Cities and Provinces
-    const provinces = [
-        'Metro Manila',
-        'Abra', 'Agusan del Norte', 'Agusan del Sur', 'Aklan', 'Albay', 'Antique', 'Apayao', 'Aurora',
-        'Basilan', 'Bataan', 'Batanes', 'Batangas', 'Benguet', 'Biliran', 'Bohol', 'Bukidnon', 'Bulacan',
-        'Cagayan', 'Camarines Norte', 'Camarines Sur', 'Camiguin', 'Capiz', 'Catanduanes', 'Cavite', 'Cebu',
-        'Compostela Valley', 'Cotabato', 'Davao del Norte', 'Davao del Sur', 'Davao Occidental', 'Davao Oriental',
-        'Dinagat Islands', 'Eastern Samar', 'Guimaras', 'Ifugao', 'Ilocos Norte', 'Ilocos Sur', 'Iloilo', 'Isabela',
-        'Kalinga', 'La Union', 'Laguna', 'Lanao del Norte', 'Lanao del Sur', 'Leyte', 'Maguindanao', 'Marinduque',
-        'Masbate', 'Misamis Occidental', 'Misamis Oriental', 'Mountain Province', 'Negros Occidental', 'Negros Oriental',
-        'Northern Samar', 'Nueva Ecija', 'Nueva Vizcaya', 'Occidental Mindoro', 'Oriental Mindoro', 'Palawan', 'Pampanga',
-        'Pangasinan', 'Quezon', 'Quirino', 'Rizal', 'Romblon', 'Samar', 'Sarangani', 'Siquijor', 'Sorsogon',
-        'South Cotabato', 'Southern Leyte', 'Sultan Kudarat', 'Sulu', 'Surigao del Norte', 'Surigao del Sur',
-        'Tarlac', 'Tawi-Tawi', 'Zambales', 'Zamboanga del Norte', 'Zamboanga del Sur', 'Zamboanga Sibugay'
-    ].sort();
-
-
-    const citiesByProvince = {
-        'Metro Manila': [
-            'Caloocan', 'Las Pi単as', 'Makati', 'Malabon', 'Mandaluyong', 'Manila', 'Marikina', 'Muntinlupa',
-            'Navotas', 'Para単aque', 'Pasay', 'Pasig', 'Quezon City', 'San Juan', 'Taguig', 'Valenzuela', 'Pateros'
-        ],
-        'Cebu': ['Cebu City', 'Mandaue', 'Lapu-Lapu', 'Talisay', 'Toledo', 'Danao', 'Carcar', 'Naga', 'Bogo'],
-        'Cavite': ['Bacoor', 'Cavite City', 'Dasmari単as', 'General Trias', 'Imus', 'Tagaytay', 'Trece Martires'],
-        'Laguna': ['Bi単an', 'Calamba', 'San Pablo', 'San Pedro', 'Santa Rosa', 'Cabuyao'],
-        'Rizal': ['Antipolo', 'Cainta', 'Taytay', 'Binangonan', 'San Mateo', 'Rodriguez', 'Angono', 'Morong'],
-        'Bulacan': ['Malolos', 'Meycauayan', 'San Jose del Monte', 'Marilao', 'Bocaue', 'Balagtas'],
-        'Pampanga': ['Angeles', 'San Fernando', 'Mabalacat'],
-        'Batangas': ['Batangas City', 'Lipa', 'Tanauan', 'Santo Tomas'],
-        'Quezon': ['Lucena', 'Tayabas'],
-        'Iloilo': ['Iloilo City', 'Passi'],
-        'Negros Occidental': ['Bacolod', 'Bago', 'Cadiz', 'Escalante', 'Himamaylan', 'Kabankalan', 'La Carlota', 'Sagay', 'San Carlos', 'Silay', 'Sipalay', 'Talisay', 'Victorias'],
-        'Davao del Sur': ['Davao City', 'Digos'],
-        'Zamboanga del Sur': ['Pagadian', 'Zamboanga City']
-    };
-
-
-    const isActive = (path) => location.pathname === path;
-
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [isUploading, setIsUploading] = useState(false); const [donationHistory, setDonationHistory] = useState([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-PH', {
@@ -84,6 +49,84 @@ export default function Profile() {
         }
     };
 
+
+    const handleImageSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            toast.error('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+            return;
+        }
+
+        // Validate file size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Image size must be less than 5MB');
+            return;
+        }
+
+        // Create preview immediately
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+
+        // Auto-upload the image
+        const storedUser = JSON.parse(localStorage.getItem('user'));
+        if (!storedUser) {
+            toast.error('User not found. Please login again.');
+            setImagePreview(null);
+            return;
+        }
+
+        setIsUploading(true);
+        toast.info('Uploading image...');
+
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('userId', storedUser.user_id);
+
+            const response = await fetch('http://localhost:5000/api/user/profile/upload-image', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const fullImagePath = `http://localhost:5000${data.imagePath}`;
+                toast.success('Profile image uploaded successfully!');
+
+                // Update userData
+                setUserData(prev => ({
+                    ...prev,
+                    profileImage: fullImagePath
+                }));
+
+                // Update localStorage to persist across pages
+                const updatedUser = {
+                    ...storedUser,
+                    profileImage: fullImagePath
+                };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+
+                setImagePreview(null);
+            } else {
+                toast.error(data.message || 'Failed to upload image');
+                setImagePreview(null);
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            toast.error('Failed to upload image. Please try again.');
+            setImagePreview(null);
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     const handleSaveProfile = async () => {
         try {
@@ -187,96 +230,98 @@ export default function Profile() {
         toast.info(`Viewing receipt for ${campaignName}`);
     };
 
-        const [userData, setUserData] = useState({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        address: "",
-        memberSince: "",
-        totalDonations: 0,
-        totalAmount: 0,
-        lastDonation: "",
-        province: "",
-        city: "",
-        zipCode: "",
-        tinNumber: "",
+    const [userData, setUserData] = useState(() => {
+        try {
+            const storedUser = JSON.parse(localStorage.getItem('user'));
+            if (!storedUser) return {
+                firstName: "", lastName: "", email: "", phone: "", address: "",
+                memberSince: "", totalDonations: 0, totalAmount: 0, lastDonation: "",
+                province: "", city: "", zipCode: "", tinNumber: "", profileImage: null
+            };
+
+            return {
+                firstName: storedUser.firstName || storedUser.first_name || "",
+                lastName: storedUser.lastName || storedUser.last_name || "",
+                email: storedUser.email || "",
+                phone: storedUser.phone || storedUser.contact_number || "",
+                address: storedUser.address || "",
+                memberSince: storedUser.memberSince || "",
+                totalDonations: storedUser.totalDonations || 0,
+                totalAmount: storedUser.totalAmount || 0,
+                lastDonation: storedUser.lastDonation || "",
+                province: storedUser.province || "",
+                city: storedUser.city || "",
+                zipCode: storedUser.zipCode || "",
+                tinNumber: storedUser.tinNumber || "",
+                profileImage: storedUser.profileImage || storedUser.profile_image || null
+            };
+        } catch (e) {
+            console.error("Error initializing profile data:", e);
+            return {
+                firstName: "", lastName: "", email: "", phone: "", address: "",
+                memberSince: "", totalDonations: 0, totalAmount: 0, lastDonation: "",
+                province: "", city: "", zipCode: "", tinNumber: "", profileImage: null
+            };
+        }
     });
 
-        useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    if (!storedUser) return;
+    useEffect(() => {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        if (!storedUser) return;
 
-    fetch(`http://localhost:5000/api/user/profile/${storedUser.user_id}`)
-        .then(res => res.json())
-        .then(data => {
-        setUserData({
-            firstName: data.first_name,
-            lastName: data.last_name,
-            email: data.email,
-            phone: data.contact_number || "",
-            address: data.address || "",
-            memberSince: new Date(data.member_since).toLocaleDateString(),
-        });
-        })
-        .catch(err => console.error("Error fetching profile:", err));
+        fetch(`http://localhost:5000/api/user/profile/${storedUser.user_id}`)
+            .then(res => res.json())
+            .then(data => {
+                const profileImageUrl = data.profile_image ? (data.profile_image.startsWith('http') ? data.profile_image : `http://localhost:5000${data.profile_image}`) : null;
+                const memberSinceDate = (data.created_at || data.member_since) ? new Date(data.created_at || data.member_since).toLocaleDateString() : "Not provided";
+
+                setUserData(prev => {
+                    const newState = {
+                        ...prev,
+                        firstName: data.first_name || prev.firstName,
+                        lastName: data.last_name || prev.lastName,
+                        email: data.email || prev.email,
+                        phone: data.contact_number || prev.phone,
+                        address: data.address || prev.address,
+                        memberSince: memberSinceDate,
+                        profileImage: profileImageUrl || prev.profileImage
+                    };
+
+                    // Synchronize with localStorage
+                    const updatedUser = {
+                        ...storedUser,
+                        firstName: newState.firstName,
+                        lastName: newState.lastName,
+                        email: newState.email,
+                        profileImage: newState.profileImage
+                    };
+                    localStorage.setItem('user', JSON.stringify(updatedUser));
+
+                    return newState;
+                });
+            })
+            .catch(err => console.error("Error fetching profile:", err));
+    }, []);
+
+    useEffect(() => {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        if (!storedUser || !storedUser.user_id) return;
+
+        setIsLoadingHistory(true);
+        fetch(`http://localhost:5000/api/user/donations/${storedUser.user_id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setDonationHistory(data);
+                }
+            })
+            .catch(err => console.error("Error fetching donations:", err))
+            .finally(() => setIsLoadingHistory(false));
     }, []);
 
     return (
         <div className="min-h-screen bg-[#f5f5f5]">
-            {/* Navigation */}
-            <nav className="bg-white/90 backdrop-blur-md shadow-sm fixed w-full top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        {/* Logo */}
-                        <div className="flex items-center space-x-3">
-                            <img src="/images/logo.png" alt="Shepherd's Voice Logo" className="h-20 w-20 object-contain" />
-                            <div>
-                                <div className="font-bold text-gray-900 text-sm leading-tight">Shepherd's Voice</div>
-                                <div className="text-xs text-gray-600">Radio and TV Foundation Inc</div>
-                            </div>
-                        </div>
-
-
-                        {/* Desktop Menu */}
-                        <div className="hidden md:flex items-center space-x-8">
-                            <a href="/" className={`font-medium transition relative ${isActive('/') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Home{isActive('/') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
-                            <a href="/about" className={`font-medium transition relative ${isActive('/about') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>About SVRTV{isActive('/about') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
-                            <a href="#" className="text-gray-700 hover:text-teal-600 font-medium transition">Campaigns</a>
-                            <a href="/contact" className={`font-medium transition relative ${isActive('/contact') ? 'text-[#63A6B2]' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us{isActive('/contact') && (<span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#63A6B2]"></span>)}</a>
-                            <button onClick={() => navigate('/login')} className="bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition shadow-md hover:shadow-lg">Donate</button>
-                            <button
-                                onClick={() => navigate('/profile')}
-                                className="w-10 h-10 bg-[#63A6B2] hover:bg-[#5a959f] rounded-full flex items-center justify-center transition shadow-md hover:shadow-lg text-white font-bold text-sm"
-                                title="Profile"
-                            >
-                                {userData.firstName.charAt(0)}{userData.lastName.charAt(0)}
-                            </button>
-                        </div>
-
-
-                        {/* Mobile Menu Button */}
-                        <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                        </button>
-                    </div>
-                </div>
-
-
-                {/* Mobile Menu */}
-                {mobileMenuOpen && (
-                    <div className="md:hidden bg-white border-t">
-                        <div className="px-4 py-4 space-y-3">
-                            <a href="/" className={`block font-medium transition ${isActive('/') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Home</a>
-                            <a href="/about" className={`block font-medium transition ${isActive('/about') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>About SVRTV</a>
-                            <a href="#" className="block text-gray-700 hover:text-teal-600 font-medium">Campaigns</a>
-                            <a href="/contact" className={`block font-medium transition ${isActive('/contact') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Contact Us</a>
-                            <a href="/profile" className={`block font-medium transition ${isActive('/profile') ? 'text-[#63A6B2] font-bold' : 'text-gray-700 hover:text-teal-600'}`}>Profile</a>
-                            <button onClick={() => navigate('/login')} className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white px-6 py-2 rounded-full font-medium transition">Donate</button>
-                        </div>
-                    </div>
-                )}
-            </nav>
+            <Navbar userData={userData} />
 
 
             {/* Main Content */}
@@ -288,9 +333,43 @@ export default function Profile() {
                         <div className="bg-white rounded-2xl shadow-lg p-8">
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                                 <div className="flex items-center gap-6">
-                                    {/* Avatar */}
-                                    <div className="w-24 h-24 bg-[#63A6B2] rounded-2xl flex items-center justify-center text-white text-3xl font-bold flex-shrink-0">
-                                        {userData.firstName.charAt(0)}{userData.lastName.charAt(0)}
+                                    {/* Avatar with Upload */}
+                                    <div className="relative">
+                                        <div className="w-24 h-24 bg-[#63A6B2] rounded-2xl flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 overflow-hidden shadow-inner">
+                                            {isUploading ? (
+                                                <div className="flex flex-col items-center justify-center bg-[#63A6B2] w-full h-full">
+                                                    <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                </div>
+                                            ) : imagePreview || userData.profileImage ? (
+                                                <img
+                                                    src={imagePreview || userData.profileImage}
+                                                    alt="Profile"
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <span>{userData.firstName?.charAt(0)}{userData.lastName?.charAt(0)}</span>
+                                            )}
+                                        </div>
+
+                                        {/* Edit Icon Button (only visible in Edit Mode) */}
+                                        {isEditMode && !isUploading && (
+                                            <>
+                                                <label
+                                                    htmlFor="profile-image-upload"
+                                                    className="absolute -bottom-2 -right-2 bg-white p-1.5 rounded-lg shadow-md border border-gray-100 cursor-pointer hover:bg-gray-50 transition transform hover:scale-110 active:scale-95 flex items-center justify-center"
+                                                    title="Change profile picture"
+                                                >
+                                                    <Edit2 className="w-4 h-4 text-[#63A6B2]" />
+                                                </label>
+                                                <input
+                                                    id="profile-image-upload"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleImageSelect}
+                                                    className="hidden"
+                                                />
+                                            </>
+                                        )}
                                     </div>
 
 
@@ -434,8 +513,17 @@ export default function Profile() {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                                             <div className="relative">
-                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                    <span className="text-gray-500 text-sm font-medium">��巨��� +63</span>
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center gap-1.5 pointer-events-none">
+                                                    <svg width="20" height="14" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <rect width="20" height="7" fill="#0038A8" />
+                                                        <rect y="7" width="20" height="7" fill="#CE1126" />
+                                                        <path d="M0 0L9 7L0 14V0Z" fill="white" />
+                                                        <path d="M4.5 7L5.5 6.5L5 5.5L6 5L5.5 4L6.5 3.5L5.5 3L6 2L5 1.5L4.5 2.5L4 1.5L3 2L3.5 3L2.5 3.5L3.5 4L3 5L4 5.5L3.5 6.5L4.5 7Z" fill="#FCD116" />
+                                                        <circle cx="2.5" cy="3" r="0.5" fill="#FCD116" />
+                                                        <circle cx="2.5" cy="11" r="0.5" fill="#FCD116" />
+                                                        <circle cx="6.5" cy="7" r="0.5" fill="#FCD116" />
+                                                    </svg>
+                                                    <span className="text-gray-700 text-sm font-medium">+63</span>
                                                 </div>
                                                 <input
                                                     type="tel"
@@ -498,8 +586,8 @@ export default function Profile() {
                                                         onChange={(e) => handleInputChange('city', e.target.value)}
                                                         disabled={!editedData.province}
                                                         className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-[#63A6B2] focus:outline-none appearance-none ${!editedData.province
-                                                                ? 'cursor-not-allowed bg-gray-100 border-gray-300'
-                                                                : 'cursor-pointer border-[#63A6B2]'
+                                                            ? 'cursor-not-allowed bg-gray-100 border-gray-300'
+                                                            : 'cursor-pointer border-[#63A6B2]'
                                                             }`}
                                                     >
                                                         <option value="">
@@ -583,24 +671,44 @@ export default function Profile() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {donationHistory.map((donation) => (
-                                                    <tr key={donation.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                                        <td className="py-4 px-4 text-sm text-gray-900">{donation.date}</td>
-                                                        <td className="py-4 px-4 text-sm text-gray-900">{donation.campaign}</td>
-                                                        <td className="py-4 px-4 text-sm font-semibold text-[#63A6B2]">{formatCurrency(donation.amount)}</td>
-                                                        <td className="py-4 px-4">
-                                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                                                {donation.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className="py-4 px-4">
-                                                            <button onClick={() => handleViewReceipt(donation.campaign)} className="flex items-center gap-1 text-[#63A6B2] hover:text-[#5a959f] text-sm font-medium">
-                                                                <Eye className="w-4 h-4" />
-                                                                View Receipt
-                                                            </button>
+                                                {isLoadingHistory ? (
+                                                    <tr>
+                                                        <td colSpan="5" className="py-8 text-center text-gray-500">
+                                                            <div className="flex flex-col items-center gap-2">
+                                                                <div className="w-6 h-6 border-2 border-[#63A6B2] border-t-transparent rounded-full animate-spin"></div>
+                                                                <p className="text-xs">Loading donations...</p>
+                                                            </div>
                                                         </td>
                                                     </tr>
-                                                ))}
+                                                ) : donationHistory.length > 0 ? (
+                                                    donationHistory.map((donation) => (
+                                                        <tr key={donation.id || donation.donation_id} className="border-b border-gray-100 hover:bg-gray-50">
+                                                            <td className="py-4 px-4 text-sm text-gray-900">
+                                                                {donation.date || new Date(donation.donation_date).toLocaleDateString()}
+                                                            </td>
+                                                            <td className="py-4 px-4 text-sm text-gray-900">{donation.campaign || donation.campaign_name}</td>
+                                                            <td className="py-4 px-4 text-sm font-semibold text-[#63A6B2]">{formatCurrency(donation.amount)}</td>
+                                                            <td className="py-4 px-4">
+                                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${donation.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                                                    }`}>
+                                                                    {donation.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-4 px-4">
+                                                                <button onClick={() => handleViewReceipt(donation.campaign || donation.campaign_name)} className="flex items-center gap-1 text-[#63A6B2] hover:text-[#5a959f] text-sm font-medium">
+                                                                    <Eye className="w-4 h-4" />
+                                                                    View Receipt
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="5" className="py-8 text-center text-gray-500">
+                                                            <p className="text-sm">No donations found yet.</p>
+                                                        </td>
+                                                    </tr>
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
@@ -612,76 +720,7 @@ export default function Profile() {
             </div>
 
 
-            {/* Footer */}
-            <footer className="bg-[#63A6B2] text-white mt-16">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                        {/* About Section */}
-                        <div className="col-span-1 md:col-span-2">
-                            <div className="flex items-center space-x-3 mb-4">
-                                <img src="/images/logov2.png" alt="Shepherd's Voice Logo" className="h-20 w-20 object-contain" />
-                                <div>
-                                    <div className="font-bold text-white text-sm leading-tight">Shepherd's Voice</div>
-                                    <div className="text-xs text-white/90">Radio and TV Foundation Inc</div>
-                                </div>
-                            </div>
-                            <p className="text-white/90 text-sm leading-relaxed max-w-md mb-6">
-                                Empowering communities through compassion and service. Together, we can make a difference in the lives of those who need it most.
-                            </p>
-                            <div className="flex space-x-4">
-                                <a href="#" className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition">
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
-                                </a>
-                                <a href="#" className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition">
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" /></svg>
-                                </a>
-                                <a href="#" className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition">
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.646-1.44-1.44 0-.794.646-1.439 1.44-1.439.793-.001 1.44.645 1.44 1.439z" /></svg>
-                                </a>
-                            </div>
-                        </div>
-
-
-                        {/* Quick Links */}
-                        <div>
-                            <h3 className="font-bold text-white mb-4">Quick Links</h3>
-                            <ul className="space-y-2 text-sm">
-                                <li><a href="/" className="text-white/90 hover:text-white transition">Home</a></li>
-                                <li><a href="/about" className="text-white/90 hover:text-white transition">About SVRTV</a></li>
-                                <li><a href="#" className="text-white/90 hover:text-white transition">Campaigns</a></li>
-                                <li><a href="/contact" className="text-white/90 hover:text-white transition">Contact Us</a></li>
-                                <li><a href="#" className="text-white/90 hover:text-white transition">Privacy Policy</a></li>
-                            </ul>
-                        </div>
-
-
-                        {/* Contact Info */}
-                        <div>
-                            <h3 className="font-bold text-white mb-4">Contact</h3>
-                            <ul className="space-y-3 text-sm text-white/90">
-                                <li className="flex items-start space-x-2">
-                                    <Mail className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                                    <span>info@svrtv.org</span>
-                                </li>
-                                <li className="flex items-start space-x-2">
-                                    <Phone className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                                    <span>+63 123 456 7890</span>
-                                </li>
-                                <li className="flex items-start space-x-2">
-                                    <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                                    <span>Quezon City, Philippines</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-
-                    {/* Copyright */}
-                    <div className="border-t border-white/20 mt-8 pt-8 text-center text-sm text-white/90">
-                        <p>&copy; {new Date().getFullYear()} Shepherd's Voice Radio and TV Foundation Inc. All rights reserved.</p>
-                    </div>
-                </div>
-            </footer>
+            <Footer />
         </div>
     );
 }

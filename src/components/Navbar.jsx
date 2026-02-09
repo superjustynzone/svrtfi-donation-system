@@ -9,13 +9,21 @@ export default function Navbar({ userData = null }) {
     const [user, setUser] = useState(userData);
 
     useEffect(() => {
-        // If no userData passed, try to get from localStorage
-        if (!userData) {
+        // Update user state when userData prop changes
+        if (userData) {
+            setUser(userData);
+        } else {
+            // If no userData passed, try to get from localStorage
             const storedUser = localStorage.getItem('user');
             if (storedUser) {
                 try {
                     const parsedUser = JSON.parse(storedUser);
-                    setUser(parsedUser);
+                    setUser({
+                        ...parsedUser,
+                        firstName: parsedUser.firstName || parsedUser.first_name || "",
+                        lastName: parsedUser.lastName || parsedUser.last_name || "",
+                        profileImage: parsedUser.profileImage || parsedUser.profile_image || null
+                    });
                 } catch (e) {
                     console.error('Error parsing user data:', e);
                 }
@@ -98,12 +106,12 @@ export default function Navbar({ userData = null }) {
                         </button>
                         <button
                             onClick={() => navigate('/profile')}
-                            className="w-11 h-11 bg-[#63A6B2] hover:bg-[#5a959f] rounded-full flex items-center justify-center transition shadow-md hover:shadow-lg text-white font-bold text-sm hover:scale-105 transform duration-200 overflow-hidden"
+                            className="w-11 h-11 border-2 border-[#63A6B2] hover:border-[#5a959f] rounded-full flex items-center justify-center transition shadow-sm hover:shadow-md text-[#63A6B2] hover:text-[#5a959f] font-bold text-sm hover:scale-105 transform duration-200 overflow-hidden"
                             title="Profile"
                         >
-                            {user?.profileImage ? (
+                            {user?.profileImage || user?.profile_image ? (
                                 <img
-                                    src={user.profileImage}
+                                    src={user.profileImage || user.profile_image}
                                     alt="Profile"
                                     className="w-full h-full object-cover"
                                 />
@@ -167,7 +175,7 @@ export default function Navbar({ userData = null }) {
                             className={`flex items-center gap-3 font-medium transition py-2 px-3 rounded-lg ${isActive('/profile') ? 'text-[#63A6B2] bg-teal-50 font-bold' : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
-                            <div className="w-8 h-8 bg-[#63A6B2] rounded-full flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                            <div className="w-8 h-8 border-2 border-[#63A6B2] rounded-full flex items-center justify-center text-[#63A6B2] text-xs font-bold overflow-hidden">
                                 {user?.profileImage ? (
                                     <img
                                         src={user.profileImage}
