@@ -18,21 +18,23 @@ export default function AdminFoundationCreation() {
     const [editingFoundation, setEditingFoundation] = useState(null);
     const [selectedLogo, setSelectedLogo] = useState(null);
     const [logoPreviewUrl, setLogoPreviewUrl] = useState(null);
+    const [selectedCover, setSelectedCover] = useState(null);
+    const [coverPreviewUrl, setCoverPreviewUrl] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [foundationToDelete, setFoundationToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterAcceptsDonations, setFilterAcceptsDonations] = useState('all'); // 'all', 'yes', 'no'
 
     const [formData, setFormData] = useState({
         foundation_name: '',
-        foundation_desc: '',
         foundation_address: '',
         foundation_contact: '',
         foundation_email: '',
-        accepts_donations: false,
-        bank_name: '',
-        bank_account_name: '',
-        bank_account_number: ''
+        beneficiaries: '',
+        established: '',
+        focus_areas: '',
+        about_foundation: '',
+        mission: '',
+        vision: ''
     });
 
     useEffect(() => {
@@ -68,20 +70,31 @@ export default function AdminFoundationCreation() {
         }
     };
 
+    const handleCoverChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedCover(file);
+            setCoverPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
     const resetForm = () => {
         setFormData({
             foundation_name: '',
-            foundation_desc: '',
             foundation_address: '',
             foundation_contact: '',
             foundation_email: '',
-            accepts_donations: false,
-            bank_name: '',
-            bank_account_name: '',
-            bank_account_number: ''
+            beneficiaries: '',
+            established: '',
+            focus_areas: '',
+            about_foundation: '',
+            mission: '',
+            vision: ''
         });
         setSelectedLogo(null);
         setLogoPreviewUrl(null);
+        setSelectedCover(null);
+        setCoverPreviewUrl(null);
         setEditingFoundation(null);
         setShowForm(false);
     };
@@ -102,6 +115,9 @@ export default function AdminFoundationCreation() {
             });
             if (selectedLogo) {
                 body.append('logo', selectedLogo);
+            }
+            if (selectedCover) {
+                body.append('cover', selectedCover);
             }
 
             const url = editingFoundation
@@ -134,16 +150,18 @@ export default function AdminFoundationCreation() {
         setEditingFoundation(foundation);
         setFormData({
             foundation_name: foundation.foundation_name || '',
-            foundation_desc: foundation.foundation_desc || '',
             foundation_address: foundation.foundation_address || '',
             foundation_contact: foundation.foundation_contact || '',
             foundation_email: foundation.foundation_email || '',
-            accepts_donations: foundation.accepts_donations || false,
-            bank_name: foundation.bank_name || '',
-            bank_account_name: foundation.bank_account_name || '',
-            bank_account_number: foundation.bank_account_number || ''
+            beneficiaries: foundation.beneficiaries || '',
+            established: foundation.established || '',
+            focus_areas: foundation.focus_areas || '',
+            about_foundation: foundation.about_foundation || '',
+            mission: foundation.mission || '',
+            vision: foundation.vision || ''
         });
-        setLogoPreviewUrl(foundation.foundation_logo ? `http://localhost:5000${foundation.foundation_logo}` : null);
+        setLogoPreviewUrl(foundation.image_logo ? `http://localhost:5000${foundation.image_logo}` : null);
+        setCoverPreviewUrl(foundation.image_cover ? `http://localhost:5000${foundation.image_cover}` : null);
         setShowForm(true);
         setTimeout(() => {
             document.getElementById('foundation-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -180,29 +198,22 @@ export default function AdminFoundationCreation() {
         }
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        toast.success('Logged out successfully');
-        setTimeout(() => {
-            navigate('/login');
-        }, 500);
-    };
-
     // Filter foundations
-    const filteredFoundations = foundations.filter(f => {
-        const matchesSearch = f.foundation_name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesFilter = filterAcceptsDonations === 'all' ||
-            (filterAcceptsDonations === 'yes' && f.accepts_donations) ||
-            (filterAcceptsDonations === 'no' && !f.accepts_donations);
-        return matchesSearch && matchesFilter;
-    });
+    const filteredFoundations = foundations.filter(f =>
+        f.foundation_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     // Calculate stats
     const stats = {
         total: foundations.length,
-        acceptingDonations: foundations.filter(f => f.accepts_donations).length,
-        withBankInfo: foundations.filter(f => f.bank_name && f.bank_account_number).length
+        withDetails: foundations.filter(f => f.details_id).length,
+        recent: foundations.filter(f => {
+            const date = new Date(f.created_at);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays <= 30;
+        }).length
     };
 
     return (
@@ -271,14 +282,14 @@ export default function AdminFoundationCreation() {
                         <StatCard
                             icon={<CheckCircle2 className="w-5 h-5 text-white" />}
                             iconBg="from-green-500 to-green-400"
-                            title="Accepting Donations"
-                            value={stats.acceptingDonations}
+                            title="With Details"
+                            value={stats.withDetails}
                         />
                         <StatCard
-                            icon={<CreditCard className="w-5 h-5 text-white" />}
+                            icon={<BarChart3 className="w-5 h-5 text-white" />}
                             iconBg="from-blue-500 to-blue-400"
-                            title="With Bank Info"
-                            value={stats.withBankInfo}
+                            title="Added This Month"
+                            value={stats.recent}
                         />
                     </div>
 
@@ -309,63 +320,124 @@ export default function AdminFoundationCreation() {
 
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Description
+                                                About Foundation
                                             </label>
                                             <textarea
-                                                name="foundation_desc"
-                                                value={formData.foundation_desc}
+                                                name="about_foundation"
+                                                value={formData.about_foundation}
                                                 onChange={handleChange}
                                                 rows="3"
                                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                                placeholder="Brief description"
+                                                placeholder="Brief description about the foundation"
                                             />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                    Established
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="established"
+                                                    value={formData.established}
+                                                    onChange={handleChange}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                    placeholder="e.g. 1995"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                    Beneficiaries
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="beneficiaries"
+                                                    value={formData.beneficiaries}
+                                                    onChange={handleChange}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                    placeholder="e.g. Children, Elderly"
+                                                />
+                                            </div>
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Email Address
-                                            </label>
-                                            <input
-                                                type="email"
-                                                name="foundation_email"
-                                                value={formData.foundation_email}
-                                                onChange={handleChange}
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                                placeholder="contact@foundation.org"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Contact Number
+                                                Focus Areas
                                             </label>
                                             <input
                                                 type="text"
-                                                name="foundation_contact"
-                                                value={formData.foundation_contact}
+                                                name="focus_areas"
+                                                value={formData.focus_areas}
                                                 onChange={handleChange}
                                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                                placeholder="(02) 1234-5678"
+                                                placeholder="e.g. Education, Health, Environment"
                                             />
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Office Address
+                                                Mission
                                             </label>
-                                            <input
-                                                type="text"
-                                                name="foundation_address"
-                                                value={formData.foundation_address}
+                                            <textarea
+                                                name="mission"
+                                                value={formData.mission}
                                                 onChange={handleChange}
+                                                rows="2"
                                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                                placeholder="Street, City, Province"
+                                                placeholder="Mission statement"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Vision
+                                            </label>
+                                            <textarea
+                                                name="vision"
+                                                value={formData.vision}
+                                                onChange={handleChange}
+                                                rows="2"
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                placeholder="Vision statement"
                                             />
                                         </div>
                                     </div>
 
                                     {/* Right Column */}
                                     <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Contact & Location
+                                            </label>
+                                            <div className="space-y-3">
+                                                <input
+                                                    type="email"
+                                                    name="foundation_email"
+                                                    value={formData.foundation_email}
+                                                    onChange={handleChange}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                    placeholder="Email Address"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    name="foundation_contact"
+                                                    value={formData.foundation_contact}
+                                                    onChange={handleChange}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                    placeholder="Contact Number"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    name="foundation_address"
+                                                    value={formData.foundation_address}
+                                                    onChange={handleChange}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                    placeholder="Office Address"
+                                                />
+                                            </div>
+                                        </div>
+
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 Foundation Logo
@@ -379,10 +451,9 @@ export default function AdminFoundationCreation() {
                                                     )}
                                                 </div>
                                                 <label className="flex-1 cursor-pointer">
-                                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#63A6B2] transition text-center">
-                                                        <Upload className="w-6 h-6 mx-auto mb-2 text-gray-400" />
-                                                        <p className="text-sm text-gray-600">Click to upload</p>
-                                                        <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+                                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 hover:border-[#63A6B2] transition text-center">
+                                                        <p className="text-sm text-gray-600">Upload Logo</p>
+                                                        <p className="text-xs text-gray-400 mt-1">PNG, JPG</p>
                                                     </div>
                                                     <input
                                                         type="file"
@@ -394,66 +465,28 @@ export default function AdminFoundationCreation() {
                                             </div>
                                         </div>
 
-                                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                            <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                                <CreditCard className="w-4 h-4 text-blue-600" />
-                                                Bank Transfer Information
-                                            </h4>
-                                            <div className="space-y-3">
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                                        Bank Name
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        name="bank_name"
-                                                        value={formData.bank_name}
-                                                        onChange={handleChange}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 text-sm"
-                                                        placeholder="e.g. BPI, BDO"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                                        Account Holder Name
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        name="bank_account_name"
-                                                        value={formData.bank_account_name}
-                                                        onChange={handleChange}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 text-sm"
-                                                        placeholder="Account holder name"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                                        Account Number
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        name="bank_account_number"
-                                                        value={formData.bank_account_number}
-                                                        onChange={handleChange}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 text-sm"
-                                                        placeholder="Account number"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                            <input
-                                                type="checkbox"
-                                                id="accepts_donations"
-                                                name="accepts_donations"
-                                                checked={formData.accepts_donations}
-                                                onChange={(e) => setFormData({ ...formData, accepts_donations: e.target.checked })}
-                                                className="h-5 w-5 rounded border-gray-300 text-[#63A6B2] focus:ring-[#63A6B2]"
-                                            />
-                                            <label htmlFor="accepts_donations" className="text-sm font-semibold text-gray-700 cursor-pointer">
-                                                Accepts Donations Directly
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Cover Image
                                             </label>
+                                            <div className="relative h-32 w-full rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50 group">
+                                                {coverPreviewUrl ? (
+                                                    <img src={coverPreviewUrl} alt="Cover Preview" className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="text-center">
+                                                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                                        <p className="text-sm text-gray-500">Upload Cover Image</p>
+                                                    </div>
+                                                )}
+                                                <label className="absolute inset-0 cursor-pointer bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={handleCoverChange}
+                                                        className="hidden"
+                                                    />
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -478,10 +511,9 @@ export default function AdminFoundationCreation() {
                         </div>
                     )}
 
-                    {/* Search and Filters */}
+                    {/* Search only */}
                     <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
                         <div className="flex flex-col md:flex-row gap-4">
-                            {/* Search */}
                             <div className="relative flex-1">
                                 <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
@@ -491,21 +523,6 @@ export default function AdminFoundationCreation() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
                                 />
-                            </div>
-
-                            {/* Filter */}
-                            <div className="relative">
-                                <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <select
-                                    value={filterAcceptsDonations}
-                                    onChange={(e) => setFilterAcceptsDonations(e.target.value)}
-                                    className="pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 appearance-none bg-white cursor-pointer"
-                                >
-                                    <option value="all">All Foundations</option>
-                                    <option value="yes">Accepts Donations</option>
-                                    <option value="no">No Direct Donations</option>
-                                </select>
-                                <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
@@ -524,8 +541,8 @@ export default function AdminFoundationCreation() {
                                 <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                                 <p className="text-gray-500 font-semibold text-lg">No foundations found</p>
                                 <p className="text-sm text-gray-400 mt-2">
-                                    {searchTerm || filterAcceptsDonations !== 'all'
-                                        ? 'Try adjusting your search or filters'
+                                    {searchTerm
+                                        ? 'Try adjusting your search'
                                         : 'Register your first foundation to get started'}
                                 </p>
                             </div>
@@ -537,8 +554,7 @@ export default function AdminFoundationCreation() {
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Logo</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Foundation Details</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact Info</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Bank Information</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Mission/Focus</th>
                                             <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
@@ -547,9 +563,9 @@ export default function AdminFoundationCreation() {
                                             <tr key={foundation.foundation_id} className="hover:bg-gray-50 transition-colors">
                                                 {/* Logo */}
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    {foundation.foundation_logo ? (
+                                                    {foundation.image_logo ? (
                                                         <img
-                                                            src={`http://localhost:5000${foundation.foundation_logo}`}
+                                                            src={`http://localhost:5000${foundation.image_logo}`}
                                                             alt={foundation.foundation_name}
                                                             className="h-16 w-16 object-cover rounded-lg shadow-sm border border-gray-200"
                                                         />
@@ -563,9 +579,14 @@ export default function AdminFoundationCreation() {
                                                 {/* Foundation Details */}
                                                 <td className="px-6 py-4">
                                                     <div className="text-sm font-bold text-gray-900">{foundation.foundation_name}</div>
-                                                    {foundation.foundation_desc && (
+                                                    {foundation.about_foundation && (
                                                         <div className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-xs">
-                                                            {foundation.foundation_desc}
+                                                            {foundation.about_foundation}
+                                                        </div>
+                                                    )}
+                                                    {foundation.established && (
+                                                        <div className="text-xs text-gray-400 mt-1">
+                                                            Est. {foundation.established}
                                                         </div>
                                                     )}
                                                 </td>
@@ -594,39 +615,18 @@ export default function AdminFoundationCreation() {
                                                     </div>
                                                 </td>
 
-                                                {/* Bank Information */}
+                                                {/* Mission/Focus */}
                                                 <td className="px-6 py-4">
-                                                    {foundation.bank_name ? (
-                                                        <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
-                                                            <div className="flex items-center gap-1.5 mb-1">
-                                                                <CreditCard className="w-3.5 h-3.5 text-blue-600" />
-                                                                <span className="text-xs font-bold text-blue-900">{foundation.bank_name}</span>
-                                                            </div>
-                                                            <p className="text-xs text-gray-700 font-medium">{foundation.bank_account_number}</p>
-                                                            {foundation.bank_account_name && (
-                                                                <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[180px]">{foundation.bank_account_name}</p>
-                                                            )}
+                                                    {foundation.focus_areas && (
+                                                        <div className="text-xs text-gray-600 mb-2">
+                                                            <span className="font-semibold text-gray-700">Focus:</span> {foundation.focus_areas}
                                                         </div>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-400 italic">No bank info</span>
                                                     )}
-                                                </td>
-
-                                                {/* Status */}
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${foundation.accepts_donations
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : 'bg-gray-100 text-gray-600'
-                                                        }`}>
-                                                        {foundation.accepts_donations ? (
-                                                            <>
-                                                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                                                Accepting
-                                                            </>
-                                                        ) : (
-                                                            'Not Accepting'
-                                                        )}
-                                                    </span>
+                                                    {foundation.mission && (
+                                                        <div className="text-xs text-gray-500 italic line-clamp-2 max-w-xs">
+                                                            "{foundation.mission}"
+                                                        </div>
+                                                    )}
                                                 </td>
 
                                                 {/* Actions */}

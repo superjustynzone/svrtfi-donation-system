@@ -120,7 +120,7 @@ export default function FoundationDetails() {
             <div className="relative mt-20">
                 <div
                     className="h-64 bg-cover bg-center relative"
-                    style={{ backgroundImage: `url(${foundation.cover_image_url})` }}
+                    style={{ backgroundImage: `url(${foundation.image_cover ? `http://localhost:5000${foundation.image_cover}` : 'https://via.placeholder.com/1200x400/63A6B2/FFFFFF?text=Foundation'})` }}
                 >
                     <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70"></div>
 
@@ -130,7 +130,7 @@ export default function FoundationDetails() {
                             Active Care
                         </span>
                         <h1 className="text-4xl font-bold text-white mb-2">{foundation.foundation_name}</h1>
-                        <p className="text-xl text-white/90 italic">{foundation.tagline}</p>
+                        <p className="text-xl text-white/90 italic">{foundation.mission ? foundation.mission.substring(0, 100) + '...' : ''}</p>
                     </div>
                 </div>
             </div>
@@ -147,7 +147,7 @@ export default function FoundationDetails() {
                                 <p className="text-sm text-gray-600">Beneficiaries</p>
                             </div>
                             <div className="bg-pink-50 rounded-xl p-4 border border-pink-200">
-                                <p className="text-3xl font-bold text-pink-600 mb-1">{foundation.founded_year}</p>
+                                <p className="text-3xl font-bold text-pink-600 mb-1">{foundation.established}</p>
                                 <p className="text-sm text-gray-600">Established</p>
                             </div>
                             <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
@@ -166,7 +166,7 @@ export default function FoundationDetails() {
                         {/* About Section */}
                         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
                             <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Foundation</h2>
-                            <p className="text-gray-700 leading-relaxed">{foundation.description}</p>
+                            <p className="text-gray-700 leading-relaxed">{foundation.about_foundation || foundation.description}</p>
                         </div>
 
                         {/* Mission & Vision */}
@@ -203,10 +203,10 @@ export default function FoundationDetails() {
                         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
                             <h3 className="text-xl font-bold text-gray-900 mb-4">Focus Areas</h3>
                             <div className="space-y-3">
-                                {(foundation.focus_areas || []).map((area, index) => (
+                                {(foundation.focus_areas ? (Array.isArray(foundation.focus_areas) ? foundation.focus_areas : foundation.focus_areas.split(',')) : []).map((area, index) => (
                                     <div key={index} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
                                         <div className="w-2 h-2 bg-[#63A6B2] rounded-full"></div>
-                                        <span className="text-gray-800 font-medium">{area}</span>
+                                        <span className="text-gray-800 font-medium">{area.trim()}</span>
                                     </div>
                                 ))}
                             </div>
@@ -265,7 +265,7 @@ export default function FoundationDetails() {
                         <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
                             <div className="h-72 w-full bg-gradient-to-br from-[#63A6B2] to-[#4a8a95]">
                                 <img
-                                    src={foundation.logo_url || foundation.foundation_logo}
+                                    src={foundation.image_logo ? `http://localhost:5000${foundation.image_logo}` : 'https://via.placeholder.com/300/63A6B2/FFFFFF?text=Logo'}
                                     alt={`${foundation.foundation_name} logo`}
                                     className="w-full h-full object-cover"
                                 />
@@ -292,7 +292,7 @@ export default function FoundationDetails() {
                                     >
                                         <div className="relative h-32 rounded-xl overflow-hidden mb-3">
                                             <img
-                                                src={other.cover_image_url}
+                                                src={other.image_cover ? `http://localhost:5000${other.image_cover}` : 'https://via.placeholder.com/600x400/63A6B2/FFFFFF?text=Foundation'}
                                                 alt={other.foundation_name}
                                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                             />
@@ -301,7 +301,7 @@ export default function FoundationDetails() {
                                                 <h4 className="text-white font-bold text-sm line-clamp-1">{other.foundation_name}</h4>
                                             </div>
                                         </div>
-                                        <p className="text-sm text-gray-600 mb-2">{other.tagline}</p>
+                                        <p className="text-sm text-gray-600 mb-2">{other.mission ? other.mission.substring(0, 50) + '...' : (other.about_foundation ? other.about_foundation.substring(0, 50) + '...' : 'No description')}</p>
                                         <button className="text-[#63A6B2] text-sm font-semibold hover:underline flex items-center gap-1">
                                             Learn More
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

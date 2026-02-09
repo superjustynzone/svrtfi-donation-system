@@ -30,10 +30,16 @@ export default function Campaigns() {
             setIsLoading(true);
             const response = await fetch('http://localhost:5000/api/campaigns/all');
             const data = await response.json();
-            setCampaigns(data);
+            if (response.ok && Array.isArray(data)) {
+                setCampaigns(data);
+            } else {
+                console.error('Expected array of campaigns, got:', data);
+                setCampaigns([]);
+            }
         } catch (error) {
             console.error('Error fetching campaigns:', error);
             toast.error('Failed to load campaigns');
+            setCampaigns([]);
         } finally {
             setIsLoading(false);
         }
@@ -230,10 +236,18 @@ export default function Campaigns() {
                                         {/* Foundation Name */}
                                         {campaign.foundation_name && (
                                             <div className="flex items-center gap-2 mb-3">
-                                                <div className="w-8 h-8 bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-full flex items-center justify-center">
-                                                    <span className="text-white text-xs font-bold">
-                                                        {campaign.foundation_name.charAt(0).toUpperCase()}
-                                                    </span>
+                                                <div className="w-8 h-8 bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-full flex items-center justify-center overflow-hidden">
+                                                    {campaign.foundation_logo ? (
+                                                        <img
+                                                            src={`http://localhost:5000${campaign.foundation_logo}`}
+                                                            alt={campaign.foundation_name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-white text-xs font-bold">
+                                                            {campaign.foundation_name.charAt(0).toUpperCase()}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <button
                                                     onClick={(e) => {

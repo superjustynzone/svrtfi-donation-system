@@ -10,7 +10,7 @@ export default function Foundations() {
     const [selectedFocusArea, setSelectedFocusArea] = useState('All');
     const [isLoading, setIsLoading] = useState(true);
 
-    const focusAreas = ['All', 'Broadcasting', 'Education', 'Healthcare', 'Community Development', 'Elderly Care'];
+    const focusAreas = ['All', 'Broadcasting', 'Education', 'Healthcare', 'Community Development', 'Elderly Care', 'Environment', 'Poverty Alleviation'];
 
     useEffect(() => {
         fetchFoundations();
@@ -23,7 +23,14 @@ export default function Foundations() {
 
             if (response.ok) {
                 const data = await response.json();
-                setFoundations(data);
+                // Transform data to ensure focus_areas is an array for filtering
+                const transformedData = data.map(f => ({
+                    ...f,
+                    focus_areas_list: f.focus_areas
+                        ? f.focus_areas.split(',').map(item => item.trim())
+                        : []
+                }));
+                setFoundations(transformedData);
             } else {
                 console.error('Failed to fetch foundations');
             }
@@ -37,12 +44,14 @@ export default function Foundations() {
     const filteredFoundations = foundations.filter(foundation => {
         const matchesSearch =
             foundation.foundation_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            foundation.foundation_desc?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            foundation.tagline?.toLowerCase().includes(searchQuery.toLowerCase());
+            foundation.about_foundation?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            foundation.mission?.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesFocusArea =
             selectedFocusArea === 'All' ||
-            (foundation.focus_areas || []).includes(selectedFocusArea);
+            foundation.focus_areas_list.some(area =>
+                area.toLowerCase().includes(selectedFocusArea.toLowerCase())
+            );
 
         return matchesSearch && matchesFocusArea;
     });
@@ -59,7 +68,7 @@ export default function Foundations() {
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-teal-50">
             <Navbar />
 
-            {/* Hero Section - Different from Campaigns */}
+            {/* Hero Section */}
             <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] border-gray-200 mt-20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
                     <div className="text-center">
@@ -72,9 +81,9 @@ export default function Foundations() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="flex gap-8">
+                <div className="flex flex-col lg:flex-row gap-8">
                     {/* Sidebar - Filters on the left */}
-                    <div className="w-64 flex-shrink-0">
+                    <div className="w-full lg:w-64 flex-shrink-0">
                         <div className="sticky top-24 space-y-6">
                             {/* Search */}
                             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -96,7 +105,7 @@ export default function Foundations() {
                             {/* Focus Area Filter */}
                             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                                 <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">Focus Areas</h3>
-                                <div className="space-y-2">
+                                <div className="space-y-2 max-h-60 overflow-y-auto lg:max-h-none">
                                     {focusAreas.map(area => (
                                         <button
                                             key={area}
@@ -113,7 +122,7 @@ export default function Foundations() {
                             </div>
 
                             {/* Results Count */}
-                            <div className="bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-lg shadow-sm p-4 text-white">
+                            <div className="hidden lg:block bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-lg shadow-sm p-4 text-white">
                                 <div className="text-3xl font-bold">{filteredFoundations.length}</div>
                                 <div className="text-sm text-white/90">
                                     {filteredFoundations.length === 1 ? 'Foundation' : 'Foundations'} Found
@@ -125,92 +134,88 @@ export default function Foundations() {
                     {/* Main Content - Foundation Cards */}
                     <div className="flex-1">
                         {filteredFoundations.length > 0 ? (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {filteredFoundations.map(foundation => (
                                     <div
                                         key={foundation.foundation_id}
                                         onClick={() => navigate(`/foundations/${foundation.foundation_id}`)}
-                                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer group focus:outline-none active:scale-[0.98]"
+                                        className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer group flex flex-col h-full"
                                     >
-                                        {/* Horizontal Layout - Image on Left */}
-                                        <div className="flex h-full">
-                                            {/* Image Section */}
-                                            <div className="relative w-48 flex-shrink-0">
-                                                <img
-                                                    src={foundation.cover_image_url || foundation.foundation_logo || 'https://via.placeholder.com/400x300/63A6B2/FFFFFF?text=Foundation'}
-                                                    alt={foundation.foundation_name}
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                                />
-                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20"></div>
+                                        {/* Image Section */}
+                                        <div className="relative h-48 overflow-hidden">
+                                            <img
+                                                src={foundation.image_cover ? `http://localhost:5000${foundation.image_cover}` : 'https://via.placeholder.com/800x400/63A6B2/FFFFFF?text=Helping+Hands'}
+                                                alt={foundation.foundation_name}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent"></div>
 
-                                                {/* Logo Badge */}
-                                                {foundation.foundation_logo && (
-                                                    <div className="absolute top-3 left-3">
-                                                        <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white shadow-lg bg-white">
-                                                            <img
-                                                                src={foundation.foundation_logo}
-                                                                alt={`${foundation.foundation_name} logo`}
-                                                                className="w-full h-full object-cover"
-                                                            />
+                                            {/* Logo Avatar - Absolute positioned overlapping image and content */}
+                                            <div className="absolute bottom-0 left-5 translate-y-1/2">
+                                                <div className="w-16 h-16 rounded-xl border-4 border-white shadow-md bg-white overflow-hidden">
+                                                    {foundation.image_logo ? (
+                                                        <img
+                                                            src={`http://localhost:5000${foundation.image_logo}`}
+                                                            alt="Logo"
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 font-bold text-xs">
+                                                            LOGO
                                                         </div>
-                                                    </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Content Section */}
+                                        <div className="flex-1 p-5 pt-10 flex flex-col">
+                                            <div className="mb-3">
+                                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#63A6B2] transition-colors line-clamp-1">
+                                                    {foundation.foundation_name}
+                                                </h3>
+                                                {foundation.established && (
+                                                    <p className="text-xs text-gray-500 font-medium mt-1">
+                                                        Est. {foundation.established}
+                                                    </p>
                                                 )}
                                             </div>
 
-                                            {/* Content Section */}
-                                            <div className="flex-1 p-5">
-                                                <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-[#63A6B2] transition-colors">
-                                                    {foundation.foundation_name}
-                                                </h3>
+                                            <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                                                {foundation.about_foundation || "No description available."}
+                                            </p>
 
-                                                {foundation.tagline && (
-                                                    <p className="text-sm text-[#63A6B2] italic mb-3">{foundation.tagline}</p>
+                                            {/* Focus Areas Tags */}
+                                            <div className="flex flex-wrap gap-2 mb-4 mt-auto">
+                                                {foundation.focus_areas_list.slice(0, 3).map((area, index) => (
+                                                    <span
+                                                        key={index}
+                                                        className="px-2.5 py-1 bg-teal-50 text-[#63A6B2] rounded-full text-xs font-semibold"
+                                                    >
+                                                        {area}
+                                                    </span>
+                                                ))}
+                                                {foundation.focus_areas_list.length > 3 && (
+                                                    <span className="px-2.5 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">
+                                                        +{foundation.focus_areas_list.length - 3}
+                                                    </span>
                                                 )}
+                                            </div>
 
-                                                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                                                    {foundation.foundation_desc || foundation.description}
-                                                </p>
-
-                                                {/* Focus Areas - Compact */}
-                                                {(foundation.focus_areas || []).length > 0 && (
-                                                    <div className="flex flex-wrap gap-1.5 mb-4">
-                                                        {(foundation.focus_areas || []).slice(0, 2).map((area, index) => (
-                                                            <span
-                                                                key={index}
-                                                                className="px-2 py-1 bg-teal-50 text-[#63A6B2] rounded text-xs font-medium"
-                                                            >
-                                                                {area}
-                                                            </span>
-                                                        ))}
-                                                        {(foundation.focus_areas || []).length > 2 && (
-                                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
-                                                                +{(foundation.focus_areas || []).length - 2} more
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {/* Stats Row */}
-                                                <div className="flex items-center gap-4 pt-3 border-t border-gray-100">
-                                                    <div className="flex items-center gap-1.5 text-sm">
-                                                        <svg className="w-4 h-4 text-[#63A6B2]" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                                                        </svg>
-                                                        <span className="text-gray-600 text-xs">
-                                                            {foundation.foundation_address || foundation.address || 'Philippines'}
-                                                        </span>
-                                                    </div>
-
-                                                    {foundation.founded_year && (
-                                                        <div className="flex items-center gap-1.5 text-sm">
-                                                            <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                                                            </svg>
-                                                            <span className="text-gray-500 text-xs">
-                                                                Since {foundation.founded_year}
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                            {/* Contact/Location Info */}
+                                            <div className="border-t border-gray-100 pt-4 mt-2 flex items-center justify-between text-xs text-gray-500">
+                                                <div className="flex items-center gap-1.5 truncte max-w-[70%]">
+                                                    <svg className="w-4 h-4 text-[#63A6B2] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
+                                                    <span className="truncate">{foundation.foundation_address || 'Philippines'}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 text-[#63A6B2] font-semibold group-hover:translate-x-1 transition-transform">
+                                                    View Details
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                    </svg>
                                                 </div>
                                             </div>
                                         </div>

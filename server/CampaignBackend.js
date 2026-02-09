@@ -115,10 +115,11 @@ router.get("/all", async (req, res) => {
         c.updated_at,
         f.foundation_id,
         f.foundation_name,
-        f.foundation_logo
+        fd.image_logo as foundation_logo
        FROM campaigns c
        LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
        LEFT JOIN foundations f ON fc.foundation_id = f.foundation_id
+       LEFT JOIN foundation_details fd ON f.foundation_id = fd.foundation_id
        ORDER BY c.created_at DESC`
     );
 
@@ -149,11 +150,12 @@ router.get("/:id", async (req, res) => {
         c.updated_at,
         f.foundation_id,
         f.foundation_name,
-        f.foundation_logo,
-        f.foundation_desc
+        fd.image_logo as foundation_logo,
+        fd.about_foundation as foundation_desc
        FROM campaigns c
        LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
        LEFT JOIN foundations f ON fc.foundation_id = f.foundation_id
+       LEFT JOIN foundation_details fd ON f.foundation_id = fd.foundation_id
        WHERE c.campaign_id = $1`,
       [campaignId]
     );

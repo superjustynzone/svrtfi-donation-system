@@ -84,10 +84,16 @@ export default function AdminCampaignCreation() {
         try {
             const response = await fetch('http://localhost:5000/api/campaigns/all');
             const data = await response.json();
-            setCampaigns(data);
+            if (Array.isArray(data)) {
+                setCampaigns(data);
+            } else {
+                console.error('Expected array of campaigns, got:', data);
+                setCampaigns([]);
+            }
         } catch (error) {
             console.error('Error fetching campaigns:', error);
             toast.error('Failed to load campaigns');
+            setCampaigns([]);
         }
     };
 
@@ -95,10 +101,16 @@ export default function AdminCampaignCreation() {
         try {
             const response = await fetch('http://localhost:5000/api/foundations/all');
             const data = await response.json();
-            setFoundations(data);
+            if (Array.isArray(data)) {
+                setFoundations(data);
+            } else {
+                console.error('Expected array of foundations, got:', data);
+                setFoundations([]);
+            }
         } catch (error) {
             console.error('Error fetching foundations:', error);
             toast.error('Failed to load foundations');
+            setFoundations([]);
         }
     };
 
