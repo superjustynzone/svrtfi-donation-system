@@ -29,6 +29,8 @@ export default function AdminFoundationCreation() {
         foundation_address: '',
         foundation_contact: '',
         foundation_email: '',
+        bank_name: '',
+        bank_information: '',
         beneficiaries: '',
         established: '',
         focus_areas: '',
@@ -84,6 +86,8 @@ export default function AdminFoundationCreation() {
             foundation_address: '',
             foundation_contact: '',
             foundation_email: '',
+            bank_name: '',
+            bank_information: '',
             beneficiaries: '',
             established: '',
             focus_areas: '',
@@ -153,6 +157,8 @@ export default function AdminFoundationCreation() {
             foundation_address: foundation.foundation_address || '',
             foundation_contact: foundation.foundation_contact || '',
             foundation_email: foundation.foundation_email || '',
+            bank_name: foundation.bank_name || '',
+            bank_information: foundation.bank_information || '',
             beneficiaries: foundation.beneficiaries || '',
             established: foundation.established || '',
             focus_areas: foundation.focus_areas || '',
@@ -206,7 +212,6 @@ export default function AdminFoundationCreation() {
     // Calculate stats
     const stats = {
         total: foundations.length,
-        withDetails: foundations.filter(f => f.details_id).length,
         recent: foundations.filter(f => {
             const date = new Date(f.created_at);
             const now = new Date();
@@ -272,18 +277,12 @@ export default function AdminFoundationCreation() {
                 {/* Content Area */}
                 <div className="p-4 lg:p-8">
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                    <div className="grid grid-cols-2 lg:grid-cols-2 gap-4 mb-8">
                         <StatCard
                             icon={<Building2 className="w-5 h-5 text-white" />}
                             iconBg="from-[#63A6B2] to-[#4d8b96]"
                             title="Total Foundations"
                             value={stats.total}
-                        />
-                        <StatCard
-                            icon={<CheckCircle2 className="w-5 h-5 text-white" />}
-                            iconBg="from-green-500 to-green-400"
-                            title="With Details"
-                            value={stats.withDetails}
                         />
                         <StatCard
                             icon={<BarChart3 className="w-5 h-5 text-white" />}
@@ -440,6 +439,30 @@ export default function AdminFoundationCreation() {
 
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Bank Information
+                                            </label>
+                                            <div className="space-y-3">
+                                                <input
+                                                    type="text"
+                                                    name="bank_name"
+                                                    value={formData.bank_name}
+                                                    onChange={handleChange}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                    placeholder="Bank Name"
+                                                />
+                                                <textarea
+                                                    name="bank_information"
+                                                    value={formData.bank_information}
+                                                    onChange={handleChange}
+                                                    rows="3"
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                    placeholder="Bank account details (account name, number, etc.)"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 Foundation Logo
                                             </label>
                                             <div className="flex items-center gap-4">
@@ -554,6 +577,7 @@ export default function AdminFoundationCreation() {
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Logo</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Foundation Details</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact Info</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Bank Info</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Mission/Focus</th>
                                             <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                         </tr>
@@ -611,6 +635,26 @@ export default function AdminFoundationCreation() {
                                                                 <MapPin className="w-3.5 h-3.5 text-[#63A6B2] flex-shrink-0" />
                                                                 <span className="truncate max-w-[200px]">{foundation.foundation_address}</span>
                                                             </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Bank Info */}
+                                                <td className="px-6 py-4">
+                                                    <div className="space-y-1">
+                                                        {foundation.bank_name && (
+                                                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                                <CreditCard className="w-3.5 h-3.5 text-[#63A6B2] flex-shrink-0" />
+                                                                <span className="font-semibold">{foundation.bank_name}</span>
+                                                            </div>
+                                                        )}
+                                                        {foundation.bank_information && (
+                                                            <div className="text-xs text-gray-500 line-clamp-2 max-w-[200px]">
+                                                                {foundation.bank_information}
+                                                            </div>
+                                                        )}
+                                                        {!foundation.bank_name && !foundation.bank_information && (
+                                                            <span className="text-xs text-gray-400 italic">No bank info</span>
                                                         )}
                                                     </div>
                                                 </td>

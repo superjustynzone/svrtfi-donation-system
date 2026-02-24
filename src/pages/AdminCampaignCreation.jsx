@@ -3,7 +3,7 @@ import {
     Home, Users, DollarSign, PieChart, FileText, BarChart3,
     UserCog, Settings, AlertTriangle, Search, Menu, X, LogOut,
     Plus, Edit, Trash2, Calendar, Target, TrendingUp, Image as ImageIcon,
-    MapPin, MoreVertical, Filter, ChevronDown, Upload
+    MapPin, MoreVertical, Filter, ChevronDown, Upload, Star
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -17,12 +17,10 @@ export default function AdminCampaignCreation() {
     const [isLoading, setIsLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState(null);
-    const [selectedImages, setSelectedImages] = useState([]);
-    const [uploadingImages, setUploadingImages] = useState(false);
-    const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [campaignToDelete, setCampaignToDelete] = useState(null);
-    const [campaignMedia, setCampaignMedia] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'Active', 'Inactive'
     const [sortBy, setSortBy] = useState('newest'); // 'newest', 'oldest', 'progress'
@@ -34,7 +32,8 @@ export default function AdminCampaignCreation() {
         foundation_id: '',
         goal_amount: '',
         start_date: '',
-        end_date: ''
+        end_date: '',
+        is_featured: false
     });
 
     // Fetch all campaigns on component mount
@@ -42,15 +41,6 @@ export default function AdminCampaignCreation() {
         fetchCampaigns();
         fetchFoundations();
     }, []);
-
-    // Fetch media for all campaigns when campaigns change
-    useEffect(() => {
-        campaigns.forEach(campaign => {
-            if (!campaignMedia[campaign.campaign_id]) {
-                fetchCampaignMedia(campaign.campaign_id);
-            }
-        });
-    }, [campaigns]);
 
     // Filter and sort campaigns
     const filteredCampaigns = campaigns
@@ -76,6 +66,7 @@ export default function AdminCampaignCreation() {
     const stats = {
         totalCampaigns: campaigns.length,
         activeCampaigns: campaigns.filter(c => c.status === 'Active').length,
+        featuredCampaigns: campaigns.filter(c => c.is_featured).length,
         totalRaised: campaigns.reduce((sum, c) => sum + (parseFloat(c.current_amount) || 0), 0),
         totalGoal: campaigns.reduce((sum, c) => sum + (parseFloat(c.goal_amount) || 0), 0)
     };
@@ -115,19 +106,19 @@ export default function AdminCampaignCreation() {
     };
 
     const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value
+            [name]: type === 'checkbox' ? checked : value
         });
     };
 
     const handleImageChange = (e) => {
-        const files = Array.from(e.target.files);
-        setSelectedImages(files);
-
-        // Create preview URLs
-        const previewUrls = files.map(file => URL.createObjectURL(file));
-        setImagePreviewUrls(previewUrls);
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedImage(file);
+            setImagePreviewUrl(URL.createObjectURL(file));
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -153,27 +144,25 @@ export default function AdminCampaignCreation() {
 
             const method = editingCampaign ? 'PUT' : 'POST';
 
+            // Use FormData to support file upload
+            const body = new FormData();
+            Object.keys(formData).forEach(key => {
+                body.append(key, formData[key]);
+            });
+            if (selectedImage) {
+                body.append('image', selectedImage);
+            }
+
             const response = await fetch(url, {
                 method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
+                body: body
             });
 
             const data = await response.json();
 
             if (response.ok) {
                 toast.success(data.message);
-
-                // Upload images if any were selected
-                if (selectedImages.length > 0 && data.campaign_id) {
-                    await uploadImages(data.campaign_id);
-                } else if (selectedImages.length > 0 && editingCampaign) {
-                    await uploadImages(editingCampaign.campaign_id);
-                }
-
-                fetchCampaigns(); // Refresh the list
+                fetchCampaigns();
                 resetForm();
             } else {
                 toast.error(data.message || 'Operation failed');
@@ -187,35 +176,6 @@ export default function AdminCampaignCreation() {
         }
     };
 
-    const uploadImages = async (campaignId) => {
-        try {
-            setUploadingImages(true);
-            const formData = new FormData();
-
-            selectedImages.forEach((image) => {
-                formData.append('images', image);
-            });
-
-            const response = await fetch(`http://localhost:5000/api/campaigns/upload-media/${campaignId}`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                toast.success(`${selectedImages.length} image(s) uploaded successfully!`);
-            } else {
-                toast.error(data.message || 'Image upload failed');
-            }
-        } catch (error) {
-            console.error('Error uploading images:', error);
-            toast.error('Failed to upload images');
-        } finally {
-            setUploadingImages(false);
-        }
-    };
-
     const handleEdit = (campaign) => {
         setEditingCampaign(campaign);
         setFormData({
@@ -225,10 +185,11 @@ export default function AdminCampaignCreation() {
             foundation_id: campaign.foundation_id || '',
             goal_amount: campaign.goal_amount || '',
             start_date: campaign.start_date ? campaign.start_date.split('T')[0] : '',
-            end_date: campaign.end_date ? campaign.end_date.split('T')[0] : ''
+            end_date: campaign.end_date ? campaign.end_date.split('T')[0] : '',
+            is_featured: campaign.is_featured || false
         });
+        setImagePreviewUrl(campaign.file_url ? `http://localhost:5000${campaign.file_url}` : null);
         setShowForm(true);
-        // Scroll to form
         setTimeout(() => {
             document.getElementById('campaign-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
@@ -251,7 +212,7 @@ export default function AdminCampaignCreation() {
 
             if (response.ok) {
                 toast.success(data.message);
-                fetchCampaigns(); // Refresh the list
+                fetchCampaigns();
             } else {
                 toast.error(data.message || 'Delete failed');
             }
@@ -265,43 +226,6 @@ export default function AdminCampaignCreation() {
         }
     };
 
-    const fetchCampaignMedia = async (campaignId) => {
-        try {
-            const response = await fetch(`http://localhost:5000/api/campaigns/${campaignId}`);
-            const data = await response.json();
-
-            if (response.ok && data.media) {
-                setCampaignMedia(prev => ({
-                    ...prev,
-                    [campaignId]: data.media
-                }));
-            }
-        } catch (error) {
-            console.error('Error fetching campaign media:', error);
-        }
-    };
-
-    const deleteMedia = async (mediaId, campaignId) => {
-        try {
-            const response = await fetch(`http://localhost:5000/api/campaigns/media/${mediaId}`, {
-                method: 'DELETE',
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                toast.success(data.message);
-                // Refresh media for this campaign
-                fetchCampaignMedia(campaignId);
-            } else {
-                toast.error(data.message || 'Delete failed');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            toast.error('Failed to delete media');
-        }
-    };
-
     const resetForm = () => {
         setFormData({
             campaign_name: '',
@@ -310,10 +234,11 @@ export default function AdminCampaignCreation() {
             foundation_id: '',
             goal_amount: '',
             start_date: '',
-            end_date: ''
+            end_date: '',
+            is_featured: false
         });
-        setSelectedImages([]);
-        setImagePreviewUrls([]);
+        setSelectedImage(null);
+        setImagePreviewUrl(null);
         setEditingCampaign(null);
         setShowForm(false);
     };
@@ -324,7 +249,7 @@ export default function AdminCampaignCreation() {
     };
 
     const formatDate = (dateString) => {
-        if (!dateString) return '-';
+        if (!dateString) return 'Ongoing';
         return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     };
 
@@ -334,14 +259,9 @@ export default function AdminCampaignCreation() {
     };
 
     const handleLogout = () => {
-        // Clear authentication data
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-
-        // Show success message
         toast.success('Logged out successfully');
-
-        // Redirect to login page
         setTimeout(() => {
             navigate('/login');
         }, 500);
@@ -519,6 +439,7 @@ export default function AdminCampaignCreation() {
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                                             End Date
+                                            <span className="text-xs text-gray-400 font-normal ml-2">(Leave empty for endless campaign)</span>
                                         </label>
                                         <input
                                             type="date"
@@ -544,58 +465,64 @@ export default function AdminCampaignCreation() {
                                     />
                                 </div>
 
+                                {/* Campaign Image */}
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Campaign Images
+                                        Campaign Image
                                     </label>
                                     <div className="flex items-center gap-4">
+                                        <div className="h-32 w-48 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
+                                            {imagePreviewUrl ? (
+                                                <img src={imagePreviewUrl} alt="Preview" className="h-full w-full object-cover" />
+                                            ) : (
+                                                <div className="text-center">
+                                                    <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                                                    <p className="text-xs text-gray-400">No image</p>
+                                                </div>
+                                            )}
+                                        </div>
                                         <label className="flex-1 cursor-pointer">
-                                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-[#63A6B2] transition text-center">
-                                                <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                                                <p className="text-sm text-gray-600">Click to upload images</p>
-                                                <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 10MB</p>
+                                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#63A6B2] transition text-center">
+                                                <Upload className="w-6 h-6 mx-auto mb-1 text-gray-400" />
+                                                <p className="text-sm text-gray-600">Upload Image</p>
+                                                <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
                                             </div>
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                multiple
                                                 onChange={handleImageChange}
                                                 className="hidden"
                                             />
                                         </label>
                                     </div>
-                                    {selectedImages.length > 0 && (
-                                        <div className="mt-4">
-                                            <p className="text-sm text-gray-500 mb-3 font-medium">
-                                                {selectedImages.length} image(s) selected
-                                            </p>
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                {imagePreviewUrls.map((url, index) => (
-                                                    <div key={index} className="relative group">
-                                                        <img
-                                                            src={url}
-                                                            alt={`Preview ${index + 1}`}
-                                                            className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
-                                                        />
-                                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center">
-                                                            <p className="text-white text-xs font-medium px-2 text-center truncate">
-                                                                {selectedImages[index].name}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
+                                </div>
+
+                                {/* Featured Toggle */}
+                                <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <input
+                                        type="checkbox"
+                                        name="is_featured"
+                                        id="is_featured"
+                                        checked={formData.is_featured}
+                                        onChange={handleChange}
+                                        className="w-5 h-5 text-[#63A6B2] border-gray-300 rounded focus:ring-[#63A6B2]/20 cursor-pointer"
+                                    />
+                                    <label htmlFor="is_featured" className="cursor-pointer">
+                                        <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                            <Star className="w-4 h-4 text-amber-500" />
+                                            Feature this campaign
+                                        </span>
+                                        <p className="text-xs text-gray-500 mt-0.5">Featured campaigns are highlighted on the homepage</p>
+                                    </label>
                                 </div>
 
                                 <div className="flex gap-4 pt-4 border-t border-gray-200">
                                     <button
                                         type="submit"
-                                        disabled={isLoading || uploadingImages}
+                                        disabled={isLoading}
                                         className="flex-1 bg-[#63A6B2] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#4d8b96] transition disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {isLoading || uploadingImages ? 'Saving...' : (editingCampaign ? 'Update Campaign' : 'Create Campaign')}
+                                        {isLoading ? 'Saving...' : (editingCampaign ? 'Update Campaign' : 'Create Campaign')}
                                     </button>
                                     <button
                                         type="button"
@@ -679,7 +606,6 @@ export default function AdminCampaignCreation() {
                                 <CampaignCard
                                     key={campaign.campaign_id}
                                     campaign={campaign}
-                                    media={campaignMedia[campaign.campaign_id]}
                                     onEdit={handleEdit}
                                     onDelete={handleDelete}
                                     formatCurrency={formatCurrency}
@@ -766,18 +692,17 @@ function StatCard({ icon, iconBg, title, value, small }) {
 }
 
 // Campaign Card Component
-function CampaignCard({ campaign, media, onEdit, onDelete, formatCurrency, formatDate, getProgressPercentage }) {
+function CampaignCard({ campaign, onEdit, onDelete, formatCurrency, formatDate, getProgressPercentage }) {
     const [showMenu, setShowMenu] = useState(false);
-    const primaryImage = media && media.length > 0 ? media[0] : null;
     const progress = getProgressPercentage(campaign.current_amount || 0, campaign.goal_amount);
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all group">
             {/* Image Section */}
             <div className="relative h-48 bg-gradient-to-br from-[#63A6B2] to-[#4d8b96] overflow-hidden">
-                {primaryImage ? (
+                {campaign.file_url ? (
                     <img
-                        src={`http://localhost:5000${primaryImage.file_url}`}
+                        src={`http://localhost:5000${campaign.file_url}`}
                         alt={campaign.campaign_name}
                         className="w-full h-full object-cover"
                     />
@@ -788,14 +713,29 @@ function CampaignCard({ campaign, media, onEdit, onDelete, formatCurrency, forma
                 )}
 
                 {/* Status Badge */}
-                <div className="absolute top-3 left-3">
+                <div className="absolute top-3 left-3 flex items-center gap-2">
                     <span className={`px-3 py-1 text-xs font-bold rounded-full ${campaign.status === 'Active'
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-500 text-white'
                         }`}>
                         {campaign.status || 'Active'}
                     </span>
+                    {campaign.is_featured && (
+                        <span className="px-3 py-1 text-xs font-bold rounded-full bg-amber-500 text-white flex items-center gap-1">
+                            <Star className="w-3 h-3" />
+                            Featured
+                        </span>
+                    )}
                 </div>
+
+                {/* Endless Campaign Badge */}
+                {!campaign.end_date && (
+                    <div className="absolute bottom-3 left-3">
+                        <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-500/90 text-white">
+                            Ongoing
+                        </span>
+                    </div>
+                )}
 
                 {/* More Menu */}
                 <div className="absolute top-3 right-3">
