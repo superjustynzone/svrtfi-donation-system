@@ -3,7 +3,8 @@ import {
     Home, Users, DollarSign, PieChart, FileText, BarChart3,
     UserCog, Settings, AlertTriangle, Search, Menu, X, LogOut,
     Plus, Edit, Trash2, Calendar, Target, TrendingUp, Image as ImageIcon,
-    MapPin, MoreVertical, Filter, ChevronDown, Upload, Star
+    MapPin, MoreVertical, Filter, ChevronDown, Upload, Star,
+    Send, FileEdit, Eye, EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -22,8 +23,8 @@ export default function AdminCampaignCreation() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [campaignToDelete, setCampaignToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'Active', 'Inactive'
-    const [sortBy, setSortBy] = useState('newest'); // 'newest', 'oldest', 'progress'
+    const [activeTab, setActiveTab] = useState('draft'); // 'draft' or 'publish'
+    const [sortBy, setSortBy] = useState('newest');
 
     const [formData, setFormData] = useState({
         campaign_name: '',
@@ -36,37 +37,37 @@ export default function AdminCampaignCreation() {
         is_featured: false
     });
 
-    // Fetch all campaigns on component mount
     useEffect(() => {
         fetchCampaigns();
         fetchFoundations();
     }, []);
 
-    // Filter and sort campaigns
-    const filteredCampaigns = campaigns
-        .filter(campaign => {
-            const matchesSearch = campaign.campaign_name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus = filterStatus === 'all' || campaign.status === filterStatus;
-            return matchesSearch && matchesStatus;
-        })
+    // Separate campaigns by status
+    const draftCampaigns = campaigns.filter(c => c.status === 'draft');
+    const publishedCampaigns = campaigns.filter(c => c.status === 'publish');
+
+    // Filter the active tab's campaigns
+    const activeCampaigns = activeTab === 'draft' ? draftCampaigns : publishedCampaigns;
+
+    const filteredCampaigns = activeCampaigns
+        .filter(campaign => campaign.campaign_name.toLowerCase().includes(searchTerm.toLowerCase()))
         .sort((a, b) => {
-            if (sortBy === 'newest') {
-                return new Date(b.start_date) - new Date(a.start_date);
-            } else if (sortBy === 'oldest') {
-                return new Date(a.start_date) - new Date(b.start_date);
-            } else if (sortBy === 'progress') {
-                const progressA = (a.current_amount / a.goal_amount) * 100 || 0;
-                const progressB = (b.current_amount / b.goal_amount) * 100 || 0;
-                return progressB - progressA;
+            if (sortBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+            if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+            if (sortBy === 'progress') {
+                const pA = (a.current_amount / a.goal_amount) * 100 || 0;
+                const pB = (b.current_amount / b.goal_amount) * 100 || 0;
+                return pB - pA;
             }
             return 0;
         });
 
-    // Calculate stats
+    // Stats
     const stats = {
         totalCampaigns: campaigns.length,
-        activeCampaigns: campaigns.filter(c => c.status === 'Active').length,
-        featuredCampaigns: campaigns.filter(c => c.is_featured).length,
+        draftCount: draftCampaigns.length,
+        publishedCount: publishedCampaigns.length,
+        featuredCount: campaigns.filter(c => c.is_featured).length,
         totalRaised: campaigns.reduce((sum, c) => sum + (parseFloat(c.current_amount) || 0), 0),
         totalGoal: campaigns.reduce((sum, c) => sum + (parseFloat(c.goal_amount) || 0), 0)
     };
@@ -78,7 +79,6 @@ export default function AdminCampaignCreation() {
             if (Array.isArray(data)) {
                 setCampaigns(data);
             } else {
-                console.error('Expected array of campaigns, got:', data);
                 setCampaigns([]);
             }
         } catch (error) {
@@ -95,7 +95,6 @@ export default function AdminCampaignCreation() {
             if (Array.isArray(data)) {
                 setFoundations(data);
             } else {
-                console.error('Expected array of foundations, got:', data);
                 setFoundations([]);
             }
         } catch (error) {
@@ -124,12 +123,10 @@ export default function AdminCampaignCreation() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validation
         if (!formData.campaign_name.trim()) {
             toast.error('Campaign name is required');
             return;
         }
-
         if (!formData.foundation_id) {
             toast.error('Please select a foundation');
             return;
@@ -144,7 +141,6 @@ export default function AdminCampaignCreation() {
 
             const method = editingCampaign ? 'PUT' : 'POST';
 
-            // Use FormData to support file upload
             const body = new FormData();
             Object.keys(formData).forEach(key => {
                 body.append(key, formData[key]);
@@ -153,26 +149,45 @@ export default function AdminCampaignCreation() {
                 body.append('image', selectedImage);
             }
 
-            const response = await fetch(url, {
-                method: method,
-                body: body
-            });
-
+            const response = await fetch(url, { method, body });
             const data = await response.json();
 
             if (response.ok) {
                 toast.success(data.message);
                 fetchCampaigns();
                 resetForm();
+                // Switch to draft tab when creating new
+                if (!editingCampaign) setActiveTab('draft');
             } else {
                 toast.error(data.message || 'Operation failed');
             }
-
         } catch (error) {
             console.error('Error:', error);
             toast.error('Failed to save campaign');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleToggleStatus = async (campaignId, currentStatus) => {
+        const newStatus = currentStatus === 'draft' ? 'publish' : 'draft';
+        try {
+            const response = await fetch(`http://localhost:5000/api/campaigns/status/${campaignId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                toast.success(data.message);
+                fetchCampaigns();
+            } else {
+                toast.error(data.message || 'Failed to update status');
+            }
+        } catch (error) {
+            console.error('Error toggling status:', error);
+            toast.error('Failed to update campaign status');
         }
     };
 
@@ -195,28 +210,24 @@ export default function AdminCampaignCreation() {
         }, 100);
     };
 
-    const handleDelete = async (campaignId) => {
+    const handleDelete = (campaignId) => {
         setCampaignToDelete(campaignId);
         setShowDeleteModal(true);
     };
 
     const confirmDelete = async () => {
         if (!campaignToDelete) return;
-
         try {
             const response = await fetch(`http://localhost:5000/api/campaigns/delete/${campaignToDelete}`, {
                 method: 'DELETE',
             });
-
             const data = await response.json();
-
             if (response.ok) {
                 toast.success(data.message);
                 fetchCampaigns();
             } else {
                 toast.error(data.message || 'Delete failed');
             }
-
         } catch (error) {
             console.error('Error:', error);
             toast.error('Failed to delete campaign');
@@ -258,25 +269,14 @@ export default function AdminCampaignCreation() {
         return Math.min((current / goal) * 100, 100);
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        toast.success('Logged out successfully');
-        setTimeout(() => {
-            navigate('/login');
-        }, 500);
-    };
-
     return (
         <div className="flex h-screen overflow-hidden bg-[#f8fafb]">
-            {/* Sidebar */}
             <AdminSidebar
                 activePage="campaigns"
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
             />
 
-            {/* Mobile Menu Overlay */}
             {mobileMenuOpen && (
                 <div
                     className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -284,7 +284,6 @@ export default function AdminCampaignCreation() {
                 />
             )}
 
-            {/* Main Content */}
             <main className="flex-1 overflow-y-auto">
                 {/* Top Bar */}
                 <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
@@ -320,9 +319,8 @@ export default function AdminCampaignCreation() {
                     </div>
                 </header>
 
-                {/* Content Area */}
                 <div className="p-4 lg:p-8">
-                    {/* Stats Cards */}
+                    {/* Stats */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         <StatCard
                             icon={<PieChart className="w-5 h-5 text-white" />}
@@ -331,23 +329,22 @@ export default function AdminCampaignCreation() {
                             value={stats.totalCampaigns}
                         />
                         <StatCard
-                            icon={<TrendingUp className="w-5 h-5 text-white" />}
+                            icon={<FileEdit className="w-5 h-5 text-white" />}
+                            iconBg="from-amber-500 to-amber-400"
+                            title="Drafts"
+                            value={stats.draftCount}
+                        />
+                        <StatCard
+                            icon={<Send className="w-5 h-5 text-white" />}
                             iconBg="from-green-500 to-green-400"
-                            title="Active"
-                            value={stats.activeCampaigns}
+                            title="Published"
+                            value={stats.publishedCount}
                         />
                         <StatCard
                             icon={<DollarSign className="w-5 h-5 text-white" />}
                             iconBg="from-purple-500 to-purple-400"
                             title="Raised"
                             value={formatCurrency(stats.totalRaised)}
-                            small
-                        />
-                        <StatCard
-                            icon={<Target className="w-5 h-5 text-white" />}
-                            iconBg="from-blue-500 to-blue-400"
-                            title="Goal"
-                            value={formatCurrency(stats.totalGoal)}
                             small
                         />
                     </div>
@@ -361,104 +358,65 @@ export default function AdminCampaignCreation() {
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Campaign Name *
-                                        </label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Campaign Name *</label>
                                         <input
-                                            type="text"
-                                            name="campaign_name"
-                                            value={formData.campaign_name}
-                                            onChange={handleChange}
+                                            type="text" name="campaign_name" value={formData.campaign_name} onChange={handleChange}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
                                             placeholder="Enter campaign name"
                                         />
                                     </div>
-
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Campaign Type
-                                        </label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Campaign Type</label>
                                         <input
-                                            type="text"
-                                            name="campaign_type"
-                                            value={formData.campaign_type}
-                                            onChange={handleChange}
+                                            type="text" name="campaign_type" value={formData.campaign_type} onChange={handleChange}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
                                             placeholder="e.g., Fundraising, Awareness"
                                         />
                                     </div>
-
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Foundation *
-                                        </label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Foundation *</label>
                                         <select
-                                            name="foundation_id"
-                                            value={formData.foundation_id}
-                                            onChange={handleChange}
+                                            name="foundation_id" value={formData.foundation_id} onChange={handleChange}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
                                         >
                                             <option value="">Select a foundation</option>
-                                            {foundations.map((foundation) => (
-                                                <option key={foundation.foundation_id} value={foundation.foundation_id}>
-                                                    {foundation.foundation_name}
-                                                </option>
+                                            {foundations.map((f) => (
+                                                <option key={f.foundation_id} value={f.foundation_id}>{f.foundation_name}</option>
                                             ))}
                                         </select>
                                     </div>
-
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Goal Amount (₱)
-                                        </label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Goal Amount (₱)</label>
                                         <input
-                                            type="number"
-                                            name="goal_amount"
-                                            value={formData.goal_amount}
-                                            onChange={handleChange}
-                                            step="0.01"
-                                            min="0"
+                                            type="number" name="goal_amount" value={formData.goal_amount} onChange={handleChange}
+                                            step="0.01" min="0"
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
                                             placeholder="Enter goal amount"
                                         />
                                     </div>
-
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Start Date
-                                        </label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
                                         <input
-                                            type="date"
-                                            name="start_date"
-                                            value={formData.start_date}
-                                            onChange={handleChange}
+                                            type="date" name="start_date" value={formData.start_date} onChange={handleChange}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
                                         />
                                     </div>
-
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                                             End Date
                                             <span className="text-xs text-gray-400 font-normal ml-2">(Leave empty for endless campaign)</span>
                                         </label>
                                         <input
-                                            type="date"
-                                            name="end_date"
-                                            value={formData.end_date}
-                                            onChange={handleChange}
+                                            type="date" name="end_date" value={formData.end_date} onChange={handleChange}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
                                         />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Description
-                                    </label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
                                     <textarea
-                                        name="campaign_description"
-                                        value={formData.campaign_description}
-                                        onChange={handleChange}
+                                        name="campaign_description" value={formData.campaign_description} onChange={handleChange}
                                         rows="4"
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
                                         placeholder="Enter campaign description"
@@ -467,9 +425,7 @@ export default function AdminCampaignCreation() {
 
                                 {/* Campaign Image */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Campaign Image
-                                    </label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Campaign Image</label>
                                     <div className="flex items-center gap-4">
                                         <div className="h-32 w-48 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
                                             {imagePreviewUrl ? (
@@ -487,12 +443,7 @@ export default function AdminCampaignCreation() {
                                                 <p className="text-sm text-gray-600">Upload Image</p>
                                                 <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
                                             </div>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleImageChange}
-                                                className="hidden"
-                                            />
+                                            <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                                         </label>
                                     </div>
                                 </div>
@@ -500,11 +451,8 @@ export default function AdminCampaignCreation() {
                                 {/* Featured Toggle */}
                                 <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                                     <input
-                                        type="checkbox"
-                                        name="is_featured"
-                                        id="is_featured"
-                                        checked={formData.is_featured}
-                                        onChange={handleChange}
+                                        type="checkbox" name="is_featured" id="is_featured"
+                                        checked={formData.is_featured} onChange={handleChange}
                                         className="w-5 h-5 text-[#63A6B2] border-gray-300 rounded focus:ring-[#63A6B2]/20 cursor-pointer"
                                     />
                                     <label htmlFor="is_featured" className="cursor-pointer">
@@ -516,17 +464,26 @@ export default function AdminCampaignCreation() {
                                     </label>
                                 </div>
 
+                                {/* Info: Saved as Draft */}
+                                {!editingCampaign && (
+                                    <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                        <FileEdit className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                                        <div>
+                                            <span className="text-sm font-semibold text-gray-700">Saved as Draft</span>
+                                            <p className="text-xs text-gray-500 mt-0.5">New campaigns are saved as drafts. You can publish them from the Drafts tab.</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="flex gap-4 pt-4 border-t border-gray-200">
                                     <button
-                                        type="submit"
-                                        disabled={isLoading}
+                                        type="submit" disabled={isLoading}
                                         className="flex-1 bg-[#63A6B2] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#4d8b96] transition disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {isLoading ? 'Saving...' : (editingCampaign ? 'Update Campaign' : 'Create Campaign')}
+                                        {isLoading ? 'Saving...' : (editingCampaign ? 'Update Campaign' : 'Save as Draft')}
                                     </button>
                                     <button
-                                        type="button"
-                                        onClick={resetForm}
+                                        type="button" onClick={resetForm}
                                         className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
                                     >
                                         Cancel
@@ -536,68 +493,90 @@ export default function AdminCampaignCreation() {
                         </div>
                     )}
 
-                    {/* Search and Filters */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            {/* Search */}
-                            <div className="relative flex-1">
-                                <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search campaigns..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                />
-                            </div>
-
-                            {/* Status Filter */}
-                            <div className="relative">
-                                <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <select
-                                    value={filterStatus}
-                                    onChange={(e) => setFilterStatus(e.target.value)}
-                                    className="pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 appearance-none bg-white cursor-pointer"
+                    {/* Draft / Published Tabs */}
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
+                        <div className="flex border-b border-gray-200">
+                            <button
+                                onClick={() => setActiveTab('draft')}
+                                className={`flex-1 px-6 py-4 text-sm font-semibold transition-all flex items-center justify-center gap-2
+                                    ${activeTab === 'draft'
+                                        ? 'text-amber-600 border-b-2 border-amber-500 bg-amber-50/50'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    }`}
+                            >
+                                <FileEdit className="w-4 h-4" />
+                                Drafts
+                                <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold
+                                    ${activeTab === 'draft' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}
                                 >
-                                    <option value="all">All Status</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
-                                </select>
-                                <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            </div>
-
-                            {/* Sort */}
-                            <div className="relative">
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value)}
-                                    className="pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 appearance-none bg-white cursor-pointer"
+                                    {draftCampaigns.length}
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('publish')}
+                                className={`flex-1 px-6 py-4 text-sm font-semibold transition-all flex items-center justify-center gap-2
+                                    ${activeTab === 'publish'
+                                        ? 'text-green-600 border-b-2 border-green-500 bg-green-50/50'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    }`}
+                            >
+                                <Send className="w-4 h-4" />
+                                Published
+                                <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold
+                                    ${activeTab === 'publish' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}
                                 >
-                                    <option value="newest">Newest First</option>
-                                    <option value="oldest">Oldest First</option>
-                                    <option value="progress">By Progress</option>
-                                </select>
-                                <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            </div>
+                                    {publishedCampaigns.length}
+                                </span>
+                            </button>
                         </div>
 
-                        {/* Results count */}
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                            <p className="text-sm text-gray-600">
-                                Showing <span className="font-semibold text-gray-900">{filteredCampaigns.length}</span> of <span className="font-semibold text-gray-900">{campaigns.length}</span> campaigns
-                            </p>
+                        {/* Search & Sort inside tab panel */}
+                        <div className="p-4">
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <div className="relative flex-1">
+                                    <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="text" placeholder="Search campaigns..."
+                                        value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                    />
+                                </div>
+                                <div className="relative">
+                                    <select
+                                        value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+                                        className="pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 appearance-none bg-white cursor-pointer"
+                                    >
+                                        <option value="newest">Newest First</option>
+                                        <option value="oldest">Oldest First</option>
+                                        <option value="progress">By Progress</option>
+                                    </select>
+                                    <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                                <p className="text-sm text-gray-600">
+                                    Showing <span className="font-semibold text-gray-900">{filteredCampaigns.length}</span>{' '}
+                                    {activeTab === 'draft' ? 'draft' : 'published'} campaign{filteredCampaigns.length !== 1 ? 's' : ''}
+                                </p>
+                            </div>
                         </div>
                     </div>
 
                     {/* Campaigns Grid */}
                     {filteredCampaigns.length === 0 ? (
                         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                            <PieChart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                            <p className="text-gray-500 font-semibold text-lg">No campaigns found</p>
+                            {activeTab === 'draft' ? (
+                                <FileEdit className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                            ) : (
+                                <Send className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                            )}
+                            <p className="text-gray-500 font-semibold text-lg">
+                                No {activeTab === 'draft' ? 'draft' : 'published'} campaigns
+                            </p>
                             <p className="text-sm text-gray-400 mt-2">
-                                {searchTerm || filterStatus !== 'all'
-                                    ? 'Try adjusting your search or filters'
-                                    : 'Create your first campaign to get started'}
+                                {activeTab === 'draft'
+                                    ? 'Create a new campaign to get started — it will appear here as a draft.'
+                                    : 'Publish a draft campaign to make it visible to the public.'}
                             </p>
                         </div>
                     ) : (
@@ -608,6 +587,7 @@ export default function AdminCampaignCreation() {
                                     campaign={campaign}
                                     onEdit={handleEdit}
                                     onDelete={handleDelete}
+                                    onToggleStatus={handleToggleStatus}
                                     formatCurrency={formatCurrency}
                                     formatDate={formatDate}
                                     getProgressPercentage={getProgressPercentage}
@@ -632,10 +612,7 @@ export default function AdminCampaignCreation() {
                             </p>
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => {
-                                        setShowDeleteModal(false);
-                                        setCampaignToDelete(null);
-                                    }}
+                                    onClick={() => { setShowDeleteModal(false); setCampaignToDelete(null); }}
                                     className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
                                 >
                                     Cancel
@@ -652,25 +629,6 @@ export default function AdminCampaignCreation() {
                 </div>
             )}
         </div>
-    );
-}
-
-// Navigation Item Component
-function NavItem({ icon, label, active, onClick }) {
-    return (
-        <button
-            onClick={onClick}
-            className={`
-                w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all
-                ${active
-                    ? 'bg-white/15 text-white border-l-4 border-[#f0a500] pl-3'
-                    : 'text-white/70 hover:text-white hover:bg-white/10 hover:pl-5'
-                }
-            `}
-        >
-            {React.cloneElement(icon, { className: 'w-5 h-5' })}
-            <span>{label}</span>
-        </button>
     );
 }
 
@@ -692,19 +650,22 @@ function StatCard({ icon, iconBg, title, value, small }) {
 }
 
 // Campaign Card Component
-function CampaignCard({ campaign, onEdit, onDelete, formatCurrency, formatDate, getProgressPercentage }) {
+function CampaignCard({ campaign, onEdit, onDelete, onToggleStatus, formatCurrency, formatDate, getProgressPercentage }) {
     const [showMenu, setShowMenu] = useState(false);
     const progress = getProgressPercentage(campaign.current_amount || 0, campaign.goal_amount);
+    const isDraft = campaign.status === 'draft';
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all group">
+        <div className={`bg-white rounded-xl border overflow-hidden hover:shadow-lg transition-all group
+            ${isDraft ? 'border-amber-200' : 'border-gray-200'}`}
+        >
             {/* Image Section */}
             <div className="relative h-48 bg-gradient-to-br from-[#63A6B2] to-[#4d8b96] overflow-hidden">
                 {campaign.file_url ? (
                     <img
                         src={`http://localhost:5000${campaign.file_url}`}
                         alt={campaign.campaign_name}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover ${isDraft ? 'opacity-80' : ''}`}
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -714,26 +675,29 @@ function CampaignCard({ campaign, onEdit, onDelete, formatCurrency, formatDate, 
 
                 {/* Status Badge */}
                 <div className="absolute top-3 left-3 flex items-center gap-2">
-                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${campaign.status === 'Active'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-500 text-white'
-                        }`}>
-                        {campaign.status || 'Active'}
-                    </span>
-                    {campaign.is_featured && (
+                    {isDraft ? (
                         <span className="px-3 py-1 text-xs font-bold rounded-full bg-amber-500 text-white flex items-center gap-1">
+                            <FileEdit className="w-3 h-3" />
+                            Draft
+                        </span>
+                    ) : (
+                        <span className="px-3 py-1 text-xs font-bold rounded-full bg-green-500 text-white flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            Published
+                        </span>
+                    )}
+                    {campaign.is_featured && (
+                        <span className="px-3 py-1 text-xs font-bold rounded-full bg-yellow-400 text-yellow-900 flex items-center gap-1">
                             <Star className="w-3 h-3" />
                             Featured
                         </span>
                     )}
                 </div>
 
-                {/* Endless Campaign Badge */}
+                {/* Ongoing badge */}
                 {!campaign.end_date && (
                     <div className="absolute bottom-3 left-3">
-                        <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-500/90 text-white">
-                            Ongoing
-                        </span>
+                        <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-500/90 text-white">Ongoing</span>
                     </div>
                 )}
 
@@ -748,26 +712,25 @@ function CampaignCard({ campaign, onEdit, onDelete, formatCurrency, formatDate, 
                         </button>
                         {showMenu && (
                             <>
-                                <div
-                                    className="fixed inset-0 z-10"
-                                    onClick={() => setShowMenu(false)}
-                                />
-                                <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20">
+                                <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                                <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20">
                                     <button
-                                        onClick={() => {
-                                            onEdit(campaign);
-                                            setShowMenu(false);
-                                        }}
+                                        onClick={() => { onEdit(campaign); setShowMenu(false); }}
                                         className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-700"
                                     >
                                         <Edit className="w-4 h-4" />
                                         Edit
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            onDelete(campaign.campaign_id);
-                                            setShowMenu(false);
-                                        }}
+                                        onClick={() => { onToggleStatus(campaign.campaign_id, campaign.status); setShowMenu(false); }}
+                                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 ${isDraft ? 'text-green-600' : 'text-amber-600'}`}
+                                    >
+                                        {isDraft ? <Send className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                        {isDraft ? 'Publish' : 'Unpublish'}
+                                    </button>
+                                    <div className="border-t border-gray-100 my-1" />
+                                    <button
+                                        onClick={() => { onDelete(campaign.campaign_id); setShowMenu(false); }}
                                         className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -780,14 +743,10 @@ function CampaignCard({ campaign, onEdit, onDelete, formatCurrency, formatDate, 
                 </div>
             </div>
 
-            {/* Content Section */}
+            {/* Content */}
             <div className="p-5">
-                {/* Campaign Name */}
-                <h3 className="font-bold text-gray-900 text-lg mb-2 line-clamp-2">
-                    {campaign.campaign_name}
-                </h3>
+                <h3 className="font-bold text-gray-900 text-lg mb-2 line-clamp-2">{campaign.campaign_name}</h3>
 
-                {/* Foundation & Type */}
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
                     <MapPin className="w-4 h-4 flex-shrink-0" />
                     <span className="truncate">{campaign.foundation_name || 'No foundation'}</span>
@@ -799,11 +758,8 @@ function CampaignCard({ campaign, onEdit, onDelete, formatCurrency, formatDate, 
                     )}
                 </div>
 
-                {/* Description */}
                 {campaign.campaign_description && (
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                        {campaign.campaign_description}
-                    </p>
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{campaign.campaign_description}</p>
                 )}
 
                 {/* Progress Bar */}
@@ -820,7 +776,7 @@ function CampaignCard({ campaign, onEdit, onDelete, formatCurrency, formatDate, 
                     </div>
                 </div>
 
-                {/* Financial Info */}
+                {/* Financial */}
                 <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-100">
                     <div>
                         <p className="text-xs text-gray-500 font-medium mb-1">Raised</p>
@@ -833,12 +789,27 @@ function CampaignCard({ campaign, onEdit, onDelete, formatCurrency, formatDate, 
                 </div>
 
                 {/* Dates */}
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Calendar className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{formatDate(campaign.start_date)}</span>
-                    <span>→</span>
-                    <span className="truncate">{formatDate(campaign.end_date)}</span>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Calendar className="w-4 h-4 flex-shrink-0" />
+                        <span>{formatDate(campaign.start_date)}</span>
+                        <span>→</span>
+                        <span>{formatDate(campaign.end_date)}</span>
+                    </div>
                 </div>
+
+                {/* Publish / Unpublish Button */}
+                <button
+                    onClick={() => onToggleStatus(campaign.campaign_id, campaign.status)}
+                    className={`w-full mt-4 py-2.5 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2
+                        ${isDraft
+                            ? 'bg-green-500 hover:bg-green-600 text-white'
+                            : 'bg-amber-100 hover:bg-amber-200 text-amber-700 border border-amber-300'
+                        }`}
+                >
+                    {isDraft ? <Send className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    {isDraft ? 'Publish Campaign' : 'Unpublish'}
+                </button>
             </div>
         </div>
     );

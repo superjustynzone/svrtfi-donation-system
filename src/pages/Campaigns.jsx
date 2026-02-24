@@ -10,25 +10,17 @@ export default function Campaigns() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
-    const [campaignMedia, setCampaignMedia] = useState({});
     const navigate = useNavigate();
 
     useEffect(() => {
         fetchCampaigns();
     }, []);
 
-    useEffect(() => {
-        campaigns.forEach(campaign => {
-            if (!campaignMedia[campaign.campaign_id]) {
-                fetchCampaignMedia(campaign.campaign_id);
-            }
-        });
-    }, [campaigns]);
-
     const fetchCampaigns = async () => {
         try {
             setIsLoading(true);
-            const response = await fetch('http://localhost:5000/api/campaigns/all');
+            // Only fetch published campaigns
+            const response = await fetch('http://localhost:5000/api/campaigns/published');
             const data = await response.json();
             if (response.ok && Array.isArray(data)) {
                 setCampaigns(data);
@@ -42,22 +34,6 @@ export default function Campaigns() {
             setCampaigns([]);
         } finally {
             setIsLoading(false);
-        }
-    };
-
-    const fetchCampaignMedia = async (campaignId) => {
-        try {
-            const response = await fetch(`http://localhost:5000/api/campaigns/${campaignId}`);
-            const data = await response.json();
-
-            if (response.ok && data.media) {
-                setCampaignMedia(prev => ({
-                    ...prev,
-                    [campaignId]: data.media
-                }));
-            }
-        } catch (error) {
-            console.error('Error fetching campaign media:', error);
         }
     };
 
@@ -187,8 +163,6 @@ export default function Campaigns() {
                         {filteredCampaigns.map((campaign) => {
                             const progress = calculateProgress(campaign.current_amount, campaign.goal_amount);
                             const daysRemaining = getDaysRemaining(campaign.end_date);
-                            const media = campaignMedia[campaign.campaign_id];
-                            const primaryImage = media && media.length > 0 ? media[0].file_url : null;
 
                             return (
                                 <div
@@ -198,9 +172,9 @@ export default function Campaigns() {
                                 >
                                     {/* Campaign Image */}
                                     <div className="relative h-56 bg-gradient-to-br from-gray-200 to-gray-300 overflow-hidden">
-                                        {primaryImage ? (
+                                        {campaign.file_url ? (
                                             <img
-                                                src={`http://localhost:5000${primaryImage}`}
+                                                src={`http://localhost:5000${campaign.file_url}`}
                                                 alt={campaign.campaign_name}
                                                 className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
                                             />
@@ -221,11 +195,24 @@ export default function Campaigns() {
                                             </div>
                                         )}
 
-                                        {/* Days Remaining Badge */}
-                                        {daysRemaining !== null && (
-                                            <div className="absolute top-4 left-4">
+                                        {/* Days Remaining / Ongoing Badge */}
+                                        <div className="absolute top-4 left-4">
+                                            {daysRemaining !== null ? (
                                                 <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                                                     {daysRemaining} days left
+                                                </span>
+                                            ) : (
+                                                <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                                                    Ongoing
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Featured Badge */}
+                                        {campaign.is_featured && (
+                                            <div className="absolute bottom-4 left-4">
+                                                <span className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                                    ⭐ Featured
                                                 </span>
                                             </div>
                                         )}
