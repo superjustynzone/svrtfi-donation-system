@@ -4,6 +4,12 @@ import { toast } from 'sonner';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
+// Helper to strip HTML tags for plain-text truncation
+const stripHtml = (html) => {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+};
+
 export default function FoundationDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -148,7 +154,7 @@ export default function FoundationDetails() {
                             Active Care
                         </span>
                         <h1 className="text-4xl font-bold text-white mb-2">{foundation.foundation_name}</h1>
-                        <p className="text-xl text-white/90 italic">{foundation.mission ? foundation.mission.substring(0, 100) + '...' : ''}</p>
+                        <p className="text-xl text-white/90 italic">{foundation.mission ? stripHtml(foundation.mission).substring(0, 100) + '...' : ''}</p>
                     </div>
                 </div>
             </div>
@@ -185,7 +191,7 @@ export default function FoundationDetails() {
                                 </div>
                                 {/* Campaign Info */}
                                 <div className="p-6">
-                                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{featuredCampaign.campaign_description || 'Support this campaign and make a difference.'}</p>
+                                    <div className="text-sm text-gray-600 mb-4 line-clamp-2 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: featuredCampaign.campaign_description || 'Support this campaign and make a difference.' }} />
                                     {featuredCampaign.goal_amount && (
                                         <div>
                                             <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -217,7 +223,7 @@ export default function FoundationDetails() {
                         {/* About Section */}
                         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
                             <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Foundation</h2>
-                            <p className="text-gray-700 leading-relaxed">{foundation.about_foundation || foundation.description}</p>
+                            <div className="text-gray-700 leading-relaxed ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.about_foundation || foundation.description || '' }} />
                         </div>
 
                         {/* Mission & Vision */}
@@ -232,7 +238,7 @@ export default function FoundationDetails() {
                                     </div>
                                     <h3 className="text-xl font-bold text-blue-600">Mission</h3>
                                 </div>
-                                <p className="text-gray-700 leading-relaxed text-sm">{foundation.mission}</p>
+                                <div className="text-gray-700 leading-relaxed text-sm ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.mission || '' }} />
                             </div>
 
                             {/* Vision */}
@@ -246,7 +252,7 @@ export default function FoundationDetails() {
                                     </div>
                                     <h3 className="text-xl font-bold text-pink-600">Vision</h3>
                                 </div>
-                                <p className="text-gray-700 leading-relaxed text-sm">{foundation.vision}</p>
+                                <div className="text-gray-700 leading-relaxed text-sm ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.vision || '' }} />
                             </div>
                         </div>
 
@@ -411,7 +417,7 @@ export default function FoundationDetails() {
                                                 <h4 className="text-white font-bold text-sm line-clamp-1">{other.foundation_name}</h4>
                                             </div>
                                         </div>
-                                        <p className="text-sm text-gray-600 mb-2">{other.mission ? other.mission.substring(0, 50) + '...' : (other.about_foundation ? other.about_foundation.substring(0, 50) + '...' : 'No description')}</p>
+                                        <p className="text-sm text-gray-600 mb-2">{other.mission ? stripHtml(other.mission).substring(0, 50) + '...' : (other.about_foundation ? stripHtml(other.about_foundation).substring(0, 50) + '...' : 'No description')}</p>
                                         <button className="text-[#63A6B2] text-sm font-semibold hover:underline flex items-center gap-1">
                                             Learn More
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

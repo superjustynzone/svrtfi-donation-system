@@ -26,6 +26,8 @@ export default function AdminCampaignCreation() {
     const [campaignToDelete, setCampaignToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('draft'); // 'draft' or 'publish'
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [viewingCampaign, setViewingCampaign] = useState(null);
     const [sortBy, setSortBy] = useState('newest');
 
     const [formData, setFormData] = useState({
@@ -590,6 +592,7 @@ export default function AdminCampaignCreation() {
                                     campaign={campaign}
                                     onEdit={handleEdit}
                                     onDelete={handleDelete}
+                                    onView={(campaign) => { setViewingCampaign(campaign); setShowViewModal(true); }}
                                     onToggleStatus={handleToggleStatus}
                                     formatCurrency={formatCurrency}
                                     formatDate={formatDate}
@@ -600,6 +603,107 @@ export default function AdminCampaignCreation() {
                     )}
                 </div>
             </main>
+
+            {/* View Campaign Modal */}
+            {showViewModal && viewingCampaign && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+                        {/* Campaign Image */}
+                        {viewingCampaign.file_url && (
+                            <div className="h-52 w-full overflow-hidden rounded-t-xl">
+                                <img src={`http://localhost:5000${viewingCampaign.file_url}`} alt={viewingCampaign.campaign_name} className="w-full h-full object-cover" />
+                            </div>
+                        )}
+                        <div className="p-6">
+                            {/* Header */}
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        {viewingCampaign.status === 'draft' ? (
+                                            <span className="px-3 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700">Draft</span>
+                                        ) : (
+                                            <span className="px-3 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">Published</span>
+                                        )}
+                                        {viewingCampaign.is_featured && (
+                                            <span className="px-3 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
+                                                <Star className="w-3 h-3" /> Featured
+                                            </span>
+                                        )}
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900">{viewingCampaign.campaign_name}</h3>
+                                    <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                                        <MapPin className="w-4 h-4 flex-shrink-0" />
+                                        <span>{viewingCampaign.foundation_name || 'No foundation'}</span>
+                                        {viewingCampaign.campaign_type && (
+                                            <>
+                                                <span>•</span>
+                                                <span>{viewingCampaign.campaign_type}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                                <button onClick={() => { setShowViewModal(false); setViewingCampaign(null); }} className="text-gray-400 hover:text-gray-600 transition flex-shrink-0 ml-4">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            {/* Description */}
+                            {viewingCampaign.campaign_description && (
+                                <div className="mb-5">
+                                    <h4 className="text-sm font-bold text-gray-700 mb-2">Description</h4>
+                                    <div className="text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingCampaign.campaign_description }} />
+                                </div>
+                            )}
+
+                            {/* Progress */}
+                            <div className="mb-5 p-4 bg-gray-50 rounded-lg">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm font-bold text-gray-700">Fundraising Progress</span>
+                                    <span className="text-sm font-bold text-[#63A6B2]">{getProgressPercentage(viewingCampaign.current_amount || 0, viewingCampaign.goal_amount).toFixed(0)}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden mb-3">
+                                    <div
+                                        className="bg-gradient-to-r from-[#63A6B2] to-[#4d8b96] h-full rounded-full transition-all duration-500"
+                                        style={{ width: `${getProgressPercentage(viewingCampaign.current_amount || 0, viewingCampaign.goal_amount)}%` }}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-medium">Raised</p>
+                                        <p className="text-lg font-bold text-[#63A6B2]">{formatCurrency(viewingCampaign.current_amount || 0)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-medium">Goal</p>
+                                        <p className="text-lg font-bold text-gray-900">{formatCurrency(viewingCampaign.goal_amount)}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Dates */}
+                            <div className="mb-5 p-4 bg-gray-50 rounded-lg">
+                                <h4 className="text-sm font-bold text-gray-700 mb-3">Campaign Duration</h4>
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <Calendar className="w-4 h-4 text-[#63A6B2] flex-shrink-0" />
+                                    <span>{formatDate(viewingCampaign.start_date)}</span>
+                                    <span>→</span>
+                                    <span>{formatDate(viewingCampaign.end_date)}</span>
+                                    {!viewingCampaign.end_date && (
+                                        <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-700 ml-2">Ongoing</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Close Button */}
+                            <button
+                                onClick={() => { setShowViewModal(false); setViewingCampaign(null); }}
+                                className="w-full px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
@@ -653,7 +757,7 @@ function StatCard({ icon, iconBg, title, value, small }) {
 }
 
 // Campaign Card Component
-function CampaignCard({ campaign, onEdit, onDelete, onToggleStatus, formatCurrency, formatDate, getProgressPercentage }) {
+function CampaignCard({ campaign, onEdit, onDelete, onView, onToggleStatus, formatCurrency, formatDate, getProgressPercentage }) {
     const [showMenu, setShowMenu] = useState(false);
     const progress = getProgressPercentage(campaign.current_amount || 0, campaign.goal_amount);
     const isDraft = campaign.status === 'draft';
@@ -718,18 +822,18 @@ function CampaignCard({ campaign, onEdit, onDelete, onToggleStatus, formatCurren
                                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
                                 <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20">
                                     <button
+                                        onClick={() => { onView(campaign); setShowMenu(false); }}
+                                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-700"
+                                    >
+                                        <Eye className="w-4 h-4" />
+                                        View
+                                    </button>
+                                    <button
                                         onClick={() => { onEdit(campaign); setShowMenu(false); }}
                                         className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-700"
                                     >
                                         <Edit className="w-4 h-4" />
                                         Edit
-                                    </button>
-                                    <button
-                                        onClick={() => { onToggleStatus(campaign.campaign_id, campaign.status); setShowMenu(false); }}
-                                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 ${isDraft ? 'text-green-600' : 'text-amber-600'}`}
-                                    >
-                                        {isDraft ? <Send className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                                        {isDraft ? 'Publish' : 'Unpublish'}
                                     </button>
                                     <div className="border-t border-gray-100 my-1" />
                                     <button
@@ -762,7 +866,7 @@ function CampaignCard({ campaign, onEdit, onDelete, onToggleStatus, formatCurren
                 </div>
 
                 {campaign.campaign_description && (
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{campaign.campaign_description}</p>
+                    <div className="text-sm text-gray-600 mb-4 line-clamp-2 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: campaign.campaign_description }} />
                 )}
 
                 {/* Progress Bar */}

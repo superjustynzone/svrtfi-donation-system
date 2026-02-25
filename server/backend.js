@@ -88,6 +88,14 @@ try {
   console.error("❌ Error loading User Management routes:", error.message);
 }
 
+try {
+  const donationRoutes = require("./DonationBackend");
+  app.use("/api/donations", donationRoutes);
+  console.log("✅ Donation routes loaded successfully");
+} catch (error) {
+  console.error("❌ Error loading Donation routes:", error.message);
+}
+
 // Get all users example
 app.get("/api/users", async (req, res) => {
   try {

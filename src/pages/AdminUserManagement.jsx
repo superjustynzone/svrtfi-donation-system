@@ -228,10 +228,6 @@ export default function AdminUserManagement() {
             return;
         }
 
-        if (!userForm.username.trim()) {
-            toast.error('Username is required');
-            return;
-        }
 
         if (!userForm.password || userForm.password.length < 8) {
             toast.error('Password must be at least 8 characters long');
@@ -655,7 +651,6 @@ export default function AdminUserManagement() {
                                     <tr>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">User Profile</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Role</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Address</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Status</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Last Login</th>
                                         <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Actions</th>
@@ -683,18 +678,13 @@ export default function AdminUserManagement() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="text-xs text-gray-400 font-bold uppercase">{user.address || 'N/A'}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <button
-                                                        onClick={() => handleToggleUserStatus(user)}
-                                                        className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${user.status === 'Active'
-                                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
-                                                            : 'bg-gray-50 text-gray-500 border-gray-100 hover:bg-gray-100'
-                                                            }`}
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${user.status === 'Active'
+                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                        : 'bg-gray-50 text-gray-500 border-gray-100'
+                                                        }`}
                                                     >
                                                         {user.status}
-                                                    </button>
+                                                    </span>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="text-sm text-gray-700 font-medium">{user.lastLogin}</div>
@@ -718,6 +708,16 @@ export default function AdminUserManagement() {
                                                             title="Edit User"
                                                         >
                                                             <Edit className="w-5 h-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleToggleUserStatus(user)}
+                                                            className={`p-2 rounded-lg transition ${user.status === 'Active'
+                                                                ? 'text-gray-400 hover:text-orange-600 hover:bg-orange-50'
+                                                                : 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50'
+                                                                }`}
+                                                            title={user.status === 'Active' ? 'Deactivate Account' : 'Activate Account'}
+                                                        >
+                                                            {user.status === 'Active' ? <UserX className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
                                                         </button>
                                                         <button
                                                             onClick={() => {
@@ -997,18 +997,6 @@ function UserFormModal({ title, formData, handleFormChange, handleSubmit, handle
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Username *</label>
-                                <input
-                                    type="text"
-                                    name="username"
-                                    value={formData.username}
-                                    onChange={handleFormChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 transition-all"
-                                    placeholder="jdelacruz"
-                                    required
-                                />
-                            </div>
-                            <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
                                 <input
                                     type="tel"
@@ -1155,17 +1143,13 @@ function ViewUserModal({ user, handleClose, activeTab, setActiveTab, getRoleInfo
                 </div>
 
                 {/* Stats Bar */}
-                <div className="grid grid-cols-2 md:grid-cols-4 bg-[#f8fafb] border-b border-gray-100">
+                <div className="grid grid-cols-3 bg-[#f8fafb] border-b border-gray-100">
                     <div className="p-4 border-r border-gray-100 text-center">
                         <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Role</p>
                         <p className="text-lg font-bold text-[#63A6B2]">{roleInfo.label}</p>
                     </div>
                     <div className="p-4 border-r border-gray-100 text-center">
-                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Address</p>
-                        <p className="text-lg font-bold text-[#63A6B2]">{user.address || 'N/A'}</p>
-                    </div>
-                    <div className="p-4 border-r border-gray-100 text-center">
-                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Employee ID</p>
+                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">User ID</p>
                         <p className="text-lg font-bold text-[#63A6B2]">{user.employeeId}</p>
                     </div>
                     <div className="p-4 text-center">
@@ -1231,6 +1215,15 @@ function ViewUserModal({ user, handleClose, activeTab, setActiveTab, getRoleInfo
                                                 <p className="text-gray-900 font-semibold">{user.phone || 'N/A'}</p>
                                             </div>
                                         </div>
+                                        <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100 group hover:shadow-sm transition-all duration-300">
+                                            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm text-[#63A6B2] group-hover:bg-[#63A6B2] group-hover:text-white transition-all">
+                                                <UserCog className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase">Address</p>
+                                                <p className="text-gray-900 font-semibold">{user.address || 'N/A'}</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </section>
                             </div>
@@ -1245,15 +1238,7 @@ function ViewUserModal({ user, handleClose, activeTab, setActiveTab, getRoleInfo
                                             </div>
                                             <p className="text-sm text-gray-600 italic leading-relaxed">{roleInfo.description}</p>
                                         </div>
-                                        <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100 group hover:shadow-sm transition-all duration-300">
-                                            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm text-[#63A6B2] group-hover:bg-[#63A6B2] group-hover:text-white transition-all">
-                                                <UserCog className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase">Address</p>
-                                                <p className="text-gray-900 font-semibold">{user.address || 'N/A'}</p>
-                                            </div>
-                                        </div>
+
                                     </div>
                                 </section>
                             </div>

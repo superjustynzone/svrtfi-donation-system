@@ -356,9 +356,7 @@ export default function Foundations() {
                                                 )}
                                             </div>
 
-                                            <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                                                {foundation.about_foundation || 'No description available.'}
-                                            </p>
+                                            <div className="text-gray-600 text-sm mb-4 line-clamp-3 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.about_foundation || 'No description available.' }} />
 
                                             {/* Focus Area Tags */}
                                             <div className="flex flex-wrap gap-2 mb-4 mt-auto">

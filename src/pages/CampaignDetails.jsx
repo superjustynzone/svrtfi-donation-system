@@ -187,9 +187,7 @@ export default function CampaignDetails() {
                             {/* Description */}
                             <div className="mb-8">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Campaign</h2>
-                                <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                                    {campaign.campaign_description || 'No description available.'}
-                                </p>
+                                <div className="text-gray-700 leading-relaxed ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: campaign.campaign_description || 'No description available.' }} />
                             </div>
 
                             {/* Campaign Dates */}
@@ -208,9 +206,7 @@ export default function CampaignDetails() {
                             {campaign.foundation_desc && (
                                 <div className="mt-8 pt-8 border-t border-gray-200">
                                     <h3 className="text-xl font-bold text-gray-900 mb-3">About {campaign.foundation_name}</h3>
-                                    <p className="text-gray-700 leading-relaxed">
-                                        {campaign.foundation_desc}
-                                    </p>
+                                    <div className="text-gray-700 leading-relaxed ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: campaign.foundation_desc }} />
                                 </div>
                             )}
                         </div>

@@ -427,9 +427,7 @@ export default function Campaigns() {
                                                 </h3>
 
                                                 {campaign.campaign_description && (
-                                                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                                                        {campaign.campaign_description}
-                                                    </p>
+                                                    <div className="text-sm text-gray-600 mb-4 line-clamp-2 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: campaign.campaign_description }} />
                                                 )}
 
                                                 {/* Progress */}

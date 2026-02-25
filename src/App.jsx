@@ -20,6 +20,7 @@ import AdminUserManagement from './pages/AdminUserManagement';
 import AdminCampaignCreation from './pages/AdminCampaignCreation';
 import AdminFoundationCreation from './pages/AdminFoundationCreation';
 import Profile from './pages/Profile';
+import AdminDonations from './pages/AdminDonations';
 
 function App() {
 
@@ -71,6 +72,7 @@ function App() {
         <Route path="/admin_users" element={<AdminRoute><AdminUserManagement /></AdminRoute>} />
         <Route path="/admin_campaigns" element={<AdminRoute><AdminCampaignCreation /></AdminRoute>} />
         <Route path="/admin_foundations" element={<AdminRoute><AdminFoundationCreation /></AdminRoute>} />
+        <Route path="/admin_donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />
 
       </Routes>
 

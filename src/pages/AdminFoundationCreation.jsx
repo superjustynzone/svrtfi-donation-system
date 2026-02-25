@@ -3,7 +3,7 @@ import {
     Home, Users, DollarSign, PieChart, FileText, BarChart3,
     UserCog, Settings, AlertTriangle, Search, Menu, X, LogOut,
     Plus, Edit, Trash2, Building2, Mail, Phone, MapPin,
-    MoreVertical, Filter, ChevronDown, Upload, CreditCard, CheckCircle2
+    MoreVertical, Filter, ChevronDown, Upload, CreditCard, CheckCircle2, Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,8 @@ export default function AdminFoundationCreation() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [foundationToDelete, setFoundationToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [viewingFoundation, setViewingFoundation] = useState(null);
 
     const [formData, setFormData] = useState({
         foundation_name: '',
@@ -568,9 +570,7 @@ export default function AdminFoundationCreation() {
                                                 <td className="px-6 py-4">
                                                     <div className="text-sm font-bold text-gray-900">{foundation.foundation_name}</div>
                                                     {foundation.about_foundation && (
-                                                        <div className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-xs">
-                                                            {foundation.about_foundation}
-                                                        </div>
+                                                        <div className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-xs ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.about_foundation }} />
                                                     )}
 
                                                 </td>
@@ -627,15 +627,20 @@ export default function AdminFoundationCreation() {
                                                         </div>
                                                     )}
                                                     {foundation.mission && (
-                                                        <div className="text-xs text-gray-500 italic line-clamp-2 max-w-xs">
-                                                            "{foundation.mission}"
-                                                        </div>
+                                                        <div className="text-xs text-gray-500 italic line-clamp-2 max-w-xs ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.mission }} />
                                                     )}
                                                 </td>
 
                                                 {/* Actions */}
                                                 <td className="px-6 py-4 whitespace-nowrap text-right">
                                                     <div className="flex items-center justify-end gap-3">
+                                                        <button
+                                                            onClick={() => { setViewingFoundation(foundation); setShowViewModal(true); }}
+                                                            className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1 transition"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                            View
+                                                        </button>
                                                         <button
                                                             onClick={() => handleEdit(foundation)}
                                                             className="text-[#63A6B2] hover:text-[#4d8b96] font-semibold text-sm flex items-center gap-1 transition"
@@ -661,6 +666,114 @@ export default function AdminFoundationCreation() {
                     </div>
                 </div>
             </main>
+
+            {/* View Foundation Modal */}
+            {showViewModal && viewingFoundation && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+                        {/* Cover Image */}
+                        {viewingFoundation.image_cover && (
+                            <div className="h-40 w-full overflow-hidden rounded-t-xl">
+                                <img src={`http://localhost:5000${viewingFoundation.image_cover}`} alt="Cover" className="w-full h-full object-cover" />
+                            </div>
+                        )}
+                        <div className="p-6">
+                            {/* Header */}
+                            <div className="flex items-start gap-4 mb-6">
+                                {viewingFoundation.image_logo ? (
+                                    <img src={`http://localhost:5000${viewingFoundation.image_logo}`} alt="Logo" className="w-16 h-16 rounded-lg object-cover border border-gray-200 shadow-sm flex-shrink-0" />
+                                ) : (
+                                    <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center border border-gray-200 flex-shrink-0">
+                                        <Building2 className="w-8 h-8 text-gray-400" />
+                                    </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-xl font-bold text-gray-900">{viewingFoundation.foundation_name}</h3>
+                                    {viewingFoundation.focus_areas && (
+                                        <p className="text-sm text-[#63A6B2] font-medium mt-1">{viewingFoundation.focus_areas}</p>
+                                    )}
+                                </div>
+                                <button onClick={() => { setShowViewModal(false); setViewingFoundation(null); }} className="text-gray-400 hover:text-gray-600 transition flex-shrink-0">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            {/* About */}
+                            {viewingFoundation.about_foundation && (
+                                <div className="mb-5">
+                                    <h4 className="text-sm font-bold text-gray-700 mb-2">About Foundation</h4>
+                                    <div className="text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.about_foundation }} />
+                                </div>
+                            )}
+
+                            {/* Mission & Vision */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                                {viewingFoundation.mission && (
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-700 mb-2">Mission</h4>
+                                        <div className="text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.mission }} />
+                                    </div>
+                                )}
+                                {viewingFoundation.vision && (
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-700 mb-2">Vision</h4>
+                                        <div className="text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.vision }} />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Contact Info */}
+                            <div className="mb-5 p-4 bg-gray-50 rounded-lg">
+                                <h4 className="text-sm font-bold text-gray-700 mb-3">Contact Information</h4>
+                                <div className="space-y-2">
+                                    {viewingFoundation.foundation_email && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                            <Mail className="w-4 h-4 text-[#63A6B2] flex-shrink-0" />
+                                            <span>{viewingFoundation.foundation_email}</span>
+                                        </div>
+                                    )}
+                                    {viewingFoundation.foundation_contact && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                            <Phone className="w-4 h-4 text-[#63A6B2] flex-shrink-0" />
+                                            <span>{viewingFoundation.foundation_contact}</span>
+                                        </div>
+                                    )}
+                                    {viewingFoundation.foundation_address && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                            <MapPin className="w-4 h-4 text-[#63A6B2] flex-shrink-0" />
+                                            <span>{viewingFoundation.foundation_address}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Bank Info */}
+                            {(viewingFoundation.bank_name || viewingFoundation.bank_information) && (
+                                <div className="mb-5 p-4 bg-gray-50 rounded-lg">
+                                    <h4 className="text-sm font-bold text-gray-700 mb-3">Bank Information</h4>
+                                    {viewingFoundation.bank_name && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                                            <CreditCard className="w-4 h-4 text-[#63A6B2] flex-shrink-0" />
+                                            <span className="font-semibold">{viewingFoundation.bank_name}</span>
+                                        </div>
+                                    )}
+                                    {viewingFoundation.bank_information && (
+                                        <p className="text-sm text-gray-500 ml-6">{viewingFoundation.bank_information}</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Close Button */}
+                            <button
+                                onClick={() => { setShowViewModal(false); setViewingFoundation(null); }}
+                                className="w-full px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
