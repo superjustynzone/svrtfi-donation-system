@@ -28,8 +28,11 @@ const AVATAR_COLORS = [
     'from-emerald-400 to-emerald-600',
 ];
 
-const getInitials = (first = '', last = '') =>
-    `${first[0] || ''}${last[0] || ''}`.toUpperCase();
+const getInitials = (first, last) => {
+    const f = first || '';
+    const l = last || '';
+    return `${f[0] || ''}${l[0] || ''}`.toUpperCase() || '?';
+};
 
 const fmtDate = (iso) => {
     if (!iso) return 'N/A';
@@ -77,7 +80,7 @@ export default function AdminDonors() {
         if (searchTerm) {
             const q = searchTerm.toLowerCase();
             filtered = filtered.filter(d =>
-                `${d.first_name} ${d.last_name}`.toLowerCase().includes(q) ||
+                `${d.first_name || ''} ${d.last_name || ''}`.toLowerCase().includes(q) ||
                 (d.email || '').toLowerCase().includes(q)
             );
         }
@@ -126,7 +129,7 @@ export default function AdminDonors() {
         setDonorHistory([]);
         setHistoryLoading(true);
         try {
-            const res = await fetch(`/api/donations/user/${donor.user_id}`, {
+            const res = await fetch(`/api/donations/donor/${donor.donor_id}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             if (!res.ok) throw new Error();
@@ -138,6 +141,7 @@ export default function AdminDonors() {
             setHistoryLoading(false);
         }
     };
+
 
     // Pagination
     const indexOfLastItem = currentPage * itemsPerPage;
@@ -158,7 +162,7 @@ export default function AdminDonors() {
             autoTable(doc, {
                 head: [["Name", "Email", "Type", "Total Donated", "Donations", "Last Donation"]],
                 body: filteredDonors.map(d => [
-                    `${d.first_name} ${d.last_name}`,
+                    d.first_name || d.last_name ? `${d.first_name || ''} ${d.last_name || ''}`.trim() : 'Anonymous',
                     d.email || 'N/A',
                     d.is_recurring ? 'Recurring' : 'One-time',
                     `PHP ${Number(d.total_donated || 0).toLocaleString()}`,
@@ -290,14 +294,14 @@ export default function AdminDonors() {
                                             const initials = getInitials(donor.first_name, donor.last_name);
                                             const isRecurring = donor.is_recurring === true;
                                             return (
-                                                <tr key={donor.user_id} className="hover:bg-gray-50 transition">
+                                                <tr key={donor.donor_id} className="hover:bg-gray-50 transition">
                                                     <td className="py-4 px-6">
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-sm`}>
-                                                                {initials}
+                                                                {initials || '?'}
                                                             </div>
                                                             <div>
-                                                                <p className="font-semibold text-gray-900">{donor.first_name} {donor.last_name}</p>
+                                                                <p className="font-semibold text-gray-900">{donor.first_name || donor.last_name ? `${donor.first_name || ''} ${donor.last_name || ''}`.trim() : 'Anonymous'}</p>
                                                                 <p className="text-xs text-gray-500">{donor.email || 'No email'}</p>
                                                             </div>
                                                         </div>
@@ -419,7 +423,7 @@ function ViewDonorModal({ donor, history, historyLoading, handleClose, formatCur
                             {initials}
                         </div>
                         <div className="text-center md:text-left flex-1">
-                            <h3 className="text-3xl font-bold mb-2">{donor.first_name} {donor.last_name}</h3>
+                            <h3 className="text-3xl font-bold mb-2">{donor.first_name || donor.last_name ? `${donor.first_name || ''} ${donor.last_name || ''}`.trim() : 'Anonymous'}</h3>
                             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-white/90">
                                 {donor.email && (
                                     <span className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-sm">

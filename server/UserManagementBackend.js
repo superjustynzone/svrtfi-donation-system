@@ -332,4 +332,4 @@ router.post("/users/:id/reset-password", verifyAdmin, async (req, res) => {
     }
 });
 
-module.exports = router;
+module.exports = { router, verifyAdmin };

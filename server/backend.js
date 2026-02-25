@@ -335,7 +335,7 @@ try {
 }
 
 try {
-  const userManagementRoutes = require("./UserManagementBackend");
+  const { router: userManagementRoutes } = require("./UserManagementBackend");
   app.use("/api/admin", userManagementRoutes);
   console.log("✅ User Management routes loaded successfully");
 } catch (error) {

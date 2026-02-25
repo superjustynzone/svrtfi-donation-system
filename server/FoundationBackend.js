@@ -4,6 +4,7 @@ const { Pool } = require("pg");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { verifyAdmin } = require("./UserManagementBackend");
 
 require("dotenv").config();
 
@@ -99,7 +100,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // CREATE FOUNDATION
-router.post("/create", handleUpload, async (req, res) => {
+router.post("/create", verifyAdmin, handleUpload, async (req, res) => {
     try {
         const {
             foundation_name, foundation_address, foundation_contact, foundation_email,
@@ -126,6 +127,14 @@ router.post("/create", handleUpload, async (req, res) => {
         );
 
         const foundationId = result.rows[0].foundation_id;
+
+        // Log audit
+        await req.app.locals.logAudit({
+            userId: req.user.user_id,
+            action: "Foundation: Created",
+            details: `Created foundation: ${foundation_name}`
+        });
+
         res.json({ message: "Foundation created successfully!", foundationId });
 
     } catch (err) {
@@ -144,7 +153,7 @@ router.post("/create", handleUpload, async (req, res) => {
 });
 
 // UPDATE FOUNDATION
-router.put("/update/:id", handleUpload, async (req, res) => {
+router.put("/update/:id", verifyAdmin, handleUpload, async (req, res) => {
     const { id } = req.params;
 
     try {
@@ -210,6 +219,13 @@ router.put("/update/:id", handleUpload, async (req, res) => {
             ]
         );
 
+        // Log audit
+        await req.app.locals.logAudit({
+            userId: req.user.user_id,
+            action: "Foundation: Updated",
+            details: `Updated foundation ID ${id}: ${foundation_name}`
+        });
+
         res.json({ message: "Foundation updated successfully!" });
 
     } catch (err) {
@@ -219,36 +235,41 @@ router.put("/update/:id", handleUpload, async (req, res) => {
 });
 
 // DELETE FOUNDATION
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", verifyAdmin, async (req, res) => {
     const { id } = req.params;
 
     try {
         // Get images to delete
         const foundationRes = await pool.query(
-            "SELECT image_logo, image_cover FROM foundations WHERE foundation_id = $1",
+            "SELECT foundation_name, image_logo, image_cover FROM foundations WHERE foundation_id = $1",
             [id]
         );
 
-        if (foundationRes.rows.length > 0) {
-            const { image_logo, image_cover } = foundationRes.rows[0];
-
-            [image_logo, image_cover].forEach(imgPath => {
-                if (imgPath) {
-                    const relativePath = imgPath.startsWith('/') ? imgPath.substring(1) : imgPath;
-                    const fullPath = path.join(__dirname, relativePath);
-                    if (fs.existsSync(fullPath)) {
-                        try { fs.unlinkSync(fullPath); } catch (e) { console.error("Failed to delete file", e); }
-                    }
-                }
-            });
-        }
-
-        // Delete from foundations
-        const deleteRes = await pool.query("DELETE FROM foundations WHERE foundation_id = $1", [id]);
-
-        if (deleteRes.rowCount === 0) {
+        if (foundationRes.rows.length === 0) {
             return res.status(404).json({ message: "Foundation not found" });
         }
+
+        const { foundation_name, image_logo, image_cover } = foundationRes.rows[0];
+
+        [image_logo, image_cover].forEach(imgPath => {
+            if (imgPath) {
+                const relativePath = imgPath.startsWith('/') ? imgPath.substring(1) : imgPath;
+                const fullPath = path.join(__dirname, relativePath);
+                if (fs.existsSync(fullPath)) {
+                    try { fs.unlinkSync(fullPath); } catch (e) { console.error("Failed to delete file", e); }
+                }
+            }
+        });
+
+        // Delete from foundations
+        await pool.query("DELETE FROM foundations WHERE foundation_id = $1", [id]);
+
+        // Log audit
+        await req.app.locals.logAudit({
+            userId: req.user.user_id,
+            action: "Foundation: Deleted",
+            details: `Deleted foundation: ${foundation_name} (ID: ${id})`
+        });
 
         res.json({ message: "Foundation deleted successfully!" });
 

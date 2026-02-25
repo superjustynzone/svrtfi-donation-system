@@ -131,6 +131,9 @@ export default function AdminFoundationCreation() {
 
             const response = await fetch(url, {
                 method: editingFoundation ? 'PUT' : 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 body: body
             });
 
@@ -184,7 +187,10 @@ export default function AdminFoundationCreation() {
         try {
             setIsLoading(true);
             const response = await fetch(`http://localhost:5000/api/foundations/${foundationToDelete.foundation_id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
             });
 
             if (response.ok) {

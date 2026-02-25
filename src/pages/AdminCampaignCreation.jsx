@@ -154,7 +154,13 @@ export default function AdminCampaignCreation() {
                 body.append('image', selectedImage);
             }
 
-            const response = await fetch(url, { method, body });
+            const response = await fetch(url, {
+                method,
+                body,
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
             const data = await response.json();
 
             if (response.ok) {
@@ -179,7 +185,10 @@ export default function AdminCampaignCreation() {
         try {
             const response = await fetch(`http://localhost:5000/api/campaigns/status/${campaignId}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 body: JSON.stringify({ status: newStatus })
             });
 
@@ -225,6 +234,9 @@ export default function AdminCampaignCreation() {
         try {
             const response = await fetch(`http://localhost:5000/api/campaigns/delete/${campaignToDelete}`, {
                 method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
             });
             const data = await response.json();
             if (response.ok) {
