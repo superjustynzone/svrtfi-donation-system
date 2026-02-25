@@ -1019,17 +1019,7 @@ function UserFormModal({ title, formData, handleFormChange, handleSubmit, handle
                                     placeholder="0917-123-4567"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">{isEdit ? 'User ID' : 'User ID (Auto-generated)'}</label>
-                                <input
-                                    type="text"
-                                    name="employeeId"
-                                    value={isEdit ? formData.employeeId : 'Auto-generated'}
-                                    readOnly
-                                    disabled
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed focus:outline-none"
-                                />
-                            </div>
+
                         </div>
                     </div>
 

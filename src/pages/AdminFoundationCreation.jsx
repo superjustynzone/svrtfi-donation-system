@@ -8,6 +8,8 @@ import {
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 export default function AdminFoundationCreation() {
     const navigate = useNavigate();
@@ -31,8 +33,6 @@ export default function AdminFoundationCreation() {
         foundation_email: '',
         bank_name: '',
         bank_information: '',
-        beneficiaries: '',
-        established: '',
         focus_areas: '',
         about_foundation: '',
         mission: '',
@@ -88,8 +88,6 @@ export default function AdminFoundationCreation() {
             foundation_email: '',
             bank_name: '',
             bank_information: '',
-            beneficiaries: '',
-            established: '',
             focus_areas: '',
             about_foundation: '',
             mission: '',
@@ -159,8 +157,6 @@ export default function AdminFoundationCreation() {
             foundation_email: foundation.foundation_email || '',
             bank_name: foundation.bank_name || '',
             bank_information: foundation.bank_information || '',
-            beneficiaries: foundation.beneficiaries || '',
-            established: foundation.established || '',
             focus_areas: foundation.focus_areas || '',
             about_foundation: foundation.about_foundation || '',
             mission: foundation.mission || '',
@@ -321,43 +317,13 @@ export default function AdminFoundationCreation() {
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 About Foundation
                                             </label>
-                                            <textarea
-                                                name="about_foundation"
+                                            <ReactQuill
+                                                theme="snow"
                                                 value={formData.about_foundation}
-                                                onChange={handleChange}
-                                                rows="3"
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                onChange={(value) => setFormData({ ...formData, about_foundation: value })}
                                                 placeholder="Brief description about the foundation"
+                                                style={{ borderRadius: '0.5rem', overflow: 'hidden' }}
                                             />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    Established
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="established"
-                                                    value={formData.established}
-                                                    onChange={handleChange}
-                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                                    placeholder="e.g. 1995"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    Beneficiaries
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="beneficiaries"
-                                                    value={formData.beneficiaries}
-                                                    onChange={handleChange}
-                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                                    placeholder="e.g. Children, Elderly"
-                                                />
-                                            </div>
                                         </div>
 
                                         <div>
@@ -378,13 +344,12 @@ export default function AdminFoundationCreation() {
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 Mission
                                             </label>
-                                            <textarea
-                                                name="mission"
+                                            <ReactQuill
+                                                theme="snow"
                                                 value={formData.mission}
-                                                onChange={handleChange}
-                                                rows="2"
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                onChange={(value) => setFormData({ ...formData, mission: value })}
                                                 placeholder="Mission statement"
+                                                style={{ borderRadius: '0.5rem', overflow: 'hidden' }}
                                             />
                                         </div>
 
@@ -392,13 +357,12 @@ export default function AdminFoundationCreation() {
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 Vision
                                             </label>
-                                            <textarea
-                                                name="vision"
+                                            <ReactQuill
+                                                theme="snow"
                                                 value={formData.vision}
-                                                onChange={handleChange}
-                                                rows="2"
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                                onChange={(value) => setFormData({ ...formData, vision: value })}
                                                 placeholder="Vision statement"
+                                                style={{ borderRadius: '0.5rem', overflow: 'hidden' }}
                                             />
                                         </div>
                                     </div>
@@ -608,11 +572,7 @@ export default function AdminFoundationCreation() {
                                                             {foundation.about_foundation}
                                                         </div>
                                                     )}
-                                                    {foundation.established && (
-                                                        <div className="text-xs text-gray-400 mt-1">
-                                                            Est. {foundation.established}
-                                                        </div>
-                                                    )}
+
                                                 </td>
 
                                                 {/* Contact Info */}

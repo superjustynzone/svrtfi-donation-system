@@ -67,8 +67,7 @@ router.get("/all", async (req, res) => {
                 foundation_id, foundation_name, foundation_address, 
                 foundation_contact, foundation_email,
                 bank_name, bank_information,
-                image_logo, image_cover, beneficiaries, 
-                established, focus_areas, about_foundation, 
+                image_logo, image_cover, focus_areas, about_foundation, 
                 mission, vision, created_at, updated_at
             FROM foundations
             ORDER BY foundation_name
@@ -105,7 +104,7 @@ router.post("/create", handleUpload, async (req, res) => {
         const {
             foundation_name, foundation_address, foundation_contact, foundation_email,
             bank_name, bank_information,
-            beneficiaries, established, focus_areas, about_foundation, mission, vision
+            focus_areas, about_foundation, mission, vision
         } = req.body;
 
         // Note: Files are in req.files['logo'][0] and req.files['cover'][0]
@@ -116,15 +115,13 @@ router.post("/create", handleUpload, async (req, res) => {
             `INSERT INTO foundations (
                 foundation_name, foundation_address, foundation_contact, foundation_email,
                 bank_name, bank_information,
-                image_logo, image_cover, beneficiaries, 
-                established, focus_areas, about_foundation, mission, vision
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+                image_logo, image_cover, focus_areas, about_foundation, mission, vision
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
             RETURNING foundation_id`,
             [
                 foundation_name, foundation_address, foundation_contact, foundation_email,
                 bank_name, bank_information,
-                image_logo, image_cover, beneficiaries,
-                established, focus_areas, about_foundation, mission, vision
+                image_logo, image_cover, focus_areas, about_foundation, mission, vision
             ]
         );
 
@@ -154,7 +151,7 @@ router.put("/update/:id", handleUpload, async (req, res) => {
         const {
             foundation_name, foundation_address, foundation_contact, foundation_email,
             bank_name, bank_information,
-            beneficiaries, established, focus_areas, about_foundation, mission, vision
+            focus_areas, about_foundation, mission, vision
         } = req.body;
 
         // Get existing images to handle replacement/cleanup
@@ -201,15 +198,14 @@ router.put("/update/:id", handleUpload, async (req, res) => {
                 foundation_name = $1, foundation_address = $2, 
                 foundation_contact = $3, foundation_email = $4,
                 bank_name = $5, bank_information = $6,
-                image_logo = $7, image_cover = $8, beneficiaries = $9, 
-                established = $10, focus_areas = $11, about_foundation = $12, 
-                mission = $13, vision = $14, updated_at = NOW()
-            WHERE foundation_id = $15`,
+                image_logo = $7, image_cover = $8, focus_areas = $9, 
+                about_foundation = $10, mission = $11, vision = $12, 
+                updated_at = NOW()
+            WHERE foundation_id = $13`,
             [
                 foundation_name, foundation_address, foundation_contact, foundation_email,
                 bank_name, bank_information,
-                image_logo, image_cover, beneficiaries,
-                established, focus_areas, about_foundation,
+                image_logo, image_cover, focus_areas, about_foundation,
                 mission, vision, id
             ]
         );

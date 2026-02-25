@@ -9,6 +9,8 @@ import {
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 export default function AdminCampaignCreation() {
     const navigate = useNavigate();
@@ -415,11 +417,12 @@ export default function AdminCampaignCreation() {
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
-                                    <textarea
-                                        name="campaign_description" value={formData.campaign_description} onChange={handleChange}
-                                        rows="4"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={formData.campaign_description}
+                                        onChange={(value) => setFormData({ ...formData, campaign_description: value })}
                                         placeholder="Enter campaign description"
+                                        style={{ borderRadius: '0.5rem', overflow: 'hidden' }}
                                     />
                                 </div>
 
