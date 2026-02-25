@@ -10,32 +10,23 @@ import Footer from '../components/Footer';
 
 export default function Homepage() {
   const [countersVisible, setCountersVisible] = useState(false);
+  const [featuredCampaigns, setFeaturedCampaigns] = useState([]);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const campaigns = [
-    {
-      id: 1,
-      title: 'Care Beyond Age',
-      image: 'https://images.unsplash.com/photo-1566616213894-2d4e1baee5d8?w=800&h=600&fit=crop',
-      raised: 200000,
-      goal: 500000
-    },
-    {
-      id: 2,
-      title: 'Medical Mission',
-      image: 'https://images.unsplash.com/photo-1576765608622-067973a79f53?w=800&h=600&fit=crop',
-      raised: 300000,
-      goal: 500000
-    },
-    {
-      id: 3,
-      title: 'Born to Bloom',
-      image: 'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=800&h=600&fit=crop',
-      raised: 200000,
-      goal: 500000
-    }
-  ];
+  useEffect(() => {
+    fetch('http://localhost:5000/api/campaigns/published')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          // Prefer featured campaigns; fall back to most recent
+          const featured = data.filter(c => c.is_featured);
+          const toShow = featured.length >= 3 ? featured.slice(0, 3) : data.slice(0, 3);
+          setFeaturedCampaigns(toShow);
+        }
+      })
+      .catch(err => console.error('Failed to load featured campaigns:', err));
+  }, []);
 
   const impactStats = [
     { number: 5000, label: 'Lives Touched', suffix: '+' },
@@ -139,7 +130,7 @@ export default function Homepage() {
       {/* Hero Section */}
       <div className="pt-16 relative overflow-visible">
         <div
-          className="relative h-[850px] md:h-[950px] flex items-center justify-center"
+          className="relative h-[550px] md:h-[600px] flex items-center justify-center"
           style={{
             backgroundImage: 'url(https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1600&h=800&fit=crop)',
             backgroundSize: 'cover',
@@ -150,70 +141,90 @@ export default function Homepage() {
           <div className="absolute inset-0 bg-[#63A6B2]/70"></div>
 
           {/* Content */}
-          <div className="relative z-10 text-center px-4 max-w-full mx-auto -mt-20">
-            <h1 className="text-3xl md:text-7xl lg:text-8xl font-bold text-white mb-6 leading-tight whitespace-nowrap">
+          <div className="relative z-10 text-center px-4 max-w-full mx-auto -mt-10">
+            <h1 className="text-3xl md:text-6xl lg:text-7xl font-bold text-white mb-4 leading-tight whitespace-nowrap">
               Let us Bless the World Together
             </h1>
-            <p className="text-base md:text-lg text-white/90 max-w-3xl mx-auto leading-relaxed italic font-light">
+            <p className="text-base md:text-lg text-white/90 max-w-3xl mx-auto leading-relaxed italic font-light mb-8">
               When you give, you don't just give money. You don't just give the resources needed to
               support our ministries. You don't just provide for our beneficiaries.<br />
               You give them HOPE.
             </p>
+            {/* Donate Now CTA */}
+            <div className="flex items-center justify-center">
+              <button
+                onClick={() => navigate('/campaigns')}
+                className="px-12 py-4 bg-white text-[#63A6B2] font-bold text-lg rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300"
+              >
+                Donate Now
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Campaigns Section - Overlapping */}
-      <div className="relative -mt-40 z-20">
+      <div className="relative -mt-24 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {campaigns.map((campaign, index) => (
+            {featuredCampaigns.map((campaign, index) => (
               <div
-                key={campaign.id}
-                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group"
-                style={{
-                  animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both`
-                }}
+                key={campaign.campaign_id}
+                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer"
+                style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` }}
+                onClick={() => navigate(`/campaigns/${campaign.campaign_id}`)}
               >
                 {/* Campaign Image */}
                 <div className="relative h-64 overflow-hidden">
-                  <img
-                    src={campaign.image}
-                    alt={campaign.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
+                  {campaign.file_url ? (
+                    <img
+                      src={`http://localhost:5000${campaign.file_url}`}
+                      alt={campaign.campaign_name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-[#63A6B2]/30 to-[#4a8a95]/30 flex items-center justify-center">
+                      <svg className="w-16 h-16 text-[#63A6B2]/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                  {campaign.is_featured && (
+                    <div className="absolute top-3 left-3">
+                      <span className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold shadow">⭐ Featured</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Campaign Info */}
                 <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">
-                    {campaign.title}
+                  <h3 className="text-xl font-bold text-gray-900 mb-1 line-clamp-1">
+                    {campaign.campaign_name}
                   </h3>
+                  {campaign.foundation_name && (
+                    <p className="text-xs text-[#63A6B2] font-medium mb-3">{campaign.foundation_name}</p>
+                  )}
 
                   {/* Progress Bar */}
                   <div className="mb-4">
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-[#63A6B2] font-semibold">
-                        {formatCurrency(campaign.raised)}
-                      </span>
-                      <span className="text-gray-600">
-                        {formatCurrency(campaign.goal)}
-                      </span>
+                      <span className="text-[#63A6B2] font-semibold">{formatCurrency(campaign.current_amount || 0)}</span>
+                      <span className="text-gray-600">{formatCurrency(campaign.goal_amount)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                       <div
                         className="bg-[#63A6B2] h-full rounded-full transition-all duration-1000"
-                        style={{
-                          width: `${calculateProgress(campaign.raised, campaign.goal)}%`,
-                          animation: `progressBar 1.5s ease-out ${index * 0.2}s both`
-                        }}
-                      ></div>
+                        style={{ width: `${calculateProgress(campaign.current_amount || 0, campaign.goal_amount)}%` }}
+                      />
                     </div>
                   </div>
 
                   {/* Donate Button */}
-                  <button className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white py-3 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg">
+                  <button
+                    onClick={e => { e.stopPropagation(); navigate(`/campaigns/${campaign.campaign_id}`); }}
+                    className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white py-3 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg"
+                  >
                     Donate
                   </button>
                 </div>
@@ -223,7 +234,10 @@ export default function Homepage() {
 
           {/* View All Campaigns Button */}
           <div className="text-center mt-12">
-            <button className="px-8 py-3 border-2 border-[#63A6B2] text-[#63A6B2] hover:bg-[#63A6B2] hover:text-white rounded-full font-semibold transition-all duration-300">
+            <button
+              onClick={() => navigate('/campaigns')}
+              className="px-8 py-3 border-2 border-[#63A6B2] text-[#63A6B2] hover:bg-[#63A6B2] hover:text-white rounded-full font-semibold transition-all duration-300"
+            >
               View all campaigns
             </button>
           </div>

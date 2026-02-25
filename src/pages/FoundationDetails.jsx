@@ -9,11 +9,13 @@ export default function FoundationDetails() {
     const navigate = useNavigate();
     const [foundation, setFoundation] = useState(null);
     const [otherFoundations, setOtherFoundations] = useState([]);
+    const [featuredCampaign, setFeaturedCampaign] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         fetchFoundationDetails();
         fetchOtherFoundations();
+        fetchFeaturedCampaign();
     }, [id]);
 
     const fetchFoundationDetails = async () => {
@@ -50,6 +52,22 @@ export default function FoundationDetails() {
         } catch (error) {
             console.error('Error fetching other foundations:', error);
             useMockOtherFoundations();
+        }
+    };
+
+    const fetchFeaturedCampaign = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/campaigns/all');
+            if (response.ok) {
+                const data = await response.json();
+                // Find a featured campaign linked to this foundation
+                const featured = data.find(c => c.foundation_id === parseInt(id) && c.is_featured);
+                // Fallback: first campaign linked to this foundation
+                const fallback = data.find(c => c.foundation_id === parseInt(id));
+                setFeaturedCampaign(featured || fallback || null);
+            }
+        } catch (error) {
+            console.error('Error fetching featured campaign:', error);
         }
     };
 
@@ -140,28 +158,61 @@ export default function FoundationDetails() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column - Main Info */}
                     <div className="lg:col-span-2 space-y-8">
-                        {/* Stats Cards */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                                <p className="text-3xl font-bold text-[#63A6B2] mb-1">{foundation.beneficiaries}</p>
-                                <p className="text-sm text-gray-600">Beneficiaries</p>
-                            </div>
-                            <div className="bg-pink-50 rounded-xl p-4 border border-pink-200">
-                                <p className="text-3xl font-bold text-pink-600 mb-1">{foundation.established}</p>
-                                <p className="text-sm text-gray-600">Established</p>
-                            </div>
-                            <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
-                                <p className="text-3xl font-bold text-yellow-600 mb-1">{(foundation.focus_areas || []).length}</p>
-                                <p className="text-sm text-gray-600">Focus Areas</p>
-                            </div>
-                            <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                                    <p className="text-lg font-bold text-green-600">{foundation.status}</p>
+                        {/* Featured Campaign Card (Left Column) */}
+                        {featuredCampaign ? (
+                            <div
+                                onClick={() => navigate(`/campaigns/${featuredCampaign.campaign_id}`)}
+                                className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 cursor-pointer group"
+                            >
+                                {/* Header */}
+                                <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] px-6 py-3 flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <span className="text-white font-bold text-sm tracking-wide">FEATURED CAMPAIGN</span>
                                 </div>
-                                <p className="text-sm text-gray-600">Status</p>
+                                {/* Banner Image */}
+                                <div className="relative h-44 overflow-hidden">
+                                    <img
+                                        src={featuredCampaign.file_url ? `http://localhost:5000${featuredCampaign.file_url}` : 'https://via.placeholder.com/800x300/63A6B2/FFFFFF?text=Campaign'}
+                                        alt={featuredCampaign.campaign_name}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                    <div className="absolute bottom-4 left-6 right-6">
+                                        <h4 className="text-white font-bold text-lg line-clamp-1 drop-shadow">{featuredCampaign.campaign_name}</h4>
+                                    </div>
+                                </div>
+                                {/* Campaign Info */}
+                                <div className="p-6">
+                                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{featuredCampaign.campaign_description || 'Support this campaign and make a difference.'}</p>
+                                    {featuredCampaign.goal_amount && (
+                                        <div>
+                                            <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                                <span className="font-medium">₱{Number(featuredCampaign.current_amount || 0).toLocaleString()} raised</span>
+                                                <span>Goal: ₱{Number(featuredCampaign.goal_amount).toLocaleString()}</span>
+                                            </div>
+                                            <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] rounded-full transition-all duration-500"
+                                                    style={{ width: `${Math.min(100, ((featuredCampaign.current_amount || 0) / featuredCampaign.goal_amount) * 100)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="mt-4 flex items-center gap-1 text-[#63A6B2] text-sm font-semibold">
+                                        <span>View Campaign</span>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-300 flex items-center justify-center h-32">
+                                <p className="text-gray-400 text-sm">No featured campaign at the moment</p>
+                            </div>
+                        )}
 
                         {/* About Section */}
                         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
@@ -215,46 +266,41 @@ export default function FoundationDetails() {
                         {/* Contact Information */}
                         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
                             <h3 className="text-xl font-bold text-gray-900 mb-6">Contact Information</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="flex items-start gap-3">
-                                    <svg className="w-5 h-5 text-blue-500 mt-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                                    </svg>
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-700 mb-1">Location</p>
-                                        <p className="text-sm text-gray-600">{foundation.address}</p>
+                            <div className="flex flex-col gap-5">
+                                {foundation.foundation_address && (
+                                    <div className="flex items-start gap-3">
+                                        <svg className="w-5 h-5 text-blue-500 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                        </svg>
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-700 mb-1">Location</p>
+                                            <p className="text-sm text-gray-600">{foundation.foundation_address}</p>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <svg className="w-5 h-5 text-green-500 mt-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                                    </svg>
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-700 mb-1">Phone</p>
-                                        <a href={`tel:${foundation.phone}`} className="text-sm text-[#63A6B2] hover:underline">{foundation.phone}</a>
+                                )}
+                                {foundation.foundation_email && (
+                                    <div className="flex items-start gap-3">
+                                        <svg className="w-5 h-5 text-purple-500 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                        </svg>
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-700 mb-1">Email</p>
+                                            <a href={`mailto:${foundation.foundation_email}`} className="text-sm text-[#63A6B2] hover:underline">{foundation.foundation_email}</a>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <svg className="w-5 h-5 text-purple-500 mt-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                                    </svg>
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-700 mb-1">Email</p>
-                                        <a href={`mailto:${foundation.email}`} className="text-sm text-[#63A6B2] hover:underline">{foundation.email}</a>
+                                )}
+                                {foundation.foundation_contact && (
+                                    <div className="flex items-start gap-3">
+                                        <svg className="w-5 h-5 text-green-500 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                        </svg>
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-700 mb-1">Phone</p>
+                                            <a href={`tel:${foundation.foundation_contact}`} className="text-sm text-[#63A6B2] hover:underline">{foundation.foundation_contact}</a>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <svg className="w-5 h-5 text-orange-500 mt-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.56-.5-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.56.5.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.498-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.147.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.03 11H4.083a6.004 6.004 0 002.783 4.118z" clipRule="evenodd" />
-                                    </svg>
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-700 mb-1">Website</p>
-                                        <a href={`https://${foundation.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-[#63A6B2] hover:underline">
-                                            {foundation.website}
-                                        </a>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -263,18 +309,82 @@ export default function FoundationDetails() {
                     <div className="space-y-6">
                         {/* Foundation Logo Card */}
                         <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
-                            <div className="h-72 w-full bg-gradient-to-br from-[#63A6B2] to-[#4a8a95]">
+                            <div className="h-72 w-full bg-white flex items-center justify-center p-4">
                                 <img
                                     src={foundation.image_logo ? `http://localhost:5000${foundation.image_logo}` : 'https://via.placeholder.com/300/63A6B2/FFFFFF?text=Logo'}
                                     alt={`${foundation.foundation_name} logo`}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-contain"
                                 />
+                            </div>
+                        </div>
+
+
+
+                        {/* Bank Details Card */}
+                        <div className="rounded-2xl shadow-lg overflow-hidden border border-[#63A6B2]/20">
+                            {/* Header - matches teal theme */}
+                            <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] px-5 py-3 flex items-center gap-2">
+                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-white font-bold text-sm tracking-wide">BANK DETAILS</span>
+                            </div>
+                            {/* Bank Name Section */}
+                            <div className="bg-[#63A6B2]/10 px-5 py-4 border-b border-[#63A6B2]/20">
+                                <p className="text-xs font-bold text-[#4a8a95] uppercase tracking-wider mb-1">Bank Name</p>
+                                <p className="text-sm font-semibold text-gray-800 leading-snug">
+                                    {foundation.bank_name || foundation.foundation_name}
+                                </p>
+                            </div>
+                            {/* Bank Details Section */}
+                            <div className="bg-white px-5 py-4">
+                                <p className="text-xs font-bold text-[#4a8a95] uppercase tracking-wider mb-3">Bank Details</p>
+                                <div className="space-y-2">
+                                    {/* Current Account */}
+                                    <div className="flex items-center justify-between group">
+                                        <p className="text-sm text-gray-700 font-medium">
+                                            {foundation.bank_ca_label || 'Banco De Oro C/A'}{' '}
+                                            <span className="font-bold text-gray-900"># {foundation.bank_ca_number || '3970019804'}</span>
+                                        </p>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(foundation.bank_ca_number || '3970019804');
+                                                toast.success('Account number copied!');
+                                            }}
+                                            className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-[#63A6B2] hover:text-[#4a8a95]"
+                                            title="Copy"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    {/* Savings Account */}
+                                    <div className="flex items-center justify-between group">
+                                        <p className="text-sm text-gray-700 font-medium">
+                                            {foundation.bank_sa_label || 'Banco De Oro S/A'}{' '}
+                                            <span className="font-bold text-gray-900"># {foundation.bank_sa_number || '160506123'}</span>
+                                        </p>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(foundation.bank_sa_number || '160506123');
+                                                toast.success('Account number copied!');
+                                            }}
+                                            className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-[#63A6B2] hover:text-[#4a8a95]"
+                                            title="Copy"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         {/* Donate Button */}
                         <button
-                            onClick={() => toast.info('Donation feature coming soon!')}
+                            onClick={() => featuredCampaign ? navigate(`/campaigns/${featuredCampaign.campaign_id}`) : toast.info('No active campaign at the moment.')}
                             className="w-full bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all"
                         >
                             Donate Now

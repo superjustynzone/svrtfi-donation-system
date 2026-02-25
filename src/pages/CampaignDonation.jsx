@@ -12,6 +12,11 @@ export default function CampaignDonation() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+
+    // Detect logged-in user
+    const loggedInUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
+    const isLoggedIn = !!(loggedInUser && loggedInUser.user_id);
 
     // Form data state
     const [donationData, setDonationData] = useState({
@@ -82,7 +87,8 @@ export default function CampaignDonation() {
             toast.error('Please enter a valid donation amount');
             return false;
         }
-        if (!donationData.isAnonymous) {
+        // Only validate personal info for guests (not logged-in users)
+        if (!isLoggedIn && !donationData.isAnonymous) {
             if (!donationData.fullName.trim()) {
                 toast.error('Please enter your full name');
                 return false;
@@ -99,6 +105,10 @@ export default function CampaignDonation() {
                 toast.error('Please enter your phone number');
                 return false;
             }
+        }
+        if (!agreedToPrivacy) {
+            toast.error('Please agree to the Data Privacy Policy and Terms & Conditions to proceed');
+            return false;
         }
         return true;
     };
@@ -308,22 +318,24 @@ export default function CampaignDonation() {
                                 </div>
                             </div>
 
-                            {/* Anonymous Checkbox */}
-                            <div className="flex items-center gap-3 p-5 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200">
-                                <input
-                                    type="checkbox"
-                                    id="anonymous"
-                                    checked={donationData.isAnonymous}
-                                    onChange={(e) => handleInputChange('isAnonymous', e.target.checked)}
-                                    className="w-5 h-5 text-[#63A6B2] rounded focus:ring-[#63A6B2] cursor-pointer"
-                                />
-                                <label htmlFor="anonymous" className="text-sm font-semibold text-gray-700 cursor-pointer flex-1">
-                                    Make this donation anonymous (your name will not be shown publicly)
-                                </label>
-                            </div>
+                            {/* Anonymous Checkbox — guests only */}
+                            {!isLoggedIn && (
+                                <div className="flex items-center gap-3 p-5 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200">
+                                    <input
+                                        type="checkbox"
+                                        id="anonymous"
+                                        checked={donationData.isAnonymous}
+                                        onChange={(e) => handleInputChange('isAnonymous', e.target.checked)}
+                                        className="w-5 h-5 text-[#63A6B2] rounded focus:ring-[#63A6B2] cursor-pointer"
+                                    />
+                                    <label htmlFor="anonymous" className="text-sm font-semibold text-gray-700 cursor-pointer flex-1">
+                                        Make this donation anonymous (your name will not be shown publicly)
+                                    </label>
+                                </div>
+                            )}
 
-                            {/* Donor Details */}
-                            {!donationData.isAnonymous && (
+                            {/* Donor Details — guests only, and not anonymous */}
+                            {!isLoggedIn && !donationData.isAnonymous && (
                                 <div className="space-y-4 pt-6 border-t-2 border-gray-200">
                                     <h3 className="text-lg font-bold text-gray-900 mb-4">Your Information</h3>
                                     <div>
@@ -359,6 +371,21 @@ export default function CampaignDonation() {
                                 </div>
                             )}
 
+                            {/* Logged-in user info banner */}
+                            {isLoggedIn && (
+                                <div className="flex items-center gap-4 p-5 bg-teal-50 border-2 border-[#63A6B2] rounded-xl">
+                                    <div className="w-10 h-10 rounded-full bg-[#63A6B2] flex items-center justify-center flex-shrink-0">
+                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-gray-900 text-sm">{loggedInUser?.first_name} {loggedInUser?.last_name}</p>
+                                        <p className="text-xs text-gray-500">{loggedInUser?.email} · Donating as yourself</p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Optional Message */}
                             <div className="pt-6 border-t-2 border-gray-200">
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Message (Optional)</label>
@@ -373,9 +400,34 @@ export default function CampaignDonation() {
                                 <p className="text-xs text-gray-500 mt-1 text-right">{donationData.message.length}/500 characters</p>
                             </div>
 
+                            {/* Data Privacy Checkbox */}
+                            <div className={`flex items-start gap-3 p-5 rounded-xl border-2 transition-all ${agreedToPrivacy
+                                    ? 'bg-teal-50 border-[#63A6B2]'
+                                    : 'bg-gray-50 border-gray-200'
+                                }`}>
+                                <input
+                                    type="checkbox"
+                                    id="privacy"
+                                    checked={agreedToPrivacy}
+                                    onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+                                    className="w-5 h-5 mt-0.5 text-[#63A6B2] rounded focus:ring-[#63A6B2] cursor-pointer flex-shrink-0"
+                                />
+                                <label htmlFor="privacy" className="text-sm text-gray-700 cursor-pointer leading-relaxed">
+                                    I agree to the{' '}
+                                    <span className="font-bold text-[#63A6B2] hover:underline cursor-pointer">Data Privacy Policy</span>
+                                    {' '}and{' '}
+                                    <span className="font-bold text-[#63A6B2] hover:underline cursor-pointer">Terms and Conditions</span>
+                                    {' '}of SVRTV Donation. My personal information will be used solely for donation processing and official receipting.
+                                </label>
+                            </div>
+
                             <button
                                 onClick={handleNext}
-                                className="w-full bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl transition-all transform hover:scale-105 mt-6"
+                                disabled={!agreedToPrivacy}
+                                className={`w-full py-4 rounded-xl font-bold text-lg transition-all mt-2 ${agreedToPrivacy
+                                        ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white hover:shadow-2xl transform hover:scale-105 cursor-pointer'
+                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                    }`}
                             >
                                 Continue to Payment →
                             </button>

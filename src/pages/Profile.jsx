@@ -233,34 +233,42 @@ export default function Profile() {
     const [userData, setUserData] = useState(() => {
         try {
             const storedUser = JSON.parse(localStorage.getItem('user'));
-            if (!storedUser) return {
-                firstName: "", lastName: "", email: "", phone: "", address: "",
+            const empty = {
+                firstName: "", lastName: "", email: "", phone: "",
+                address1: "", address2: "", barangay: "", province: "", city: "",
+                country: "Philippines", zipCode: "", tinNumber: "",
                 memberSince: "", totalDonations: 0, totalAmount: 0, lastDonation: "",
-                province: "", city: "", zipCode: "", tinNumber: "", profileImage: null
+                profileImage: null
             };
+            if (!storedUser) return empty;
 
             return {
                 firstName: storedUser.firstName || storedUser.first_name || "",
                 lastName: storedUser.lastName || storedUser.last_name || "",
                 email: storedUser.email || "",
                 phone: storedUser.phone || storedUser.contact_number || "",
-                address: storedUser.address || "",
+                address1: storedUser.address1 || storedUser.address || "",
+                address2: storedUser.address2 || "",
+                barangay: storedUser.barangay || "",
+                province: storedUser.province || "",
+                city: storedUser.city || "",
+                country: storedUser.country || "Philippines",
+                zipCode: storedUser.zipCode || "",
+                tinNumber: storedUser.tinNumber || "",
                 memberSince: storedUser.memberSince || "",
                 totalDonations: storedUser.totalDonations || 0,
                 totalAmount: storedUser.totalAmount || 0,
                 lastDonation: storedUser.lastDonation || "",
-                province: storedUser.province || "",
-                city: storedUser.city || "",
-                zipCode: storedUser.zipCode || "",
-                tinNumber: storedUser.tinNumber || "",
                 profileImage: storedUser.profileImage || storedUser.profile_image || null
             };
         } catch (e) {
             console.error("Error initializing profile data:", e);
             return {
-                firstName: "", lastName: "", email: "", phone: "", address: "",
+                firstName: "", lastName: "", email: "", phone: "",
+                address1: "", address2: "", barangay: "", province: "", city: "",
+                country: "Philippines", zipCode: "", tinNumber: "",
                 memberSince: "", totalDonations: 0, totalAmount: 0, lastDonation: "",
-                province: "", city: "", zipCode: "", tinNumber: "", profileImage: null
+                profileImage: null
             };
         }
     });
@@ -538,16 +546,38 @@ export default function Profile() {
                                             </div>
                                             {isEditMode && <p className="text-xs text-gray-500 mt-1">10 digits (e.g., 9123456789)</p>}
                                         </div>
+                                        {/* ── Address Section ── */}
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Address Line 1 <span className="text-gray-400 font-normal">(House/Unit No., Street)</span></label>
                                             <input
                                                 type="text"
-                                                value={isEditMode ? editedData.address : userData.address}
-                                                onChange={(e) => handleInputChange('address', e.target.value)}
+                                                value={isEditMode ? editedData.address1 : userData.address1}
+                                                onChange={(e) => handleInputChange('address1', e.target.value)}
                                                 readOnly={!isEditMode}
-                                                placeholder="Street address"
-                                                className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 ${isEditMode ? 'bg-white border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2] focus:outline-none' : 'bg-gray-50 border-gray-200'
-                                                    }`}
+                                                placeholder="e.g. 123 Rizal Street"
+                                                className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 ${isEditMode ? 'bg-white border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2] focus:outline-none' : 'bg-gray-50 border-gray-200'}`}
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Address Line 2 <span className="text-gray-400 font-normal">(Subdivision, Building, Floor — optional)</span></label>
+                                            <input
+                                                type="text"
+                                                value={isEditMode ? editedData.address2 : userData.address2}
+                                                onChange={(e) => handleInputChange('address2', e.target.value)}
+                                                readOnly={!isEditMode}
+                                                placeholder="e.g. Green Park Village"
+                                                className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 ${isEditMode ? 'bg-white border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2] focus:outline-none' : 'bg-gray-50 border-gray-200'}`}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
+                                            <input
+                                                type="text"
+                                                value={isEditMode ? editedData.barangay : userData.barangay}
+                                                onChange={(e) => handleInputChange('barangay', e.target.value)}
+                                                readOnly={!isEditMode}
+                                                placeholder="e.g. Barangay Kapasigan"
+                                                className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 ${isEditMode ? 'bg-white border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2] focus:outline-none' : 'bg-gray-50 border-gray-200'}`}
                                             />
                                         </div>
                                         <div>
@@ -561,58 +591,47 @@ export default function Profile() {
                                                     >
                                                         <option value="">Select Province</option>
                                                         {provinces.map((province) => (
-                                                            <option key={province} value={province}>
-                                                                {province}
-                                                            </option>
+                                                            <option key={province} value={province}>{province}</option>
                                                         ))}
                                                     </select>
                                                     <ChevronDown className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
                                                 </div>
                                             ) : (
-                                                <input
-                                                    type="text"
-                                                    value={userData.province}
-                                                    readOnly
-                                                    className="w-full px-4 py-2.5 border rounded-lg text-gray-900 bg-gray-50 border-gray-200"
-                                                />
+                                                <input type="text" value={userData.province} readOnly className="w-full px-4 py-2.5 border rounded-lg text-gray-900 bg-gray-50 border-gray-200" />
                                             )}
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">City / Municipality</label>
                                             {isEditMode ? (
                                                 <div className="relative">
                                                     <select
                                                         value={editedData.city || ''}
                                                         onChange={(e) => handleInputChange('city', e.target.value)}
                                                         disabled={!editedData.province}
-                                                        className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-[#63A6B2] focus:outline-none appearance-none ${!editedData.province
-                                                            ? 'cursor-not-allowed bg-gray-100 border-gray-300'
-                                                            : 'cursor-pointer border-[#63A6B2]'
-                                                            }`}
+                                                        className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-[#63A6B2] focus:outline-none appearance-none ${!editedData.province ? 'cursor-not-allowed bg-gray-100 border-gray-300' : 'cursor-pointer border-[#63A6B2]'}`}
                                                     >
-                                                        <option value="">
-                                                            {!editedData.province ? 'Select Province First' : 'Select City'}
-                                                        </option>
+                                                        <option value="">{!editedData.province ? 'Select Province First' : 'Select City'}</option>
                                                         {editedData.province && citiesByProvince[editedData.province]?.map((city) => (
-                                                            <option key={city} value={city}>
-                                                                {city}
-                                                            </option>
+                                                            <option key={city} value={city}>{city}</option>
                                                         ))}
                                                     </select>
-                                                    <ChevronDown className={`w-5 h-5 absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none ${!editedData.province ? 'text-gray-300' : 'text-gray-400'
-                                                        }`} />
+                                                    <ChevronDown className={`w-5 h-5 absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none ${!editedData.province ? 'text-gray-300' : 'text-gray-400'}`} />
                                                 </div>
                                             ) : (
-                                                <input
-                                                    type="text"
-                                                    value={userData.city}
-                                                    readOnly
-                                                    className="w-full px-4 py-2.5 border rounded-lg text-gray-900 bg-gray-50 border-gray-200"
-                                                />
+                                                <input type="text" value={userData.city} readOnly className="w-full px-4 py-2.5 border rounded-lg text-gray-900 bg-gray-50 border-gray-200" />
                                             )}
-                                            {isEditMode && !editedData.province && (
-                                                <p className="text-xs text-gray-500 mt-1">Please select a province first</p>
-                                            )}
+                                            {isEditMode && !editedData.province && <p className="text-xs text-gray-500 mt-1">Please select a province first</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                                            <input
+                                                type="text"
+                                                value={isEditMode ? editedData.country : userData.country}
+                                                onChange={(e) => handleInputChange('country', e.target.value)}
+                                                readOnly={!isEditMode}
+                                                placeholder="Philippines"
+                                                className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 ${isEditMode ? 'bg-white border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2] focus:outline-none' : 'bg-gray-50 border-gray-200'}`}
+                                            />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code</label>
@@ -621,12 +640,11 @@ export default function Profile() {
                                                 value={isEditMode ? editedData.zipCode : userData.zipCode}
                                                 onChange={(e) => handleInputChange('zipCode', e.target.value)}
                                                 readOnly={!isEditMode}
-                                                placeholder="1100"
+                                                placeholder="1600"
                                                 maxLength="4"
-                                                className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 ${isEditMode ? 'bg-white border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2] focus:outline-none' : 'bg-gray-50 border-gray-200'
-                                                    }`}
+                                                className={`w-full px-4 py-2.5 border rounded-lg text-gray-900 ${isEditMode ? 'bg-white border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2] focus:outline-none' : 'bg-gray-50 border-gray-200'}`}
                                             />
-                                            {isEditMode && <p className="text-xs text-gray-500 mt-1">4 digits only</p>}
+                                            {isEditMode && <p className="text-xs text-gray-500 mt-1">4-digit PH ZIP code</p>}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">TIN Number</label>
