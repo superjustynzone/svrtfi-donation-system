@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
+import AdminHeader from '../components/AdminHeader';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -289,39 +290,26 @@ export default function AdminCampaignCreation() {
             )}
 
             <main className="flex-1 overflow-y-auto">
-                {/* Top Bar */}
-                <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-                    <div className="px-4 lg:px-8 py-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <button
-                                    onClick={() => setMobileMenuOpen(true)}
-                                    className="lg:hidden text-gray-600 hover:text-gray-900"
-                                >
-                                    <Menu className="w-6 h-6" />
-                                </button>
-                                <div>
-                                    <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Campaigns</h2>
-                                    <p className="text-sm text-gray-500 mt-1">Manage your fundraising campaigns</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    setShowForm(!showForm);
-                                    if (!showForm) {
-                                        setTimeout(() => {
-                                            document.getElementById('campaign-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                        }, 100);
-                                    }
-                                }}
-                                className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#4d8b96] transition flex items-center gap-2 shadow-md"
-                            >
-                                {showForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-                                <span className="hidden sm:inline">{showForm ? 'Cancel' : 'Create Campaign'}</span>
-                            </button>
-                        </div>
-                    </div>
-                </header>
+                <AdminHeader
+                    title="Campaigns"
+                    subtitle="Manage your fundraising campaigns"
+                    onMobileMenuClick={() => setMobileMenuOpen(true)}
+                >
+                    <button
+                        onClick={() => {
+                            setShowForm(!showForm);
+                            if (!showForm) {
+                                setTimeout(() => {
+                                    document.getElementById('campaign-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }, 100);
+                            }
+                        }}
+                        className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#4d8b96] transition flex items-center gap-2 shadow-md"
+                    >
+                        {showForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                        <span className="hidden sm:inline">{showForm ? 'Cancel' : 'Create Campaign'}</span>
+                    </button>
+                </AdminHeader>
 
                 <div className="p-4 lg:p-8">
                     {/* Stats */}

@@ -5,7 +5,8 @@ const { Pool } = require("pg");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -148,6 +149,13 @@ router.post("/users", verifyAdmin, async (req, res) => {
             [userId, roleId]
         );
 
+        // Log user creation
+        await req.app.locals.logAudit({
+            userId: req.user.user_id,
+            action: "System: Created User",
+            details: `Created new user: ${firstName} ${lastName} (${email}) with role ${role || 'viewer'}`
+        });
+
         res.status(201).json({
             message: "User created successfully",
             user: {
@@ -220,6 +228,13 @@ router.put("/users/:id", verifyAdmin, async (req, res) => {
             }
         }
 
+        // Log user update
+        await req.app.locals.logAudit({
+            userId: req.user.user_id,
+            action: "System: Updated User",
+            details: `Updated details for user ${firstName} ${lastName} (ID: ${userId})`
+        });
+
         res.json({ message: "User updated successfully" });
     } catch (error) {
         console.error("Error updating user:", error);
@@ -245,6 +260,13 @@ router.delete("/users/:id", verifyAdmin, async (req, res) => {
         // Delete user (cascade will handle auth_users and user_roles)
         await pool.query("DELETE FROM users WHERE user_id = $1", [userId]);
 
+        // Log user deletion
+        await req.app.locals.logAudit({
+            userId: req.user.user_id,
+            action: "System: Deleted User",
+            details: `Deleted user: ${userCheck.rows[0].first_name} ${userCheck.rows[0].last_name} (ID: ${userId})`
+        });
+
         res.json({ message: "User deleted successfully" });
     } catch (error) {
         console.error("Error deleting user:", error);
@@ -267,6 +289,13 @@ router.patch("/users/:id/status", verifyAdmin, async (req, res) => {
        WHERE user_id = $2`,
             [isActive, userId]
         );
+
+        // Log status change
+        await req.app.locals.logAudit({
+            userId: req.user.user_id,
+            action: `System: User Status ${status}`,
+            details: `User ID ${userId} status set to ${status}`
+        });
 
         res.json({ message: `User status updated to ${status}` });
     } catch (error) {

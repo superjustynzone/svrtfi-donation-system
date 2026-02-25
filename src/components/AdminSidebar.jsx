@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -13,14 +13,20 @@ import {
     AlertTriangle,
     LogOut,
     X,
-    Menu
+    Menu,
+    LayoutTemplate
 } from 'lucide-react';
+
+
+const getAppSettings = () => {
+    try { return JSON.parse(localStorage.getItem('appSettings')) || {}; } catch { return {}; }
+};
 
 // Role-based permissions configuration
 const rolePermissions = {
     admin: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations', 'reports', 'users', 'settings', 'audit'],
     finance: ['dashboard', 'donors', 'donations', 'reports'],
-    encoder: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations'],
+    encoder: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations', 'reports'],
     auditor: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations', 'reports', 'audit'],
     viewer: [] // Blocked from admin pages
 };
@@ -61,6 +67,19 @@ const NavItem = ({ icon: Icon, label, active, onClick }) => (
 export default function AdminSidebar({ activePage, mobileMenuOpen, setMobileMenuOpen }) {
     const navigate = useNavigate();
     const [user] = useState(() => JSON.parse(localStorage.getItem('user')) || {});
+    const [appSettings, setAppSettings] = useState(getAppSettings);
+
+    // Re-read settings whenever sidebar mounts or storage changes
+    useEffect(() => {
+        const onStorage = () => setAppSettings(getAppSettings());
+        window.addEventListener('storage', onStorage);
+        // Also re-check on focus (same-tab updates)
+        window.addEventListener('appSettingsUpdated', onStorage);
+        return () => {
+            window.removeEventListener('storage', onStorage);
+            window.removeEventListener('appSettingsUpdated', onStorage);
+        };
+    }, []);
 
     // Get user's role and permissions
     const userRole = user.role || 'viewer';
@@ -132,12 +151,19 @@ export default function AdminSidebar({ activePage, mobileMenuOpen, setMobileMenu
             <div className="p-6 border-b border-white/10">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
-                            <DollarSign className="w-6 h-6 text-white" />
+                        <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center overflow-hidden">
+                            {appSettings.logoImage
+                                ? <img src={appSettings.logoImage} alt="logo" className="w-full h-full object-cover" />
+                                : <LayoutTemplate className="w-5 h-5 text-white/70" />
+                            }
                         </div>
                         <div>
-                            <h1 className="text-white font-bold text-lg leading-tight">SVRTFI</h1>
-                            <p className="text-white/70 text-xs">Donation CRM</p>
+                            <h1 className="text-white font-bold text-lg leading-tight">
+                                {appSettings.siteName || 'SVRTFI'}
+                            </h1>
+                            <p className="text-white/70 text-xs">
+                                {appSettings.siteSubtitle || 'Donation CRM'}
+                            </p>
                         </div>
                     </div>
                     {setMobileMenuOpen && (
@@ -200,8 +226,8 @@ export default function AdminSidebar({ activePage, mobileMenuOpen, setMobileMenu
                     onClick={handleLogout}
                     className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition"
                 >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-white font-bold">
-                        {getUserInitials()}
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] flex items-center justify-center text-white font-bold">
+                        {(() => { try { const u = JSON.parse(localStorage.getItem('user')); return u?.avatarImage ? <img src={u.avatarImage} alt="avatar" className="w-full h-full object-cover" /> : getUserInitials(); } catch { return getUserInitials(); } })()}
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-white text-sm font-semibold truncate">{getDisplayName()}</p>

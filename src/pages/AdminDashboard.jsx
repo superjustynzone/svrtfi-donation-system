@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
+import AdminHeader from '../components/AdminHeader';
 import { Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -63,6 +64,7 @@ export default function AdminDashboard() {
         },
         recentActivity: []
     });
+    const [campaigns, setCampaigns] = useState([]);
 
     // Form state for new donation
     const [donationForm, setDonationForm] = useState({
@@ -77,14 +79,24 @@ export default function AdminDashboard() {
     // Fetch dashboard data
     useEffect(() => {
         fetchDashboardData();
+        fetchCampaigns();
     }, []);
+
+    const fetchCampaigns = async () => {
+        try {
+            const res = await fetch('http://localhost:5000/api/campaigns');
+            if (!res.ok) throw new Error('Failed to fetch campaigns');
+            const data = await res.json();
+            setCampaigns(data);
+        } catch (error) {
+            console.error("Failed to fetch campaigns:", error);
+        }
+    };
 
     const fetchDashboardData = async () => {
         try {
             setIsLoading(true);
-
-            // Replace with actual API endpoint
-            const response = await fetch('/api/admin/dashboard', {
+            const response = await fetch('http://localhost:5000/api/admin/dashboard', {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
@@ -97,149 +109,7 @@ export default function AdminDashboard() {
 
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
-
-            // Mock data for development
-            setDashboardData({
-                stats: {
-                    totalDonations: 2547890,
-                    activeDonors: 1247,
-                    activeCampaigns: 12,
-                    avgDonation: 2042,
-                    trends: {
-                        donations: 12.5,
-                        donors: 8.2,
-                        campaigns: 0,
-                        avgDonation: -3.1
-                    }
-                },
-                recentDonations: [
-                    {
-                        id: 1,
-                        donor: { name: 'Maria Santos', email: 'maria.s@email.com', initials: 'MS', color: 'from-blue-400 to-blue-600' },
-                        campaign: 'Medical Mission',
-                        amount: 5000,
-                        method: 'GCash',
-                        status: 'Completed',
-                        date: 'Feb 6, 2026'
-                    },
-                    {
-                        id: 2,
-                        donor: { name: 'Juan Reyes', email: 'juan.r@email.com', initials: 'JR', color: 'from-green-400 to-green-600' },
-                        campaign: 'Education Fund',
-                        amount: 10000,
-                        method: 'Bank',
-                        status: 'Completed',
-                        date: 'Feb 5, 2026'
-                    },
-                    {
-                        id: 3,
-                        donor: { name: 'Ana Cruz', email: 'ana.c@email.com', initials: 'AC', color: 'from-purple-400 to-purple-600' },
-                        campaign: 'Building Restoration',
-                        amount: 25000,
-                        method: 'PayMaya',
-                        status: 'Pending',
-                        date: 'Feb 5, 2026'
-                    },
-                    {
-                        id: 4,
-                        donor: { name: 'Roberto Lopez', email: 'roberto.l@email.com', initials: 'RL', color: 'from-yellow-400 to-yellow-600' },
-                        campaign: 'General Fund',
-                        amount: 3500,
-                        method: 'Cash',
-                        status: 'Completed',
-                        date: 'Feb 4, 2026'
-                    },
-                    {
-                        id: 5,
-                        donor: { name: 'Lisa Garcia', email: 'lisa.g@email.com', initials: 'LG', color: 'from-pink-400 to-pink-600' },
-                        campaign: 'Youth Programs',
-                        amount: 7500,
-                        method: 'PayPal',
-                        status: 'Completed',
-                        date: 'Feb 4, 2026'
-                    }
-                ],
-                topCampaigns: [
-                    { name: 'Medical Mission 2024', raised: 850000, goal: 1000000, progress: 85 },
-                    { name: 'Education Fund', raised: 620000, goal: 850000, progress: 72 },
-                    { name: 'Building Restoration', raised: 445000, goal: 750000, progress: 59 },
-                    { name: 'Community Outreach', raised: 280000, goal: 500000, progress: 56 },
-                    { name: 'Youth Programs', raised: 195000, goal: 400000, progress: 48 }
-                ],
-                donationTrends: [
-                    { month: 'Jan', amount: 185000 },
-                    { month: 'Feb', amount: 220000 },
-                    { month: 'Mar', amount: 195000 },
-                    { month: 'Apr', amount: 245000 },
-                    { month: 'May', amount: 280000 },
-                    { month: 'Jun', amount: 255000 },
-                    { month: 'Jul', amount: 290000 },
-                    { month: 'Aug', amount: 310000 },
-                    { month: 'Sep', amount: 275000 },
-                    { month: 'Oct', amount: 320000 },
-                    { month: 'Nov', amount: 298000 },
-                    { month: 'Dec', amount: 254789 }
-                ],
-                paymentMethods: [
-                    { name: 'Bank Transfer', percentage: 38 },
-                    { name: 'GCash', percentage: 27 },
-                    { name: 'PayMaya', percentage: 20 },
-                    { name: 'Cash', percentage: 15 }
-                ],
-                donorTypes: {
-                    recurring: 542,
-                    oneTime: 705
-                },
-                recentActivity: [
-                    {
-                        id: 1,
-                        type: 'donation',
-                        user: 'Maria Santos',
-                        action: 'made a donation of',
-                        amount: 5000,
-                        target: 'Medical Mission 2024',
-                        time: '2 minutes ago',
-                        icon: 'dollar'
-                    },
-                    {
-                        id: 2,
-                        type: 'user',
-                        user: 'Admin',
-                        action: 'added new donor',
-                        target: 'Pedro Pascual',
-                        time: '15 minutes ago',
-                        icon: 'user'
-                    },
-                    {
-                        id: 3,
-                        type: 'receipt',
-                        action: 'Receipt',
-                        target: '#REC-2024-0245',
-                        extra: 'generated for Juan Reyes',
-                        time: '1 hour ago',
-                        icon: 'file'
-                    },
-                    {
-                        id: 4,
-                        type: 'campaign',
-                        action: 'New campaign',
-                        target: 'Summer Relief 2024',
-                        extra: 'created',
-                        time: '3 hours ago',
-                        icon: 'chart'
-                    },
-                    {
-                        id: 5,
-                        type: 'donation',
-                        user: 'Ana Cruz',
-                        action: 'made a donation of',
-                        amount: 25000,
-                        target: 'Building Restoration',
-                        time: '5 hours ago',
-                        icon: 'dollar'
-                    }
-                ]
-            });
+            toast.error('Failed to load live dashboard stats. Using fallback state.');
         } finally {
             setIsLoading(false);
         }
@@ -247,11 +117,11 @@ export default function AdminDashboard() {
 
     // Chart configuration
     const chartData = {
-        labels: dashboardData.donationTrends.map(d => d.month),
+        labels: dashboardData.donationTrends.length > 0 ? dashboardData.donationTrends.map(d => d.month) : ['Jan', 'Feb', 'Mar'],
         datasets: [
             {
                 label: 'Donations',
-                data: dashboardData.donationTrends.map(d => d.amount),
+                data: dashboardData.donationTrends.length > 0 ? dashboardData.donationTrends.map(d => d.amount) : [0, 0, 0],
                 borderColor: '#63A6B2',
                 backgroundColor: 'rgba(99, 166, 178, 0.1)',
                 borderWidth: 3,
@@ -331,40 +201,39 @@ export default function AdminDashboard() {
     };
 
     const handleLogout = () => {
-        // Clear authentication data
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-
-        // Show success message
         toast.success('Logged out successfully');
-
-        // Redirect to login page
         setTimeout(() => {
             navigate('/login');
         }, 500);
     };
 
-
     // Handle donation submission
     const handleDonationSubmit = async (e) => {
         e.preventDefault();
 
-        if (!donationForm.donorName || !donationForm.email || !donationForm.amount) {
-            toast.error('Please fill in all required fields');
+        if (!donationForm.donorName || !donationForm.email || !donationForm.amount || !donationForm.campaign) {
+            toast.error('Please fill in all required fields, including campaign');
             return;
         }
 
         try {
             setIsLoading(true);
-
-            // Replace with actual API endpoint
-            const response = await fetch('/api/admin/donations', {
+            const response = await fetch('http://localhost:5000/api/donations', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
-                body: JSON.stringify(donationForm)
+                body: JSON.stringify({
+                    campaign_id: donationForm.campaign,
+                    amount: donationForm.amount,
+                    donor_name: donationForm.donorName,
+                    donor_email: donationForm.email,
+                    payment_method: donationForm.paymentMethod,
+                    message: donationForm.notes
+                })
             });
 
             if (!response.ok) throw new Error('Failed to create donation');
@@ -392,17 +261,17 @@ export default function AdminDashboard() {
 
     // Format currency
     const formatCurrency = (amount) => {
-        return '₱' + amount.toLocaleString();
+        return '₱' + (amount ? amount.toLocaleString() : '0');
     };
 
     // Get status badge color
     const getStatusColor = (status) => {
         const colors = {
-            'Completed': 'bg-green-100 text-green-800',
-            'Pending': 'bg-yellow-100 text-yellow-800',
-            'Failed': 'bg-red-100 text-red-800'
+            'success': 'bg-green-100 text-green-800',
+            'pending': 'bg-yellow-100 text-yellow-800',
+            'failed': 'bg-red-100 text-red-800'
         };
-        return colors[status] || 'bg-gray-100 text-gray-800';
+        return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
     };
 
     // Get activity icon
@@ -429,14 +298,12 @@ export default function AdminDashboard() {
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#f8fafb]">
-            {/* Sidebar */}
             <AdminSidebar
                 activePage="dashboard"
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
             />
 
-            {/* Mobile Menu Overlay */}
             {mobileMenuOpen && (
                 <div
                     className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -444,54 +311,33 @@ export default function AdminDashboard() {
                 />
             )}
 
-            {/* Main Content */}
             <main className="flex-1 overflow-y-auto">
-                {/* Top Bar */}
-                <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-                    <div className="px-4 lg:px-8 py-4 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => setMobileMenuOpen(true)}
-                                className="lg:hidden text-gray-600 hover:text-gray-900"
-                            >
-                                <Menu className="w-6 h-6" />
-                            </button>
-                            <div>
-                                <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Dashboard Overview</h2>
-                                <p className="text-sm text-gray-500 mt-1">Welcome back, monitor your donation activities</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                            {/* Search - Hidden on mobile */}
-                            <div className="hidden md:block relative">
-                                <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search donors, campaigns..."
-                                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 w-64 lg:w-80"
-                                />
-                            </div>
-
-                            {/* Notifications */}
-                            <button className="relative p-2 hover:bg-gray-100 rounded-lg transition">
-                                <Bell className="w-6 h-6 text-gray-600" />
-                                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                            </button>
-
-                            {/* Add Donation Button */}
-                            <button
-                                onClick={() => setModalOpen(true)}
-                                className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#4d8b96] transition flex items-center gap-2"
-                            >
-                                <Plus className="w-5 h-5" />
-                                <span className="hidden sm:inline">Add Donation</span>
-                            </button>
-                        </div>
+                <AdminHeader
+                    title="Dashboard Overview"
+                    subtitle="Welcome back, monitor your donation activities"
+                    onMobileMenuClick={() => setMobileMenuOpen(true)}
+                >
+                    <div className="hidden md:block relative">
+                        <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search donors, campaigns..."
+                            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 w-64 lg:w-80"
+                        />
                     </div>
-                </header>
+                    <button className="relative p-2 hover:bg-gray-100 rounded-lg transition">
+                        <Bell className="w-6 h-6 text-gray-600" />
+                        <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    <button
+                        onClick={() => setModalOpen(true)}
+                        className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#4d8b96] transition flex items-center gap-2"
+                    >
+                        <Plus className="w-5 h-5" />
+                        <span className="hidden sm:inline">Add Donation</span>
+                    </button>
+                </AdminHeader>
 
-                {/* Content Area */}
                 <div className="p-4 lg:p-8">
                     {/* Stats Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -501,7 +347,7 @@ export default function AdminDashboard() {
                             title="Total Donations"
                             value={formatCurrency(dashboardData.stats.totalDonations)}
                             trend={dashboardData.stats.trends.donations}
-                            trendLabel="+₱284,120 from last month"
+                            trendLabel={dashboardData.stats.trends.donations > 0 ? `+₱${dashboardData.stats.trends.donations.toLocaleString()} from last month` : "Live database total"}
                         />
                         <StatCard
                             icon={<Users className="w-6 h-6 text-white" />}
@@ -509,7 +355,7 @@ export default function AdminDashboard() {
                             title="Active Donors"
                             value={dashboardData.stats.activeDonors.toLocaleString()}
                             trend={dashboardData.stats.trends.donors}
-                            trendLabel="+95 new this month"
+                            trendLabel={dashboardData.stats.trends.donors > 0 ? `+${dashboardData.stats.trends.donors} new this month` : "Active contributor count"}
                         />
                         <StatCard
                             icon={<PieChart className="w-6 h-6 text-white" />}
@@ -517,19 +363,17 @@ export default function AdminDashboard() {
                             title="Active Campaigns"
                             value={dashboardData.stats.activeCampaigns}
                             isLive
-                            trendLabel="3 ending this week"
+                            trendLabel="Real-time status"
                         />
                         <StatCard
                             icon={<BarChart3 className="w-6 h-6 text-white" />}
                             iconBg="from-purple-500 to-purple-400"
                             title="Avg Donation"
                             value={formatCurrency(dashboardData.stats.avgDonation)}
-                            trend={dashboardData.stats.trends.avgDonation}
-                            trendLabel="Based on 1,247 donations"
+                            trendLabel={`Based on ${dashboardData.stats.activeDonors} donors`}
                         />
                     </div>
 
-                    {/* Charts Row */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                         {/* Donation Trends Chart */}
                         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -537,11 +381,6 @@ export default function AdminDashboard() {
                                 <div>
                                     <h3 className="text-xl font-bold text-gray-900">Donation Trends</h3>
                                     <p className="text-sm text-gray-500">Monthly overview</p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition">6M</button>
-                                    <button className="px-3 py-1 text-xs font-semibold bg-[#63A6B2] text-white rounded-lg">1Y</button>
-                                    <button className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition">All</button>
                                 </div>
                             </div>
                             <div className="h-64">
@@ -556,7 +395,7 @@ export default function AdminDashboard() {
                                 <p className="text-sm text-gray-500">By total raised</p>
                             </div>
                             <div className="space-y-4">
-                                {dashboardData.topCampaigns.map((campaign, index) => (
+                                {dashboardData.topCampaigns?.map((campaign, index) => (
                                     <CampaignProgress
                                         key={index}
                                         name={campaign.name}
@@ -565,20 +404,21 @@ export default function AdminDashboard() {
                                         progress={campaign.progress}
                                     />
                                 ))}
+                                {dashboardData.topCampaigns?.length === 0 && (
+                                    <p className="text-sm text-gray-400 text-center py-8">No campaigns found</p>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Recent Activity and Quick Stats */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                        {/* Recent Donations Table */}
                         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-6">
                                 <div>
                                     <h3 className="text-xl font-bold text-gray-900">Recent Donations</h3>
                                     <p className="text-sm text-gray-500">Latest transactions</p>
                                 </div>
-                                <a href="#" className="text-sm font-semibold text-[#63A6B2] hover:underline">View All →</a>
+                                <a href="/admin_donations" className="text-sm font-semibold text-[#63A6B2] hover:underline">View All →</a>
                             </div>
 
                             <div className="overflow-x-auto">
@@ -586,15 +426,13 @@ export default function AdminDashboard() {
                                     <thead>
                                         <tr className="border-b-2 border-gray-200">
                                             <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Donor</th>
-                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase hidden md:table-cell">Campaign</th>
+                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Campaign</th>
                                             <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase hidden sm:table-cell">Method</th>
-                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase hidden lg:table-cell">Status</th>
-                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase hidden xl:table-cell">Date</th>
+                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {dashboardData.recentDonations.map((donation) => (
+                                        {dashboardData.recentDonations?.map((donation) => (
                                             <tr key={donation.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
                                                 <td className="py-4 px-4">
                                                     <div className="flex items-center gap-3">
@@ -603,46 +441,45 @@ export default function AdminDashboard() {
                                                         </div>
                                                         <div>
                                                             <p className="font-semibold text-sm text-gray-900">{donation.donor.name}</p>
-                                                            <p className="text-xs text-gray-500 hidden sm:block">{donation.donor.email}</p>
+                                                            <p className="text-xs text-gray-500">{donation.donor.email}</p>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="py-4 px-4 text-sm text-gray-600 hidden md:table-cell">{donation.campaign}</td>
+                                                <td className="py-4 px-4 text-sm text-gray-600">{donation.campaign}</td>
                                                 <td className="py-4 px-4 font-bold text-sm text-gray-900">{formatCurrency(donation.amount)}</td>
-                                                <td className="py-4 px-4 hidden sm:table-cell">
-                                                    <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
-                                                        {donation.method}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-4 hidden lg:table-cell">
+                                                <td className="py-4 px-4">
                                                     <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(donation.status)}`}>
                                                         {donation.status}
                                                     </span>
                                                 </td>
-                                                <td className="py-4 px-4 text-sm text-gray-500 hidden xl:table-cell">{donation.date}</td>
                                             </tr>
                                         ))}
+                                        {dashboardData.recentDonations?.length === 0 && (
+                                            <tr>
+                                                <td colSpan="4" className="text-center py-8 text-gray-400">No recent donations</td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        {/* Quick Stats */}
                         <div className="space-y-6">
-                            {/* Payment Methods */}
                             <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4">Payment Methods</h3>
                                 <div className="space-y-3">
-                                    {dashboardData.paymentMethods.map((method, index) => (
+                                    {dashboardData.paymentMethods?.map((method, index) => (
                                         <div key={index} className="flex items-center justify-between">
-                                            <span className="text-sm font-medium text-gray-600">{method.name}</span>
+                                            <span className="text-sm font-medium text-gray-600">{method.name || 'Unknown'}</span>
                                             <span className="text-sm font-bold text-gray-900">{method.percentage}%</span>
                                         </div>
                                     ))}
+                                    {dashboardData.paymentMethods?.length === 0 && (
+                                        <p className="text-sm text-gray-400">No data</p>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Donor Types */}
                             <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4">Donor Types</h3>
                                 <div className="space-y-4">
@@ -654,7 +491,7 @@ export default function AdminDashboard() {
                                         <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                                             <div
                                                 className="h-full bg-gradient-to-r from-[#63A6B2] to-[#f0a500] rounded-full transition-all duration-1000"
-                                                style={{ width: `${(dashboardData.donorTypes.recurring / (dashboardData.donorTypes.recurring + dashboardData.donorTypes.oneTime)) * 100}%` }}
+                                                style={{ width: `${(dashboardData.donorTypes.recurring / (dashboardData.donorTypes.recurring + dashboardData.donorTypes.oneTime + 1)) * 100}%` }}
                                             ></div>
                                         </div>
                                     </div>
@@ -666,90 +503,56 @@ export default function AdminDashboard() {
                                         <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                                             <div
                                                 className="h-full bg-gradient-to-r from-[#63A6B2] to-[#f0a500] rounded-full transition-all duration-1000"
-                                                style={{ width: `${(dashboardData.donorTypes.oneTime / (dashboardData.donorTypes.recurring + dashboardData.donorTypes.oneTime)) * 100}%` }}
+                                                style={{ width: `${(dashboardData.donorTypes.oneTime / (dashboardData.donorTypes.recurring + dashboardData.donorTypes.oneTime + 1)) * 100}%` }}
                                             ></div>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div className="mt-6 pt-4 border-t border-gray-200">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-semibold text-gray-900">Total Active</span>
-                                        <span className="text-2xl font-bold text-[#63A6B2]">{dashboardData.donorTypes.recurring + dashboardData.donorTypes.oneTime}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Activity Log */}
                     <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-900">Recent Activity</h3>
                                 <p className="text-sm text-gray-500">System and user actions</p>
                             </div>
-                            <div className="relative">
-                                <button
-                                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                                    className="px-4 py-2 border-2 border-[#63A6B2] text-[#63A6B2] rounded-lg font-semibold hover:bg-[#63A6B2] hover:text-white transition flex items-center gap-2"
-                                >
-                                    Filter
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                                    </svg>
-                                </button>
-                                {dropdownOpen && (
-                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                                        <button className="w-full text-left px-4 py-2 hover:bg-gray-50 transition">All Activities</button>
-                                        <button className="w-full text-left px-4 py-2 hover:bg-gray-50 transition">Donations</button>
-                                        <button className="w-full text-left px-4 py-2 hover:bg-gray-50 transition">User Actions</button>
-                                        <button className="w-full text-left px-4 py-2 hover:bg-gray-50 transition">System Events</button>
-                                    </div>
-                                )}
-                            </div>
                         </div>
 
                         <div className="space-y-4">
-                            {dashboardData.recentActivity.map((activity) => (
+                            {dashboardData.recentActivity?.map((activity) => (
                                 <div key={activity.id} className="flex gap-4">
                                     <div className="flex-shrink-0">
-                                        <div className={`w-10 h-10 rounded-full ${activity.type === 'donation' ? 'bg-green-100' :
-                                            activity.type === 'user' ? 'bg-blue-100' :
-                                                activity.type === 'receipt' ? 'bg-purple-100' :
-                                                    'bg-yellow-100'
-                                            } flex items-center justify-center`}>
+                                        <div className={`w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center`}>
                                             {getActivityIcon(activity.icon)}
                                         </div>
                                     </div>
                                     <div className="flex-1">
                                         <p className="text-sm text-gray-900">
-                                            {activity.user && <span className="font-semibold">{activity.user} </span>}
+                                            <span className="font-semibold">{activity.user} </span>
                                             {activity.action}
-                                            {activity.amount && <span className="font-semibold text-[#63A6B2]"> ₱{activity.amount.toLocaleString()}</span>}
                                             {activity.target && <span className="font-semibold"> {activity.target}</span>}
-                                            {activity.extra && <span> {activity.extra}</span>}
                                         </p>
                                         <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
                                     </div>
                                 </div>
                             ))}
+                            {dashboardData.recentActivity?.length === 0 && (
+                                <p className="text-sm text-gray-400 text-center py-4">No recent activity</p>
+                            )}
                         </div>
                     </div>
                 </div>
             </main>
 
-            {/* Add Donation Modal */}
             {modalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
                         <div className="p-6 border-b border-gray-200">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-2xl font-bold text-gray-900">Add New Donation</h3>
-                                <button
-                                    onClick={() => setModalOpen(false)}
-                                    className="text-gray-400 hover:text-gray-600"
-                                >
+                                <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
@@ -762,7 +565,7 @@ export default function AdminDashboard() {
                                     name="donorName"
                                     value={donationForm.donorName}
                                     onChange={handleFormChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2]"
                                     placeholder="Enter donor name"
                                     required
                                 />
@@ -774,7 +577,7 @@ export default function AdminDashboard() {
                                     name="email"
                                     value={donationForm.email}
                                     onChange={handleFormChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2]"
                                     placeholder="donor@email.com"
                                     required
                                 />
@@ -787,69 +590,57 @@ export default function AdminDashboard() {
                                         name="amount"
                                         value={donationForm.amount}
                                         onChange={handleFormChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2]"
                                         placeholder="5000"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Method</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Payment</label>
                                     <select
                                         name="paymentMethod"
                                         value={donationForm.paymentMethod}
                                         onChange={handleFormChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2]"
                                     >
                                         <option>GCash</option>
                                         <option>PayMaya</option>
                                         <option>Bank Transfer</option>
                                         <option>Cash</option>
-                                        <option>PayPal</option>
                                     </select>
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Campaign</label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Campaign *</label>
                                 <select
                                     name="campaign"
                                     value={donationForm.campaign}
                                     onChange={handleFormChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2]"
+                                    required
                                 >
-                                    <option value="">General Fund</option>
-                                    <option>Medical Mission 2024</option>
-                                    <option>Education Fund</option>
-                                    <option>Building Restoration</option>
-                                    <option>Community Outreach</option>
-                                    <option>Youth Programs</option>
+                                    <option value="">Select a campaign</option>
+                                    {campaigns.map(c => (
+                                        <option key={c.campaign_id} value={c.campaign_id}>
+                                            {c.campaign_name}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Notes (Optional)</label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Notes</label>
                                 <textarea
                                     name="notes"
                                     value={donationForm.notes}
                                     onChange={handleFormChange}
-                                    rows="3"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                    placeholder="Additional notes..."
+                                    rows="2"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2]"
+                                    placeholder="Optional notes"
                                 ></textarea>
                             </div>
                             <div className="flex gap-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setModalOpen(false)}
-                                    className="flex-1 px-4 py-2 border-2 border-[#63A6B2] text-[#63A6B2] rounded-lg font-semibold hover:bg-[#63A6B2] hover:text-white transition"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="flex-1 px-4 py-2 bg-[#63A6B2] text-white rounded-lg font-semibold hover:bg-[#4d8b96] transition disabled:opacity-50"
-                                >
-                                    {isLoading ? 'Saving...' : 'Save Donation'}
-                                </button>
+                                <button type="button" onClick={() => setModalOpen(false)} className="flex-1 px-4 py-2 border-2 border-[#63A6B2] text-[#63A6B2] rounded-lg font-semibold">Cancel</button>
+                                <button type="submit" disabled={isLoading} className="flex-1 px-4 py-2 bg-[#63A6B2] text-white rounded-lg font-semibold disabled:opacity-50">{isLoading ? 'Saving...' : 'Save'}</button>
                             </div>
                         </form>
                     </div>
@@ -859,26 +650,6 @@ export default function AdminDashboard() {
     );
 }
 
-// Navigation Item Component
-function NavItem({ icon, label, active, onClick }) {
-    return (
-        <button
-            onClick={onClick}
-            className={`
-        w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all
-        ${active
-                    ? 'bg-white/15 text-white border-l-4 border-[#f0a500] pl-3'
-                    : 'text-white/70 hover:text-white hover:bg-white/10 hover:pl-5'
-                }
-      `}
-        >
-            {React.cloneElement(icon, { className: 'w-5 h-5' })}
-            <span>{label}</span>
-        </button>
-    );
-}
-
-// Stat Card Component
 function StatCard({ icon, iconBg, title, value, trend, trendLabel, isLive }) {
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
@@ -889,8 +660,7 @@ function StatCard({ icon, iconBg, title, value, trend, trendLabel, isLive }) {
                 {isLive ? (
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                 ) : trend !== undefined && (
-                    <span className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold ${trend > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                    <span className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold ${trend > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {trend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                         {Math.abs(trend)}%
                     </span>
@@ -903,13 +673,12 @@ function StatCard({ icon, iconBg, title, value, trend, trendLabel, isLive }) {
     );
 }
 
-// Campaign Progress Component
 function CampaignProgress({ name, raised, goal, progress }) {
     return (
         <div>
             <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-gray-900">{name}</span>
-                <span className="text-sm font-bold text-[#63A6B2]">₱{(raised / 1000).toFixed(0)}K</span>
+                <span className="text-sm font-bold text-[#63A6B2]">₱{(parseFloat(raised) / 1000).toFixed(0)}K</span>
             </div>
             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
@@ -917,7 +686,7 @@ function CampaignProgress({ name, raised, goal, progress }) {
                     style={{ width: `${progress}%` }}
                 ></div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">{progress}% of ₱{(goal / 1000).toFixed(0)}K goal</p>
+            <p className="text-xs text-gray-500 mt-1">{progress}% of ₱{(parseFloat(goal) / 1000).toFixed(0)}K goal</p>
         </div>
     );
 }

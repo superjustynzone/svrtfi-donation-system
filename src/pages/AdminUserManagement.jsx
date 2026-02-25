@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
+import AdminHeader from '../components/AdminHeader';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -146,8 +147,6 @@ export default function AdminUserManagement() {
                     username: user.email?.split('@')[0] || '',
                     initials: `${user.first_name?.charAt(0) || ''}${user.last_name?.charAt(0) || ''}`,
                     color: roleInfo.color,
-                    lastLogin: 'N/A',
-                    createdAt: user.created_at,
                     lastLogin: 'N/A',
                     createdAt: user.created_at,
                     address: user.address || '', // Renamed from department
@@ -425,9 +424,6 @@ export default function AdminUserManagement() {
             phone: user.contact_number || '',
             role: user.role || 'viewer',
             status: user.status || 'Active',
-            phone: user.contact_number || '',
-            role: user.role || 'viewer',
-            status: user.status || 'Active',
             address: user.address || '', // Renamed from department
             employeeId: user.employeeId || '',
             password: '',
@@ -535,40 +531,26 @@ export default function AdminUserManagement() {
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto">
-                {/* Top Bar */}
-                <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-                    <div className="px-4 lg:px-8 py-4 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => setMobileMenuOpen(true)}
-                                className="lg:hidden text-gray-600 hover:text-gray-900"
-                            >
-                                <Menu className="w-6 h-6" />
-                            </button>
-                            <div>
-                                <h2 className="text-xl lg:text-2xl font-bold text-gray-900">User Management</h2>
-                                <p className="text-sm text-gray-500 mt-1">Manage system users and access levels</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={handleExportUsers}
-                                className="px-4 py-2 border-2 border-[#63A6B2] text-[#63A6B2] rounded-lg font-semibold hover:bg-[#63A6B2] hover:text-white transition flex items-center gap-2"
-                            >
-                                <Download className="w-5 h-5" />
-                                <span className="hidden sm:inline">Export PDF</span>
-                            </button>
-                            <button
-                                onClick={() => setIsAddModalOpen(true)}
-                                className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#4d8b96] transition flex items-center gap-2"
-                            >
-                                <Plus className="w-5 h-5" />
-                                <span>Add User</span>
-                            </button>
-                        </div>
-                    </div>
-                </header>
+                <AdminHeader
+                    title="User Management"
+                    subtitle="Manage system users and access levels"
+                    onMobileMenuClick={() => setMobileMenuOpen(true)}
+                >
+                    <button
+                        onClick={handleExportUsers}
+                        className="px-4 py-2 border-2 border-[#63A6B2] text-[#63A6B2] rounded-lg font-semibold hover:bg-[#63A6B2] hover:text-white transition flex items-center gap-2"
+                    >
+                        <Download className="w-5 h-5" />
+                        <span className="hidden sm:inline">Export PDF</span>
+                    </button>
+                    <button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#4d8b96] transition flex items-center gap-2"
+                    >
+                        <Plus className="w-5 h-5" />
+                        <span>Add User</span>
+                    </button>
+                </AdminHeader>
 
                 <div className="p-4 lg:p-8">
                     {/* Stats Row */}

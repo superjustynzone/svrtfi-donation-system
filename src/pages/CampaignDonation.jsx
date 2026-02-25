@@ -402,8 +402,8 @@ export default function CampaignDonation() {
 
                             {/* Data Privacy Checkbox */}
                             <div className={`flex items-start gap-3 p-5 rounded-xl border-2 transition-all ${agreedToPrivacy
-                                    ? 'bg-teal-50 border-[#63A6B2]'
-                                    : 'bg-gray-50 border-gray-200'
+                                ? 'bg-teal-50 border-[#63A6B2]'
+                                : 'bg-gray-50 border-gray-200'
                                 }`}>
                                 <input
                                     type="checkbox"
@@ -425,8 +425,8 @@ export default function CampaignDonation() {
                                 onClick={handleNext}
                                 disabled={!agreedToPrivacy}
                                 className={`w-full py-4 rounded-xl font-bold text-lg transition-all mt-2 ${agreedToPrivacy
-                                        ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white hover:shadow-2xl transform hover:scale-105 cursor-pointer'
-                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                    ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white hover:shadow-2xl transform hover:scale-105 cursor-pointer'
+                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     }`}
                             >
                                 Continue to Payment →

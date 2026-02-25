@@ -1,8 +1,7 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Mail, Phone, MapPin, Heart, Users, Edit2, Eye, Download, LogOut, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { useEffect } from "react";
 import { provinces, citiesByProvince } from '../data/philippineLocations';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -107,12 +106,17 @@ export default function Profile() {
                     profileImage: fullImagePath
                 }));
 
-                // Update localStorage to persist across pages
+                // Update localStorage to persist across pages and sync with admin
                 const updatedUser = {
                     ...storedUser,
-                    profileImage: fullImagePath
+                    profileImage: fullImagePath,
+                    avatarImage: fullImagePath,  // keep admin key in sync too
                 };
                 localStorage.setItem('user', JSON.stringify(updatedUser));
+
+                // Notify admin header / settings in any open tab
+                window.dispatchEvent(new Event('userProfileUpdated'));
+                window.dispatchEvent(new Event('adminProfileUpdated'));
 
                 setImagePreview(null);
             } else {
@@ -309,6 +313,26 @@ export default function Profile() {
                 });
             })
             .catch(err => console.error("Error fetching profile:", err));
+    }, []);
+
+    useEffect(() => {
+        // Sync profile image whenever admin side saves/uploads
+        const syncFromAdmin = () => {
+            try {
+                const stored = JSON.parse(localStorage.getItem('user'));
+                if (!stored) return;
+                const img = stored.profileImage || stored.avatarImage || null;
+                setUserData(prev => ({ ...prev, profileImage: img }));
+            } catch { }
+        };
+        window.addEventListener('adminProfileUpdated', syncFromAdmin);
+        window.addEventListener('userProfileUpdated', syncFromAdmin);
+        window.addEventListener('storage', syncFromAdmin);
+        return () => {
+            window.removeEventListener('adminProfileUpdated', syncFromAdmin);
+            window.removeEventListener('userProfileUpdated', syncFromAdmin);
+            window.removeEventListener('storage', syncFromAdmin);
+        };
     }, []);
 
     useEffect(() => {
