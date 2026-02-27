@@ -20,6 +20,7 @@ const generatePaymentReference = () => {
 
 // ─────────────────────────────────────────────
 // POST /api/donations — Create a new donation
+// Always creates a donors row first, then links via donor_id
 // ─────────────────────────────────────────────
 router.post("/", async (req, res) => {
     const client = await pool.connect();
@@ -32,7 +33,7 @@ router.post("/", async (req, res) => {
             payment_method,
             donation_type,    // "one-time" or "monthly"
             is_anonymous,
-            donor_name,
+            donor_name,       // guest full name
             donor_email,
             donor_phone,
             message,
@@ -44,24 +45,93 @@ router.post("/", async (req, res) => {
 
         await client.query("BEGIN");
 
-        // Map frontend donation_type to DB frequency
+        // ── Step 1: Resolve donor info and upsert into donors table ──
+        let donorId = null;
+
+        if (!is_anonymous) {
+            let firstName = null, lastName = null, email = null, phone = null, address = null;
+
+            if (user_id) {
+                // Logged-in: pull info from users / auth_users
+                const userInfo = await client.query(
+                    `SELECT u.first_name, u.last_name, u.contact_number, u.address, a.email
+                     FROM users u
+                     LEFT JOIN auth_users a ON u.user_id = a.user_id
+                     WHERE u.user_id = $1`,
+                    [user_id]
+                );
+                if (userInfo.rows.length > 0) {
+                    const ui = userInfo.rows[0];
+                    firstName = ui.first_name;
+                    lastName = ui.last_name;
+                    email = ui.email;
+                    phone = ui.contact_number;
+                    address = ui.address;
+                }
+            } else {
+                // Guest: split donor_name into first / last
+                const parts = (donor_name || "").trim().split(/\s+/);
+                firstName = parts[0] || null;
+                lastName = parts.slice(1).join(" ") || null;
+                email = donor_email || null;
+                phone = donor_phone || null;
+            }
+
+            // For registered users: reuse existing donors row if email matches
+            if (email) {
+                const existing = await client.query(
+                    `SELECT donor_id FROM donors WHERE email = $1 LIMIT 1`,
+                    [email]
+                );
+                if (existing.rows.length > 0) {
+                    donorId = existing.rows[0].donor_id;
+                    // Keep donor info up to date
+                    await client.query(
+                        `UPDATE donors SET first_name=$1, last_name=$2, contact_number=$3, address=$4
+                         WHERE donor_id=$5`,
+                        [firstName, lastName, phone, address, donorId]
+                    );
+                }
+            }
+
+            if (!donorId) {
+                const donorResult = await client.query(
+                    `INSERT INTO donors (first_name, last_name, email, contact_number, address)
+                     VALUES ($1, $2, $3, $4, $5) RETURNING donor_id`,
+                    [firstName, lastName, email, phone, address]
+                );
+                donorId = donorResult.rows[0].donor_id;
+            }
+
+        } else {
+            // Truly anonymous: create a blank donors row so admin can still count it
+            const donorResult = await client.query(
+                `INSERT INTO donors (first_name, last_name, email, contact_number, address)
+                 VALUES (NULL, NULL, NULL, NULL, NULL) RETURNING donor_id`,
+                []
+            );
+            donorId = donorResult.rows[0].donor_id;
+        }
+
+        // ── Step 2: Map frequency ──
         const frequency = donation_type === "monthly" ? "monthly" : "one_time";
         const next_due_date =
             frequency === "monthly"
                 ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
                 : null;
 
-        // 1. Insert into donations table
+        // ── Step 3: Insert into donations ──
         const donationResult = await client.query(
             `INSERT INTO donations (
-        user_id, campaign_id, amount, payment_method,
-        donation_source, currency, frequency, next_due_date,
-        initiated_at, message
-      ) VALUES ($1, $2, $3, $4, $5, 'PHP', $6, $7, NOW(), $8)
-      RETURNING donation_id, initiated_at`,
+                user_id, campaign_id, donor_id, amount, payment_method,
+                donation_source, currency, frequency, next_due_date,
+                initiated_at, message
+            ) VALUES ($1, $2, $3, $4, $5, $6, 'PHP', $7, $8, NOW(), $9)
+            RETURNING donation_id, initiated_at`,
             [
                 user_id || null,
                 campaign_id,
+                donorId,
                 parseFloat(amount),
                 payment_method || null,
                 "website",
@@ -74,20 +144,20 @@ router.post("/", async (req, res) => {
         const donation = donationResult.rows[0];
         const paymentReference = generatePaymentReference();
 
-        // 2. Insert into payment_transactions table
+        // ── Step 4: Insert into payment_transactions ──
         await client.query(
             `INSERT INTO payment_transactions (
-        donation_id, campaign_id, payment_reference, amount, payment_status
-      ) VALUES ($1, $2, $3, $4, 'pending')`,
+                donation_id, campaign_id, payment_reference, amount, payment_status
+            ) VALUES ($1, $2, $3, $4, 'pending')`,
             [donation.donation_id, campaign_id, paymentReference, parseFloat(amount)]
         );
 
-        // 3. Update campaigns.current_amount
+        // ── Step 5: Update campaigns.current_amount ──
         await client.query(
             `UPDATE campaigns
-       SET current_amount = COALESCE(current_amount, 0) + $1,
-           updated_at = NOW()
-       WHERE campaign_id = $2`,
+             SET current_amount = COALESCE(current_amount, 0) + $1,
+                 updated_at = NOW()
+             WHERE campaign_id = $2`,
             [parseFloat(amount), campaign_id]
         );
 
@@ -96,6 +166,7 @@ router.post("/", async (req, res) => {
         return res.json({
             message: "Donation submitted successfully!",
             donation_id: donation.donation_id,
+            donor_id: donorId,
             payment_reference: paymentReference,
             initiated_at: donation.initiated_at,
         });
@@ -109,29 +180,29 @@ router.post("/", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// GET /api/donations/donors — Get aggregated donor list (admin)
+// GET /api/donations/donors — Aggregated donor list (admin)
+// Reads directly from the donors table
 // ─────────────────────────────────────────────
 router.get("/donors", async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT
-          u.user_id,
-          u.first_name,
-          u.last_name,
-          u.contact_number                          AS phone,
-          u.address,
-          a.email,
-          COUNT(d.donation_id)::int                 AS donation_count,
-          COALESCE(SUM(d.amount), 0)::float         AS total_donated,
-          MAX(d.initiated_at)                       AS last_donation_at,
-          MIN(d.initiated_at)                       AS first_donation_at,
-          BOOL_OR(d.frequency = 'monthly')          AS is_recurring
-         FROM users u
-         LEFT JOIN auth_users a ON u.user_id = a.user_id
-         INNER JOIN donations d ON u.user_id = d.user_id
-         GROUP BY u.user_id, u.first_name, u.last_name, u.contact_number,
-                  u.address, a.email
-         ORDER BY total_donated DESC`
+              dn.donor_id,
+              dn.first_name,
+              dn.last_name,
+              dn.contact_number                         AS phone,
+              dn.address,
+              dn.email,
+              COUNT(d.donation_id)::int                 AS donation_count,
+              COALESCE(SUM(d.amount), 0)::float         AS total_donated,
+              MAX(d.initiated_at)                       AS last_donation_at,
+              MIN(d.initiated_at)                       AS first_donation_at,
+              BOOL_OR(d.frequency = 'monthly')          AS is_recurring
+             FROM donors dn
+             INNER JOIN donations d ON dn.donor_id = d.donor_id
+             GROUP BY dn.donor_id, dn.first_name, dn.last_name,
+                      dn.contact_number, dn.address, dn.email
+             ORDER BY total_donated DESC`
         );
 
         const donors = result.rows;
@@ -161,14 +232,14 @@ router.get("/stats", async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT
-          COUNT(d.donation_id)::int               AS total_donations,
-          COALESCE(SUM(d.amount), 0)::float        AS total_amount,
-          COUNT(CASE WHEN pt.payment_status = 'pending'   THEN 1 END)::int AS pending_count,
-          COUNT(CASE WHEN pt.payment_status = 'completed' THEN 1 END)::int AS completed_count,
-          COUNT(DISTINCT d.user_id)::int           AS unique_donors,
-          COALESCE(AVG(d.amount), 0)::float        AS avg_donation
-         FROM donations d
-         LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id`
+              COUNT(d.donation_id)::int                                         AS total_donations,
+              COALESCE(SUM(d.amount), 0)::float                                 AS total_amount,
+              COUNT(CASE WHEN pt.payment_status = 'pending'   THEN 1 END)::int  AS pending_count,
+              COUNT(CASE WHEN pt.payment_status = 'completed' THEN 1 END)::int  AS completed_count,
+              COUNT(DISTINCT d.donor_id)::int                                   AS unique_donors,
+              COALESCE(AVG(d.amount), 0)::float                                 AS avg_donation
+             FROM donations d
+             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id`
         );
         res.json(result.rows[0]);
     } catch (err) {
@@ -184,17 +255,16 @@ router.get("/all", async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT
-        d.*,
-        c.campaign_name, c.campaign_type,
-        pt.payment_reference, pt.payment_status,
-        u.first_name, u.last_name
-       FROM donations d
-       LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
-       LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
-       LEFT JOIN users u ON d.user_id = u.user_id
-       ORDER BY d.initiated_at DESC`
+              d.*,
+              c.campaign_name, c.campaign_type,
+              pt.payment_reference, pt.payment_status,
+              dn.first_name, dn.last_name, dn.email AS donor_email
+             FROM donations d
+             LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
+             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+             LEFT JOIN donors dn ON d.donor_id = dn.donor_id
+             ORDER BY d.initiated_at DESC`
         );
-
         res.json(result.rows);
     } catch (err) {
         console.error("GET ALL DONATIONS ERROR:", err);
@@ -203,23 +273,48 @@ router.get("/all", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// GET /api/donations/user/:userId — Donations by user
+// GET /api/donations/donor/:donorId — Donations by donor_id
+// ─────────────────────────────────────────────
+router.get("/donor/:donorId", async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT
+              d.*,
+              c.campaign_name, c.campaign_type,
+              pt.payment_reference, pt.payment_status
+             FROM donations d
+             LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
+             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+             WHERE d.donor_id = $1
+             ORDER BY d.initiated_at DESC`,
+            [req.params.donorId]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error("GET DONOR DONATIONS ERROR:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+// ─────────────────────────────────────────────
+// GET /api/donations/user/:userId — Donations by user_id (for profile/account page)
 // ─────────────────────────────────────────────
 router.get("/user/:userId", async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT
-        d.*,
-        c.campaign_name, c.campaign_type,
-        pt.payment_reference, pt.payment_status
-       FROM donations d
-       LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
-       LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
-       WHERE d.user_id = $1
-       ORDER BY d.initiated_at DESC`,
+              d.*,
+              c.campaign_name, c.campaign_type,
+              pt.payment_reference, pt.payment_status,
+              dn.first_name, dn.last_name
+             FROM donations d
+             LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
+             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+             LEFT JOIN donors dn ON d.donor_id = dn.donor_id
+             WHERE d.user_id = $1
+             ORDER BY d.initiated_at DESC`,
             [req.params.userId]
         );
-
         res.json(result.rows);
     } catch (err) {
         console.error("GET USER DONATIONS ERROR:", err);
@@ -234,20 +329,19 @@ router.get("/:id", async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT
-        d.*,
-        c.campaign_name, c.campaign_type, c.goal_amount, c.current_amount,
-        f.foundation_name,
-        pt.payment_reference, pt.payment_status,
-        u.first_name AS donor_first_name, u.last_name AS donor_last_name,
-        a.email AS donor_email_from_auth
-       FROM donations d
-       LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
-       LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
-       LEFT JOIN foundations f ON fc.foundation_id = f.foundation_id
-       LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
-       LEFT JOIN users u ON d.user_id = u.user_id
-       LEFT JOIN auth_users a ON u.user_id = a.user_id
-       WHERE d.donation_id = $1`,
+              d.*,
+              c.campaign_name, c.campaign_type, c.goal_amount, c.current_amount,
+              f.foundation_name,
+              pt.payment_reference, pt.payment_status,
+              dn.first_name AS donor_first_name, dn.last_name AS donor_last_name,
+              dn.email AS donor_email, dn.contact_number AS donor_phone
+             FROM donations d
+             LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
+             LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
+             LEFT JOIN foundations f ON fc.foundation_id = f.foundation_id
+             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+             LEFT JOIN donors dn ON d.donor_id = dn.donor_id
+             WHERE d.donation_id = $1`,
             [req.params.id]
         );
 
@@ -255,14 +349,12 @@ router.get("/:id", async (req, res) => {
             return res.status(404).json({ message: "Donation not found" });
         }
 
-        // Shape the response to match what the frontend expects
         const row = result.rows[0];
         const donation = {
             ...row,
             donor_name: row.donor_first_name
                 ? `${row.donor_first_name} ${row.donor_last_name || ""}`.trim()
                 : "Anonymous",
-            donor_email: row.donor_email_from_auth || null,
             donation_type: row.frequency === "monthly" ? "monthly" : "one-time",
             status: row.payment_status || "pending",
             created_at: row.initiated_at,
@@ -284,7 +376,6 @@ router.patch("/:id/complete", async (req, res) => {
     try {
         await client.query("BEGIN");
 
-        // Update donation completed_at
         const donationResult = await client.query(
             `UPDATE donations SET completed_at = NOW() WHERE donation_id = $1 RETURNING *`,
             [req.params.id]
@@ -295,7 +386,6 @@ router.patch("/:id/complete", async (req, res) => {
             return res.status(404).json({ message: "Donation not found" });
         }
 
-        // Update payment_transactions status
         await client.query(
             `UPDATE payment_transactions SET payment_status = 'completed' WHERE donation_id = $1`,
             [req.params.id]

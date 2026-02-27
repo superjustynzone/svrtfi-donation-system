@@ -137,6 +137,9 @@ export default function AdminFoundationCreation() {
 
             const response = await fetch(url, {
                 method: editingFoundation ? 'PUT' : 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 body: body
             });
 
