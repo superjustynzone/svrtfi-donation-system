@@ -180,7 +180,7 @@ const initDB = async () => {
         CREATE TABLE IF NOT EXISTS donations (
           donation_id SERIAL PRIMARY KEY,
           user_id INT REFERENCES users(user_id),
-          campaign_id INT REFERENCES campaigns(campaign_id),
+          campaign_id INT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
           amount DECIMAL(15, 2) NOT NULL,
           donation_source VARCHAR(50) DEFAULT 'website',
           currency VARCHAR(10) DEFAULT 'PHP',
@@ -200,11 +200,25 @@ const initDB = async () => {
         { name: 'initiated_at', type: 'TIMESTAMP DEFAULT NOW()' },
         { name: 'completed_at', type: 'TIMESTAMP' },
         { name: 'next_due_date', type: 'DATE' },
-        { name: 'message', type: 'TEXT' }
+        { name: 'message', type: 'TEXT' },
+        { name: 'campaign_id_cascade', type: 'CAMPAIGN_ID_CASCADE' }
       ];
 
       for (const col of donationsColumns) {
-        await pool.query(`ALTER TABLE donations ADD COLUMN IF NOT EXISTS ${col.name} ${col.type};`);
+        if (col.name === 'campaign_id_cascade') {
+          // Special handling to add CASCADE if not already present
+          await pool.query(`
+            DO $$ 
+            BEGIN 
+              IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'donations_campaign_id_fkey') THEN
+                ALTER TABLE donations DROP CONSTRAINT donations_campaign_id_fkey;
+              END IF;
+              ALTER TABLE donations ADD CONSTRAINT donations_campaign_id_fkey FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id) ON DELETE CASCADE;
+            END $$;
+          `);
+        } else {
+          await pool.query(`ALTER TABLE donations ADD COLUMN IF NOT EXISTS ${col.name} ${col.type};`);
+        }
       }
       console.log("✅ Donations table verified");
     } catch (e) {
@@ -217,7 +231,7 @@ const initDB = async () => {
         CREATE TABLE IF NOT EXISTS payment_transactions (
           transaction_id SERIAL PRIMARY KEY,
           donation_id INT REFERENCES donations(donation_id) ON DELETE CASCADE,
-          campaign_id INT REFERENCES campaigns(campaign_id),
+          campaign_id INT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
           payment_reference VARCHAR(100) UNIQUE,
           amount DECIMAL(15, 2) NOT NULL,
           payment_status VARCHAR(50) DEFAULT 'pending',
@@ -227,6 +241,18 @@ const initDB = async () => {
         );
       `);
       console.log("✅ Payment Transactions table verified");
+
+      // Ensure cascade for payment_transactions
+      await pool.query(`
+        DO $$ 
+        BEGIN 
+          IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'payment_transactions_campaign_id_fkey') THEN
+            ALTER TABLE payment_transactions DROP CONSTRAINT payment_transactions_campaign_id_fkey;
+          END IF;
+          ALTER TABLE payment_transactions ADD CONSTRAINT payment_transactions_campaign_id_fkey FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id) ON DELETE CASCADE;
+        END $$;
+      `);
+      console.log("✅ Payment Transactions cascade verified");
     } catch (e) {
       console.error("❌ Error in Payment Transactions table:", e.message);
     }

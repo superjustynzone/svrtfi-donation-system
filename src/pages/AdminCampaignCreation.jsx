@@ -154,6 +154,12 @@ export default function AdminCampaignCreation() {
                 body.append('image', selectedImage);
             }
 
+            // Add userId for audit logging
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user.user_id) {
+                body.append('userId', user.user_id);
+            }
+
             const response = await fetch(url, { method, body });
             const data = await response.json();
 
@@ -177,10 +183,14 @@ export default function AdminCampaignCreation() {
     const handleToggleStatus = async (campaignId, currentStatus) => {
         const newStatus = currentStatus === 'draft' ? 'publish' : 'draft';
         try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
             const response = await fetch(`http://localhost:5000/api/campaigns/status/${campaignId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus })
+                body: JSON.stringify({
+                    status: newStatus,
+                    userId: user.user_id || null
+                })
             });
 
             const data = await response.json();
@@ -223,8 +233,11 @@ export default function AdminCampaignCreation() {
     const confirmDelete = async () => {
         if (!campaignToDelete) return;
         try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
             const response = await fetch(`http://localhost:5000/api/campaigns/delete/${campaignToDelete}`, {
                 method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.user_id || null })
             });
             const data = await response.json();
             if (response.ok) {

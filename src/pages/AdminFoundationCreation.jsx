@@ -125,6 +125,12 @@ export default function AdminFoundationCreation() {
                 body.append('cover', selectedCover);
             }
 
+            // Add userId for audit logging
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user.user_id) {
+                body.append('userId', user.user_id);
+            }
+
             const url = editingFoundation
                 ? `http://localhost:5000/api/foundations/update/${editingFoundation.foundation_id}`
                 : 'http://localhost:5000/api/foundations/create';
@@ -183,8 +189,11 @@ export default function AdminFoundationCreation() {
 
         try {
             setIsLoading(true);
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
             const response = await fetch(`http://localhost:5000/api/foundations/${foundationToDelete.foundation_id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.user_id || null })
             });
 
             if (response.ok) {

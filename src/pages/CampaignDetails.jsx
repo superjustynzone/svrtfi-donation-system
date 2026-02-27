@@ -81,7 +81,7 @@ export default function CampaignDetails() {
 
     const progress = calculateProgress(campaign.current_amount, campaign.goal_amount);
     const daysRemaining = getDaysRemaining(campaign.end_date);
-    const hasMedia = campaign.media && campaign.media.length > 0;
+    const hasMedia = (campaign.media && campaign.media.length > 0) || campaign.file_url;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-teal-50">
@@ -111,19 +111,23 @@ export default function CampaignDetails() {
                                     {/* Main Image */}
                                     <div className="relative h-96 bg-gray-200">
                                         <img
-                                            src={`http://localhost:5000${campaign.media[selectedImage].file_url}`}
+                                            src={campaign.media && campaign.media.length > 0
+                                                ? `http://localhost:5000${campaign.media[selectedImage].file_url}`
+                                                : `http://localhost:5000${campaign.file_url}`}
                                             alt={campaign.campaign_name}
                                             className="w-full h-full object-cover"
                                         />
 
                                         {/* Image Counter */}
-                                        <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                            {selectedImage + 1} / {campaign.media.length}
-                                        </div>
+                                        {campaign.media && campaign.media.length > 1 && (
+                                            <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                                {selectedImage + 1} / {campaign.media.length}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Thumbnail Gallery */}
-                                    {campaign.media.length > 1 && (
+                                    {campaign.media && campaign.media.length > 1 && (
                                         <div className="p-4 bg-gray-50 border-t border-gray-200">
                                             <div className="flex gap-3 overflow-x-auto pb-2">
                                                 {campaign.media.map((media, index) => (
@@ -171,10 +175,18 @@ export default function CampaignDetails() {
                                 {/* Foundation Info */}
                                 {campaign.foundation_name && (
                                     <div className="flex items-center gap-3 text-gray-600">
-                                        <div className="w-10 h-10 bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-full flex items-center justify-center">
-                                            <span className="text-white text-sm font-bold">
-                                                {campaign.foundation_name.charAt(0).toUpperCase()}
-                                            </span>
+                                        <div className="w-12 h-12 bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-full flex items-center justify-center overflow-hidden border border-gray-100 shadow-sm">
+                                            {campaign.foundation_logo ? (
+                                                <img
+                                                    src={`http://localhost:5000${campaign.foundation_logo}`}
+                                                    alt={campaign.foundation_name}
+                                                    className="w-full h-full object-contain p-1 bg-white"
+                                                />
+                                            ) : (
+                                                <span className="text-white text-sm font-bold">
+                                                    {campaign.foundation_name.charAt(0).toUpperCase()}
+                                                </span>
+                                            )}
                                         </div>
                                         <div>
                                             <p className="text-sm text-gray-500">Organized by</p>

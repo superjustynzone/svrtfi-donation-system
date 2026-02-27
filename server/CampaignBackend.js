@@ -4,6 +4,7 @@ const router = express.Router();
 const { Pool } = require("pg");
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
 // Load environment variables
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
@@ -99,11 +100,13 @@ router.post("/create", handleUpload, async (req, res) => {
     );
 
     // Log campaign creation
-    await req.app.locals.logAudit({
-      userId: req.body.userId || null,
-      action: "Campaign: Created",
-      details: `Created campaign: ${campaign_name} (Type: ${campaign_type})`
-    });
+    if (req.app.locals.logAudit) {
+      await req.app.locals.logAudit({
+        userId: req.body.userId || null,
+        action: "Campaign: Created",
+        details: `Created campaign: ${campaign_name} (Type: ${campaign_type})`
+      });
+    }
 
     return res.json({
       message: "Campaign created as draft!",
@@ -221,11 +224,13 @@ router.patch("/status/:id", async (req, res) => {
     const action = status === 'publish' ? 'published' : 'moved to draft';
 
     // Log status update
-    await req.app.locals.logAudit({
-      userId: req.body.userId || null,
-      action: `Campaign: ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-      details: `Campaign ID ${campaignId} status changed to ${status}`
-    });
+    if (req.app.locals.logAudit) {
+      await req.app.locals.logAudit({
+        userId: req.body.userId || null,
+        action: `Campaign: ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+        details: `Campaign ID ${campaignId} status changed to ${status}`
+      });
+    }
 
     return res.json({ message: `Campaign ${action} successfully!`, campaign: result.rows[0] });
 
@@ -299,11 +304,13 @@ router.put("/update/:id", handleUpload, async (req, res) => {
     }
 
     // Log update
-    await req.app.locals.logAudit({
-      userId: req.body.userId || null,
-      action: "Campaign: Updated",
-      details: `Updated campaign ID ${campaignId}: ${campaign_name}`
-    });
+    if (req.app.locals.logAudit) {
+      await req.app.locals.logAudit({
+        userId: req.body.userId || null,
+        action: "Campaign: Updated",
+        details: `Updated campaign ID ${campaignId}: ${campaign_name}`
+      });
+    }
 
     return res.json({ message: "Campaign updated successfully!" });
 
@@ -339,11 +346,13 @@ router.delete("/delete/:id", async (req, res) => {
     await pool.query("DELETE FROM campaigns WHERE campaign_id = $1", [campaignId]);
 
     // Log deletion
-    await req.app.locals.logAudit({
-      userId: req.body.userId || null,
-      action: "Campaign: Deleted",
-      details: `Deleted campaign ID ${campaignId}`
-    });
+    if (req.app.locals.logAudit) {
+      await req.app.locals.logAudit({
+        userId: req.body.userId || null,
+        action: "Campaign: Deleted",
+        details: `Deleted campaign ID ${campaignId}`
+      });
+    }
 
     return res.json({ message: "Campaign deleted successfully!" });
 

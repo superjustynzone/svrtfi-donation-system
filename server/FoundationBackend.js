@@ -126,6 +126,16 @@ router.post("/create", handleUpload, async (req, res) => {
         );
 
         const foundationId = result.rows[0].foundation_id;
+
+        // Log creation
+        if (req.app.locals.logAudit) {
+            await req.app.locals.logAudit({
+                userId: req.body.userId || null,
+                action: "Foundation: Created",
+                details: `Registered foundation: ${foundation_name}`
+            });
+        }
+
         res.json({ message: "Foundation created successfully!", foundationId });
 
     } catch (err) {
@@ -210,6 +220,15 @@ router.put("/update/:id", handleUpload, async (req, res) => {
             ]
         );
 
+        // Log update
+        if (req.app.locals.logAudit) {
+            await req.app.locals.logAudit({
+                userId: req.body.userId || null,
+                action: "Foundation: Updated",
+                details: `Updated foundation ID ${id}: ${foundation_name}`
+            });
+        }
+
         res.json({ message: "Foundation updated successfully!" });
 
     } catch (err) {
@@ -248,6 +267,15 @@ router.delete("/:id", async (req, res) => {
 
         if (deleteRes.rowCount === 0) {
             return res.status(404).json({ message: "Foundation not found" });
+        }
+
+        // Log deletion
+        if (req.app.locals.logAudit) {
+            await req.app.locals.logAudit({
+                userId: req.body.userId || null,
+                action: "Foundation: Deleted",
+                details: `Deleted foundation ID ${id}`
+            });
         }
 
         res.json({ message: "Foundation deleted successfully!" });
