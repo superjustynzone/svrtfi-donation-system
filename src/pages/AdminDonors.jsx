@@ -538,8 +538,9 @@ function ViewDonorModal({ donor, history, historyLoading, handleClose, formatCur
                                                     <td className="px-6 py-4 font-bold text-[#63A6B2]">{formatCurrency(row.amount)}</td>
                                                     <td className="px-6 py-4">
                                                         <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${row.payment_status === 'completed' ? 'bg-green-100 text-green-700' :
-                                                            row.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                                'bg-gray-100 text-gray-700'
+                                                            row.payment_status === 'pending'   ? 'bg-yellow-100 text-yellow-700' :
+                                                                row.payment_status === 'cancelled' ? 'bg-gray-100 text-gray-500' :
+                                                                                                    'bg-red-100 text-red-700'
                                                             }`}>{row.payment_status || 'pending'}</span>
                                                     </td>
                                                 </tr>

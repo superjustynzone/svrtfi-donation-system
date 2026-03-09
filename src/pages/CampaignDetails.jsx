@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import Footer from '../components/Footer';
+import { ChevronLeft, ChevronRight } from 'lucide-react'; // Added ChevronLeft and ChevronRight
+import 'react-quill-new/dist/quill.snow.css';
 
 export default function CampaignDetails() {
     const { id } = useParams();
@@ -109,20 +111,39 @@ export default function CampaignDetails() {
                             {hasMedia ? (
                                 <>
                                     {/* Main Image */}
-                                    <div className="relative h-96 bg-gray-200">
+                                    <div className="relative h-96 bg-gray-200 group">
                                         <img
                                             src={campaign.media && campaign.media.length > 0
                                                 ? `http://localhost:5000${campaign.media[selectedImage].file_url}`
                                                 : `http://localhost:5000${campaign.file_url}`}
                                             alt={campaign.campaign_name}
-                                            className="w-full h-full object-cover"
+                                            className="w-full h-full object-cover transition-opacity duration-300"
                                         />
 
-                                        {/* Image Counter */}
+                                        {/* Image Controls */}
                                         {campaign.media && campaign.media.length > 1 && (
-                                            <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                                {selectedImage + 1} / {campaign.media.length}
-                                            </div>
+                                            <>
+                                                {/* Left Arrow */}
+                                                <button
+                                                    onClick={() => setSelectedImage(prev => prev === 0 ? campaign.media.length - 1 : prev - 1)}
+                                                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <ChevronLeft className="w-6 h-6" />
+                                                </button>
+
+                                                {/* Right Arrow */}
+                                                <button
+                                                    onClick={() => setSelectedImage(prev => prev === campaign.media.length - 1 ? 0 : prev + 1)}
+                                                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <ChevronRight className="w-6 h-6" />
+                                                </button>
+
+                                                {/* Image Counter */}
+                                                <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                                    {selectedImage + 1} / {campaign.media.length}
+                                                </div>
+                                            </>
                                         )}
                                     </div>
 

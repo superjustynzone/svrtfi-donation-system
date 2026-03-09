@@ -21,8 +21,8 @@ export default function AdminFoundationCreation() {
     const [editingFoundation, setEditingFoundation] = useState(null);
     const [selectedLogo, setSelectedLogo] = useState(null);
     const [logoPreviewUrl, setLogoPreviewUrl] = useState(null);
-    const [selectedCover, setSelectedCover] = useState(null);
-    const [coverPreviewUrl, setCoverPreviewUrl] = useState(null);
+    const [selectedCovers, setSelectedCovers] = useState([]);
+    const [coverPreviewUrls, setCoverPreviewUrls] = useState([]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [foundationToDelete, setFoundationToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -76,10 +76,11 @@ export default function AdminFoundationCreation() {
     };
 
     const handleCoverChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setSelectedCover(file);
-            setCoverPreviewUrl(URL.createObjectURL(file));
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            setSelectedCovers(files);
+            const urls = files.map(file => URL.createObjectURL(file));
+            setCoverPreviewUrls(urls);
         }
     };
 
@@ -98,8 +99,8 @@ export default function AdminFoundationCreation() {
         });
         setSelectedLogo(null);
         setLogoPreviewUrl(null);
-        setSelectedCover(null);
-        setCoverPreviewUrl(null);
+        setSelectedCovers([]);
+        setCoverPreviewUrls([]);
         setEditingFoundation(null);
         setShowForm(false);
     };
@@ -121,8 +122,10 @@ export default function AdminFoundationCreation() {
             if (selectedLogo) {
                 body.append('logo', selectedLogo);
             }
-            if (selectedCover) {
-                body.append('cover', selectedCover);
+            if (selectedCovers && selectedCovers.length > 0) {
+                selectedCovers.forEach(cover => {
+                    body.append('cover', cover);
+                });
             }
 
             // Add userId for audit logging
@@ -175,7 +178,8 @@ export default function AdminFoundationCreation() {
             vision: foundation.vision || ''
         });
         setLogoPreviewUrl(foundation.image_logo ? `http://localhost:5000${foundation.image_logo}` : null);
-        setCoverPreviewUrl(foundation.image_cover ? `http://localhost:5000${foundation.image_cover}` : null);
+        // During edit, just show main cover preview. More complex loading of additional media is usually separated.
+        setCoverPreviewUrls(foundation.image_cover ? [`http://localhost:5000${foundation.image_cover}`] : []);
         setShowForm(true);
         setTimeout(() => {
             document.getElementById('foundation-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -456,20 +460,35 @@ export default function AdminFoundationCreation() {
 
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Cover Image
+                                                Cover Images
                                             </label>
-                                            <div className="relative h-32 w-full rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50 group">
-                                                {coverPreviewUrl ? (
-                                                    <img src={coverPreviewUrl} alt="Cover Preview" className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <div className="text-center">
-                                                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                                                        <p className="text-sm text-gray-500">Upload Cover Image</p>
+                                            <div className="flex flex-col gap-4">
+                                                <div className="flex flex-wrap gap-4">
+                                                    {coverPreviewUrls.length > 0 ? (
+                                                        coverPreviewUrls.map((url, index) => (
+                                                            <div key={index} className="h-24 w-32 rounded-lg border-2 border-gray-200 overflow-hidden relative shadow-sm">
+                                                                <img src={url} alt={`Cover Preview ${index + 1}`} className="h-full w-full object-cover" />
+                                                                {index === 0 && (
+                                                                    <div className="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">Main</div>
+                                                                )}
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="h-24 w-32 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-gray-50">
+                                                            <Upload className="w-6 h-6 text-gray-400 mb-1" />
+                                                            <p className="text-[10px] text-gray-400">No cover</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <label className="cursor-pointer">
+                                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-[#63A6B2] transition text-center bg-gray-50/50">
+                                                        <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                                                        <p className="text-sm font-medium text-gray-700">Click to upload multiple cover images</p>
+                                                        <p className="text-xs text-gray-500 mt-1">First image will be the main cover (Max 5 images)</p>
                                                     </div>
-                                                )}
-                                                <label className="absolute inset-0 cursor-pointer bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
                                                     <input
                                                         type="file"
+                                                        multiple
                                                         accept="image/*"
                                                         onChange={handleCoverChange}
                                                         className="hidden"

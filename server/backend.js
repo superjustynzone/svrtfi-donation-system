@@ -113,26 +113,42 @@ const initDB = async () => {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS foundations (
           foundation_id SERIAL PRIMARY KEY,
-          foundation_name VARCHAR(255) NOT NULL,
-          focus_areas TEXT[],
+          foundation_name VARCHAR(200) NOT NULL,
+          foundation_address TEXT,
+          foundation_contact VARCHAR(50),
+          foundation_email VARCHAR(150),
+          bank_name TEXT,
+          bank_information TEXT,
+          bank_ca_label VARCHAR(100),
+          bank_ca_number VARCHAR(100),
+          bank_sa_label VARCHAR(100),
+          bank_sa_number VARCHAR(100),
+          account_name VARCHAR(150),
+          image_logo TEXT,
+          image_cover TEXT,
+          focus_areas TEXT,
           about_foundation TEXT,
           mission TEXT,
           vision TEXT,
-          contact_number VARCHAR(50),
-          email VARCHAR(255),
-          address TEXT,
-          image_cover TEXT,
-          image_logo TEXT,
-          bank_name VARCHAR(255),
-          bank_account_name VARCHAR(255),
-          bank_account_number VARCHAR(255),
-          created_at TIMESTAMP DEFAULT NOW(),
-          updated_at TIMESTAMP DEFAULT NOW()
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
       console.log("✅ Foundations table verified");
+
+      // 2b. Foundation Media Table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS foundation_media (
+          media_id SERIAL PRIMARY KEY,
+          foundation_id INT REFERENCES foundations(foundation_id) ON DELETE CASCADE,
+          file_url TEXT NOT NULL,
+          media_type VARCHAR(50) DEFAULT 'image',
+          uploaded_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
+      console.log("✅ Foundation Media table verified");
     } catch (e) {
-      console.error("❌ Error in Foundations table:", e.message);
+      console.error("❌ Error in Foundations table or Foundation Media table:", e.message);
     }
 
     // 6. Campaigns table
@@ -140,38 +156,48 @@ const initDB = async () => {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS campaigns (
           campaign_id SERIAL PRIMARY KEY,
-          campaign_name VARCHAR(255) NOT NULL,
+          campaign_name VARCHAR(200) NOT NULL,
           campaign_type VARCHAR(100),
           campaign_description TEXT,
-          goal_amount DECIMAL(15, 2),
-          current_amount DECIMAL(15, 2) DEFAULT 0,
+          goal_amount NUMERIC(12,2),
+          current_amount NUMERIC(12,2) DEFAULT 0.00,
           start_date DATE,
           end_date DATE,
           file_url TEXT,
           media_type VARCHAR(50),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           is_featured BOOLEAN DEFAULT FALSE,
-          status VARCHAR(50) DEFAULT 'draft',
-          created_at TIMESTAMP DEFAULT NOW(),
-          updated_at TIMESTAMP DEFAULT NOW()
+          status VARCHAR(20) DEFAULT 'draft'
         );
       `);
       console.log("✅ Campaigns table verified");
-    } catch (e) {
-      console.error("❌ Error in Campaigns table:", e.message);
-    }
 
-    // 7. Foundation Campaigns table
-    try {
+      // 4. Campaign Media Table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS campaign_media (
+          media_id SERIAL PRIMARY KEY,
+          campaign_id INT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
+          file_url TEXT NOT NULL,
+          media_type VARCHAR(50) DEFAULT 'image',
+          uploaded_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
+      console.log("✅ Campaign Media table verified");
+
+      // 5. Foundation Campaigns (Many-to-Many)
       await pool.query(`
         CREATE TABLE IF NOT EXISTS foundation_campaigns (
+          id SERIAL PRIMARY KEY,
           foundation_id INT REFERENCES foundations(foundation_id) ON DELETE CASCADE,
           campaign_id INT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
-          PRIMARY KEY (foundation_id, campaign_id)
+          UNIQUE (foundation_id, campaign_id)
         );
       `);
       console.log("✅ Foundation Campaigns table verified");
     } catch (e) {
-      console.error("❌ Error in Foundation Campaigns table:", e.message);
+      console.error("❌ Error in Campaigns table or related tables:", e.message);
     }
 
     // 8. Donations table (Comprehensive with missing columns check)

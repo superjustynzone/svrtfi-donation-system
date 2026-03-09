@@ -112,3 +112,14 @@ input[type="checkbox"] {
 [data-sonner-toast][data-type="error"] svg {
   color: #ef4444 !important;
 }
+
+/* QuillJS Global Overrides */
+.ql-editor {
+  min-height: 250px !important;
+  font-size: 1rem !important;
+  font-family: inherit !important;
+}
+.ql-container {
+  font-size: 1rem !important;
+  font-family: inherit !important;
+}

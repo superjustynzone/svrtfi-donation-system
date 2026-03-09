@@ -45,7 +45,7 @@ const upload = multer({
 // Fields configuration for multer
 const uploadFields = upload.fields([
     { name: 'logo', maxCount: 1 },
-    { name: 'cover', maxCount: 1 }
+    { name: 'cover', maxCount: 5 }
 ]);
 
 // Helper to handle multer errors
@@ -65,13 +65,18 @@ router.get("/all", async (req, res) => {
     try {
         const query = `
             SELECT 
-                foundation_id, foundation_name, foundation_address, 
-                foundation_contact, foundation_email,
-                bank_name, bank_information,
-                image_logo, image_cover, focus_areas, about_foundation, 
-                mission, vision, created_at, updated_at
-            FROM foundations
-            ORDER BY foundation_name
+                f.foundation_id, f.foundation_name, f.foundation_address, 
+                f.foundation_contact, f.foundation_email,
+                f.bank_name, f.bank_information,
+                f.image_logo, f.image_cover, f.focus_areas, f.about_foundation, 
+                f.mission, f.vision, f.created_at, f.updated_at,
+                (
+                  SELECT json_agg(json_build_object('media_id', fm.media_id, 'file_url', fm.file_url))
+                  FROM foundation_media fm
+                  WHERE fm.foundation_id = f.foundation_id
+                ) as media
+            FROM foundations f
+            ORDER BY f.foundation_name
         `;
         const result = await pool.query(query);
         res.json(result.rows);
@@ -85,7 +90,15 @@ router.get("/all", async (req, res) => {
 router.get("/:id", async (req, res) => {
     try {
         const query = `
-            SELECT * FROM foundations WHERE foundation_id = $1
+            SELECT 
+                f.*,
+                (
+                  SELECT json_agg(json_build_object('media_id', fm.media_id, 'file_url', fm.file_url))
+                  FROM foundation_media fm
+                  WHERE fm.foundation_id = f.foundation_id
+                ) as media
+            FROM foundations f 
+            WHERE f.foundation_id = $1
         `;
         const result = await pool.query(query, [req.params.id]);
 
@@ -108,9 +121,13 @@ router.post("/create", verifyAdmin, handleUpload, async (req, res) => {
             focus_areas, about_foundation, mission, vision
         } = req.body;
 
-        // Note: Files are in req.files['logo'][0] and req.files['cover'][0]
+        // Note: Files are in req.files['logo'][0] and req.files['cover'] array
         const image_logo = req.files['logo'] ? `/uploads/foundations/${req.files['logo'][0].filename}` : null;
-        const image_cover = req.files['cover'] ? `/uploads/foundations/${req.files['cover'][0].filename}` : null;
+
+        // Use first cover as main cover
+        const image_cover = req.files['cover'] && req.files['cover'].length > 0
+            ? `/uploads/foundations/${req.files['cover'][0].filename}`
+            : null;
 
         const result = await pool.query(
             `INSERT INTO foundations (
@@ -127,6 +144,17 @@ router.post("/create", verifyAdmin, handleUpload, async (req, res) => {
         );
 
         const foundationId = result.rows[0].foundation_id;
+
+        // Save additional covers into foundation_media table
+        if (req.files['cover'] && req.files['cover'].length > 1) {
+            for (let i = 1; i < req.files['cover'].length; i++) {
+                const coverUrl = `/uploads/foundations/${req.files['cover'][i].filename}`;
+                await pool.query(
+                    `INSERT INTO foundation_media (foundation_id, file_url, media_type) VALUES ($1, $2, $3)`,
+                    [foundationId, coverUrl, 'image']
+                );
+            }
+        }
 
         // Log creation
         if (req.app.locals.logAudit) {
@@ -192,7 +220,8 @@ router.put("/update/:id", verifyAdmin, handleUpload, async (req, res) => {
         }
 
         // Handle new cover upload
-        if (req.files['cover']) {
+        if (req.files['cover'] && req.files['cover'].length > 0) {
+            // Delete old main cover file
             if (image_cover) {
                 const relativePath = image_cover.startsWith('/') ? image_cover.substring(1) : image_cover;
                 const fullPath = path.join(__dirname, relativePath);
@@ -200,7 +229,31 @@ router.put("/update/:id", verifyAdmin, handleUpload, async (req, res) => {
                     try { fs.unlinkSync(fullPath); } catch (e) { console.error("Failed to delete old cover", e); }
                 }
             }
+
+            // Delete old additional covers from foundation_media
+            const oldMedia = await pool.query("SELECT file_url FROM foundation_media WHERE foundation_id = $1", [id]);
+            oldMedia.rows.forEach(m => {
+                const relPath = m.file_url.startsWith('/') ? m.file_url.substring(1) : m.file_url;
+                const fPath = path.join(__dirname, relPath);
+                if (fs.existsSync(fPath)) {
+                    try { fs.unlinkSync(fPath); } catch (e) { }
+                }
+            });
+            await pool.query("DELETE FROM foundation_media WHERE foundation_id = $1", [id]);
+
+            // Set new main cover
             image_cover = `/uploads/foundations/${req.files['cover'][0].filename}`;
+
+            // Save new additional covers into foundation_media table
+            if (req.files['cover'].length > 1) {
+                for (let i = 1; i < req.files['cover'].length; i++) {
+                    const coverUrl = `/uploads/foundations/${req.files['cover'][i].filename}`;
+                    await pool.query(
+                        `INSERT INTO foundation_media (foundation_id, file_url, media_type) VALUES ($1, $2, $3)`,
+                        [id, coverUrl, 'image']
+                    );
+                }
+            }
         }
 
         // Update the single foundations table
@@ -255,7 +308,11 @@ router.delete("/:id", verifyAdmin, async (req, res) => {
 
         const { foundation_name, image_logo, image_cover } = foundationRes.rows[0];
 
-        [image_logo, image_cover].forEach(imgPath => {
+        // Fetch additional cover images to delete from storage
+        const mediaRes = await pool.query("SELECT file_url FROM foundation_media WHERE foundation_id = $1", [id]);
+        const additionalImages = mediaRes.rows.map(row => row.file_url);
+
+        [image_logo, image_cover, ...additionalImages].forEach(imgPath => {
             if (imgPath) {
                 const relativePath = imgPath.startsWith('/') ? imgPath.substring(1) : imgPath;
                 const fullPath = path.join(__dirname, relativePath);

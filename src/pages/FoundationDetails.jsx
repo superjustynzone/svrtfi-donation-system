@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import 'react-quill-new/dist/quill.snow.css';
 
 // Helper to strip HTML tags for plain-text truncation
 const stripHtml = (html) => {
@@ -17,6 +19,7 @@ export default function FoundationDetails() {
     const [otherFoundations, setOtherFoundations] = useState([]);
     const [featuredCampaign, setFeaturedCampaign] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedCover, setSelectedCover] = useState(0);
 
     useEffect(() => {
         fetchFoundationDetails();
@@ -136,6 +139,13 @@ export default function FoundationDetails() {
         return null;
     }
 
+    const hasMedia = foundation.media && foundation.media.length > 0;
+    const currentCoverUrl = hasMedia
+        ? `http://localhost:5000${foundation.media[selectedCover].file_url}`
+        : foundation.image_cover
+            ? `http://localhost:5000${foundation.image_cover}`
+            : 'https://via.placeholder.com/1200x400/63A6B2/FFFFFF?text=Foundation';
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-teal-50">
             <Navbar />
@@ -143,20 +153,73 @@ export default function FoundationDetails() {
             {/* Hero Section with Cover Image */}
             <div className="relative mt-20">
                 <div
-                    className="h-64 bg-cover bg-center relative"
-                    style={{ backgroundImage: `url(${foundation.image_cover ? `http://localhost:5000${foundation.image_cover}` : 'https://via.placeholder.com/1200x400/63A6B2/FFFFFF?text=Foundation'})` }}
+                    className="h-96 md:h-[400px] bg-cover bg-center relative group transition-all duration-500"
+                    style={{ backgroundImage: `url(${currentCoverUrl})` }}
                 >
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70"></div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80"></div>
+
+                    {/* Image Controls */}
+                    {hasMedia && foundation.media.length > 1 && (
+                        <>
+                            {/* Left Arrow */}
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setSelectedCover(prev => prev === 0 ? foundation.media.length - 1 : prev - 1); }}
+                                className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-3 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all z-10"
+                            >
+                                <ChevronLeft className="w-8 h-8" />
+                            </button>
+
+                            {/* Right Arrow */}
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setSelectedCover(prev => prev === foundation.media.length - 1 ? 0 : prev + 1); }}
+                                className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-3 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all z-10"
+                            >
+                                <ChevronRight className="w-8 h-8" />
+                            </button>
+
+                            {/* Image Counter */}
+                            <div className="absolute top-6 right-6 bg-black/50 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-sm font-bold border border-white/20 z-10">
+                                {selectedCover + 1} / {foundation.media.length}
+                            </div>
+                        </>
+                    )}
 
                     {/* Foundation Name Overlay */}
-                    <div className="absolute bottom-8 left-8">
-                        <span className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold text-gray-700 mb-3 inline-block">
-                            Active Care
-                        </span>
-                        <h1 className="text-4xl font-bold text-white mb-2">{foundation.foundation_name}</h1>
-                        <p className="text-xl text-white/90 italic">{foundation.mission ? stripHtml(foundation.mission).substring(0, 100) + '...' : ''}</p>
+                    <div className="absolute bottom-10 left-8 md:left-12">
+                        <div className="flex items-center gap-6">
+                            {/* Logo inside Hero */}
+                            {foundation.image_logo && (
+                                <div className="hidden md:block h-24 w-24 rounded-full border-4 border-white/20 overflow-hidden shadow-2xl bg-white flex-shrink-0">
+                                    <img
+                                        src={`http://localhost:5000${foundation.image_logo}`}
+                                        alt={`${foundation.foundation_name} Logo`}
+                                        className="h-full w-full object-cover"
+                                    />
+                                </div>
+                            )}
+                            <div>
+                                <span className="bg-[#63A6B2] px-4 py-2 rounded-full text-xs font-bold text-white mb-4 inline-block uppercase tracking-wider shadow-lg">
+                                    Foundation
+                                </span>
+                                <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-3 drop-shadow-md">{foundation.foundation_name}</h1>
+                                <p className="text-xl text-white/90 italic drop-shadow-sm max-w-2xl">{foundation.mission ? stripHtml(foundation.mission).substring(0, 150) + (stripHtml(foundation.mission).length > 150 ? '...' : '') : ''}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                {/* Thumbnail Indicators (Optional, for better UX) */}
+                {hasMedia && foundation.media.length > 1 && (
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
+                        {foundation.media.map((_, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => setSelectedCover(idx)}
+                                className={`h-2 rounded-full transition-all duration-300 ${selectedCover === idx ? 'w-8 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'}`}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Main Content */}

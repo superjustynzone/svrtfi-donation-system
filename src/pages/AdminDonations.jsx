@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     DollarSign, Search, Menu, Download,
     RefreshCw, Eye, X, CheckCircle, Clock,
-    TrendingUp, Users, CreditCard, BarChart3
+    TrendingUp, Users, CreditCard, BarChart3, XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +29,7 @@ const STATUS_STYLES = {
     completed: 'bg-green-100 text-green-700',
     pending: 'bg-yellow-100 text-yellow-700',
     failed: 'bg-red-100 text-red-700',
+    cancelled: 'bg-gray-100 text-gray-600',
 };
 
 export default function AdminDonations() {
@@ -50,6 +51,7 @@ export default function AdminDonations() {
         total_amount: 0,
         pending_count: 0,
         completed_count: 0,
+        cancelled_count: 0,
         unique_donors: 0,
         avg_donation: 0,
     });
@@ -119,6 +121,22 @@ export default function AdminDonations() {
             if (viewDonation?.donation_id === donationId) setViewDonation(null);
         } catch {
             toast.error('Failed to update donation.');
+        }
+    };
+
+    // mark as cancelled
+    const handleMarkCancelled = async (donationId) => {
+        try {
+            const res = await fetch(`/api/donations/${donationId}/cancel`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+            });
+            if (!res.ok) throw new Error();
+            toast.success('Donation cancelled.');
+            await fetchAll();
+            if (viewDonation?.donation_id === donationId) setViewDonation(null);
+        } catch {
+            toast.error('Failed to cancel donation.');
         }
     };
 
@@ -218,11 +236,12 @@ export default function AdminDonations() {
 
                 <div className="p-4 lg:p-8">
                     {/* Stats */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                         <StatCard icon={<DollarSign className="w-6 h-6 text-white" />} iconBg="from-[#63A6B2] to-[#4d8b96]" title="Total Amount" value={formatCurrency(stats.total_amount)} />
                         <StatCard icon={<BarChart3 className="w-6 h-6 text-white" />} iconBg="from-purple-500 to-purple-400" title="Total Donations" value={stats.total_donations || 0} />
                         <StatCard icon={<CheckCircle className="w-6 h-6 text-white" />} iconBg="from-green-500 to-green-400" title="Completed" value={stats.completed_count || 0} />
                         <StatCard icon={<Clock className="w-6 h-6 text-white" />} iconBg="from-yellow-500 to-yellow-400" title="Pending" value={stats.pending_count || 0} />
+                        <StatCard icon={<XCircle className="w-6 h-6 text-white" />} iconBg="from-red-500 to-red-400" title="Cancelled" value={stats.cancelled_count || 0} />
                     </div>
 
                     {/* Summary strip */}
@@ -265,6 +284,7 @@ export default function AdminDonations() {
                                 <option value="pending">Pending</option>
                                 <option value="completed">Completed</option>
                                 <option value="failed">Failed</option>
+                                <option value="cancelled">Cancelled</option>
                             </select>
                             <select className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:border-[#63A6B2]" value={filterFreq} onChange={e => setFilterFreq(e.target.value)}>
                                 <option value="All">All Frequency</option>
@@ -339,13 +359,22 @@ export default function AdminDonations() {
                                                                 <Eye className="w-5 h-5" />
                                                             </button>
                                                             {status === 'pending' && (
-                                                                <button
-                                                                    onClick={() => handleMarkCompleted(d.donation_id)}
-                                                                    className="p-2 hover:bg-green-50 rounded-lg transition text-green-600"
-                                                                    title="Mark as Completed"
-                                                                >
-                                                                    <CheckCircle className="w-5 h-5" />
-                                                                </button>
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => handleMarkCompleted(d.donation_id)}
+                                                                        className="p-2 hover:bg-green-50 rounded-lg transition text-green-600"
+                                                                        title="Mark as Completed"
+                                                                    >
+                                                                        <CheckCircle className="w-5 h-5" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleMarkCancelled(d.donation_id)}
+                                                                        className="p-2 hover:bg-red-50 rounded-lg transition text-red-500"
+                                                                        title="Cancel Donation"
+                                                                    >
+                                                                        <XCircle className="w-5 h-5" />
+                                                                    </button>
+                                                                </>
                                                             )}
                                                         </div>
                                                     </td>
@@ -399,6 +428,7 @@ export default function AdminDonations() {
                     donation={viewDonation}
                     handleClose={() => setViewDonation(null)}
                     handleMarkCompleted={handleMarkCompleted}
+                    handleMarkCancelled={handleMarkCancelled}
                     formatCurrency={formatCurrency}
                     fmtDate={fmtDate}
                 />
@@ -423,7 +453,7 @@ function StatCard({ icon, iconBg, title, value }) {
 }
 
 // ─── View Donation Modal ──────────────────────
-function ViewDonationModal({ donation: d, handleClose, handleMarkCompleted, formatCurrency, fmtDate }) {
+function ViewDonationModal({ donation: d, handleClose, handleMarkCompleted, handleMarkCancelled, formatCurrency, fmtDate }) {
     const status = d.payment_status || 'pending';
     const donorName = d.first_name ? `${d.first_name} ${d.last_name}` : 'Anonymous';
 
@@ -467,12 +497,20 @@ function ViewDonationModal({ donation: d, handleClose, handleMarkCompleted, form
                 {/* Footer */}
                 <div className="p-6 border-t border-gray-100 bg-[#f8fafb] flex gap-3 justify-end">
                     {status === 'pending' && (
-                        <button
-                            onClick={() => handleMarkCompleted(d.donation_id)}
-                            className="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold text-sm hover:bg-green-700 transition flex items-center gap-2"
-                        >
-                            <CheckCircle className="w-4 h-4" /> Mark Completed
-                        </button>
+                        <>
+                            <button
+                                onClick={() => handleMarkCancelled(d.donation_id)}
+                                className="px-6 py-2 bg-red-100 text-red-600 rounded-lg font-semibold text-sm hover:bg-red-200 transition flex items-center gap-2"
+                            >
+                                <XCircle className="w-4 h-4" /> Cancel
+                            </button>
+                            <button
+                                onClick={() => handleMarkCompleted(d.donation_id)}
+                                className="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold text-sm hover:bg-green-700 transition flex items-center gap-2"
+                            >
+                                <CheckCircle className="w-4 h-4" /> Mark Completed
+                            </button>
+                        </>
                     )}
                     <button
                         onClick={handleClose}

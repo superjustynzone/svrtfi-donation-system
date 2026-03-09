@@ -190,18 +190,20 @@ router.get("/donors", async (req, res) => {
               dn.donor_id,
               dn.first_name,
               dn.last_name,
-              dn.contact_number                         AS phone,
+              dn.contact_number                                                          AS phone,
               dn.address,
               dn.email,
-              COUNT(d.donation_id)::int                 AS donation_count,
-              COALESCE(SUM(d.amount), 0)::float         AS total_donated,
-              MAX(d.initiated_at)                       AS last_donation_at,
-              MIN(d.initiated_at)                       AS first_donation_at,
-              BOOL_OR(d.frequency = 'monthly')          AS is_recurring
+              COUNT(d.donation_id) FILTER (WHERE pt.payment_status IN ('completed', 'pending'))::int  AS donation_count,
+              COALESCE(SUM(d.amount) FILTER (WHERE pt.payment_status IN ('completed', 'pending')), 0)::float AS total_donated,
+              MAX(d.initiated_at)  FILTER (WHERE pt.payment_status IN ('completed', 'pending'))       AS last_donation_at,
+              MIN(d.initiated_at)  FILTER (WHERE pt.payment_status IN ('completed', 'pending'))       AS first_donation_at,
+              BOOL_OR(d.frequency = 'monthly' AND pt.payment_status IN ('completed', 'pending'))      AS is_recurring
              FROM donors dn
              INNER JOIN donations d ON dn.donor_id = d.donor_id
+             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
              GROUP BY dn.donor_id, dn.first_name, dn.last_name,
                       dn.contact_number, dn.address, dn.email
+             HAVING COUNT(d.donation_id) > 0
              ORDER BY total_donated DESC`
         );
 
@@ -232,12 +234,13 @@ router.get("/stats", async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT
-              COUNT(d.donation_id)::int                                         AS total_donations,
-              COALESCE(SUM(d.amount), 0)::float                                 AS total_amount,
-              COUNT(CASE WHEN pt.payment_status = 'pending'   THEN 1 END)::int  AS pending_count,
-              COUNT(CASE WHEN pt.payment_status = 'completed' THEN 1 END)::int  AS completed_count,
-              COUNT(DISTINCT d.donor_id)::int                                   AS unique_donors,
-              COALESCE(AVG(d.amount), 0)::float                                 AS avg_donation
+              COUNT(d.donation_id) FILTER (WHERE pt.payment_status IN ('completed', 'pending'))::int       AS total_donations,
+              COALESCE(SUM(d.amount) FILTER (WHERE pt.payment_status IN ('pending','completed')), 0)::float AS total_amount,
+              COUNT(CASE WHEN pt.payment_status = 'pending'   THEN 1 END)::int                AS pending_count,
+              COUNT(CASE WHEN pt.payment_status = 'completed' THEN 1 END)::int                AS completed_count,
+              COUNT(CASE WHEN pt.payment_status = 'cancelled' THEN 1 END)::int                AS cancelled_count,
+              COUNT(DISTINCT d.donor_id) FILTER (WHERE pt.payment_status IN ('completed', 'pending'))::int AS unique_donors,
+              COALESCE(AVG(d.amount) FILTER (WHERE pt.payment_status IN ('pending','completed')), 0)::float AS avg_donation
              FROM donations d
              LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id`
         );
@@ -400,6 +403,55 @@ router.patch("/:id/complete", async (req, res) => {
     } catch (err) {
         await client.query("ROLLBACK");
         console.error("COMPLETE DONATION ERROR:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        client.release();
+    }
+});
+
+// ─────────────────────────────────────────────
+// PATCH /api/donations/:id/cancel — Mark as cancelled
+// ─────────────────────────────────────────────
+router.patch("/:id/cancel", async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        // Fetch donation to know the amount and campaign
+        const fetchResult = await client.query(
+            `SELECT donation_id, amount, campaign_id FROM donations WHERE donation_id = $1`,
+            [req.params.id]
+        );
+
+        if (fetchResult.rows.length === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ message: "Donation not found" });
+        }
+
+        const { amount, campaign_id } = fetchResult.rows[0];
+
+        // Mark payment_transaction as cancelled
+        await client.query(
+            `UPDATE payment_transactions SET payment_status = 'cancelled' WHERE donation_id = $1`,
+            [req.params.id]
+        );
+
+        // Reverse the campaign's current_amount (since payment never completed)
+        await client.query(
+            `UPDATE campaigns
+             SET current_amount = GREATEST(COALESCE(current_amount, 0) - $1, 0),
+                 updated_at = NOW()
+             WHERE campaign_id = $2`,
+            [parseFloat(amount), campaign_id]
+        );
+
+        await client.query("COMMIT");
+
+        return res.json({ message: "Donation cancelled successfully." });
+    } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("CANCEL DONATION ERROR:", err);
         res.status(500).json({ message: "Server error" });
     } finally {
         client.release();

@@ -21,8 +21,8 @@ export default function AdminCampaignCreation() {
     const [isLoading, setIsLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState(null);
-    const [selectedImage, setSelectedImage] = useState(null);
-    const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+    const [selectedImages, setSelectedImages] = useState([]);
+    const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [campaignToDelete, setCampaignToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -118,10 +118,11 @@ export default function AdminCampaignCreation() {
     };
 
     const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setSelectedImage(file);
-            setImagePreviewUrl(URL.createObjectURL(file));
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            setSelectedImages(files);
+            const urls = files.map(file => URL.createObjectURL(file));
+            setImagePreviewUrls(urls);
         }
     };
 
@@ -150,8 +151,10 @@ export default function AdminCampaignCreation() {
             Object.keys(formData).forEach(key => {
                 body.append(key, formData[key]);
             });
-            if (selectedImage) {
-                body.append('image', selectedImage);
+            if (selectedImages && selectedImages.length > 0) {
+                selectedImages.forEach(image => {
+                    body.append('images', image);
+                });
             }
 
             // Add userId for audit logging
@@ -218,7 +221,9 @@ export default function AdminCampaignCreation() {
             end_date: campaign.end_date ? campaign.end_date.split('T')[0] : '',
             is_featured: campaign.is_featured || false
         });
-        setImagePreviewUrl(campaign.file_url ? `http://localhost:5000${campaign.file_url}` : null);
+
+        // For editing, we just show the main image as preview if multiple aren't locally available in an array yet
+        setImagePreviewUrls(campaign.file_url ? [`http://localhost:5000${campaign.file_url}`] : []);
         setShowForm(true);
         setTimeout(() => {
             document.getElementById('campaign-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -266,8 +271,8 @@ export default function AdminCampaignCreation() {
             end_date: '',
             is_featured: false
         });
-        setSelectedImage(null);
-        setImagePreviewUrl(null);
+        setSelectedImages([]);
+        setImagePreviewUrls([]);
         setEditingCampaign(null);
         setShowForm(false);
     };
@@ -431,25 +436,34 @@ export default function AdminCampaignCreation() {
 
                                 {/* Campaign Image */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Campaign Image</label>
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-32 w-48 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
-                                            {imagePreviewUrl ? (
-                                                <img src={imagePreviewUrl} alt="Preview" className="h-full w-full object-cover" />
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Campaign Images</label>
+                                    <div className="flex flex-col gap-4">
+                                        {/* Image Previews Grid */}
+                                        <div className="flex flex-wrap gap-4">
+                                            {imagePreviewUrls.length > 0 ? (
+                                                imagePreviewUrls.map((url, index) => (
+                                                    <div key={index} className="h-24 w-32 rounded-lg border-2 border-gray-200 overflow-hidden relative shadow-sm">
+                                                        <img src={url} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
+                                                        {index === 0 && (
+                                                            <div className="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">Main</div>
+                                                        )}
+                                                    </div>
+                                                ))
                                             ) : (
-                                                <div className="text-center">
-                                                    <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                                                    <p className="text-xs text-gray-400">No image</p>
+                                                <div className="h-24 w-32 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-gray-50">
+                                                    <Upload className="w-6 h-6 text-gray-400 mb-1" />
+                                                    <p className="text-[10px] text-gray-400">No images</p>
                                                 </div>
                                             )}
                                         </div>
-                                        <label className="flex-1 cursor-pointer">
-                                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#63A6B2] transition text-center">
-                                                <Upload className="w-6 h-6 mx-auto mb-1 text-gray-400" />
-                                                <p className="text-sm text-gray-600">Upload Image</p>
-                                                <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+
+                                        <label className="cursor-pointer">
+                                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-[#63A6B2] transition text-center bg-gray-50/50">
+                                                <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                                                <p className="text-sm font-medium text-gray-700">Click to upload multiple images</p>
+                                                <p className="text-xs text-gray-500 mt-1">PNG, JPG or WEBP up to 5MB each (Max 5 images)</p>
                                             </div>
-                                            <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                            <input type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" />
                                         </label>
                                     </div>
                                 </div>

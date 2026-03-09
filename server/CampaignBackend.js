@@ -43,9 +43,9 @@ const upload = multer({
   },
 });
 
-// Helper to handle single file upload
+// Helper to handle multiple file uploads
 const handleUpload = (req, res, next) => {
-  upload.single('image')(req, res, (err) => {
+  upload.array('images', 5)(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       return res.status(400).json({ message: "Multer error: " + err.message });
     } else if (err) {
@@ -73,8 +73,14 @@ router.post("/create", handleUpload, async (req, res) => {
       return res.status(400).json({ message: "Campaign name and foundation are required." });
     }
 
-    const file_url = req.file ? `/uploads/campaigns/${req.file.filename}` : null;
-    const media_type = req.file ? "image" : null;
+    let file_url = null;
+    let media_type = null;
+
+    // Default main image to first uploaded file, and the rest to media table later
+    if (req.files && req.files.length > 0) {
+      file_url = `/uploads/campaigns/${req.files[0].filename}`;
+      media_type = "image";
+    }
 
     // Status defaults to 'draft'
     const campaignResult = await pool.query(
@@ -99,6 +105,17 @@ router.post("/create", handleUpload, async (req, res) => {
       [foundation_id, campaignId]
     );
 
+    // Insert remaining files into campaign_media
+    if (req.files && req.files.length > 1) {
+      for (let i = 1; i < req.files.length; i++) {
+        const url = `/uploads/campaigns/${req.files[i].filename}`;
+        await pool.query(
+          `INSERT INTO campaign_media (campaign_id, file_url, media_type) VALUES ($1, $2, $3)`,
+          [campaignId, url, 'image']
+        );
+      }
+    }
+
     // Log campaign creation
     if (req.app.locals.logAudit) {
       await req.app.locals.logAudit({
@@ -115,9 +132,11 @@ router.post("/create", handleUpload, async (req, res) => {
 
   } catch (err) {
     console.error("CREATE CAMPAIGN ERROR:", err);
-    if (req.file) {
-      const filePath = path.join(__dirname, "uploads", "campaigns", req.file.filename);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    if (req.files) {
+      req.files.forEach(file => {
+        const filePath = path.join(__dirname, "uploads", "campaigns", file.filename);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      });
     }
     res.status(500).json({ message: "Server error: " + err.message });
   }
@@ -133,7 +152,12 @@ router.get("/all", async (req, res) => {
         c.start_date, c.end_date, c.file_url, c.media_type,
         c.is_featured, c.status, c.created_at, c.updated_at,
         f.foundation_id, f.foundation_name,
-        f.image_logo as foundation_logo
+        f.image_logo as foundation_logo,
+        (
+          SELECT json_agg(json_build_object('media_id', cm.media_id, 'file_url', cm.file_url))
+          FROM campaign_media cm
+          WHERE cm.campaign_id = c.campaign_id
+        ) as media
        FROM campaigns c
        LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
        LEFT JOIN foundations f ON fc.foundation_id = f.foundation_id
@@ -157,7 +181,12 @@ router.get("/published", async (req, res) => {
         c.start_date, c.end_date, c.file_url, c.media_type,
         c.is_featured, c.status, c.created_at, c.updated_at,
         f.foundation_id, f.foundation_name,
-        f.image_logo as foundation_logo
+        f.image_logo as foundation_logo,
+        (
+          SELECT json_agg(json_build_object('media_id', cm.media_id, 'file_url', cm.file_url))
+          FROM campaign_media cm
+          WHERE cm.campaign_id = c.campaign_id
+        ) as media
        FROM campaigns c
        LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
        LEFT JOIN foundations f ON fc.foundation_id = f.foundation_id
@@ -182,7 +211,12 @@ router.get("/:id", async (req, res) => {
         c.*,
         f.foundation_id, f.foundation_name,
         f.image_logo as foundation_logo,
-        f.about_foundation as foundation_desc
+        f.about_foundation as foundation_desc,
+        (
+          SELECT json_agg(json_build_object('media_id', cm.media_id, 'file_url', cm.file_url))
+          FROM campaign_media cm
+          WHERE cm.campaign_id = c.campaign_id
+        ) as media
        FROM campaigns c
        LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
        LEFT JOIN foundations f ON fc.foundation_id = f.foundation_id
@@ -267,7 +301,8 @@ router.put("/update/:id", handleUpload, async (req, res) => {
     let file_url = checkResult.rows[0].file_url;
     let media_type = checkResult.rows[0].media_type;
 
-    if (req.file) {
+    if (req.files && req.files.length > 0) {
+      // For simplicity, overwrite the main image and clear old ones if new ones uploaded
       if (file_url) {
         const relativePath = file_url.startsWith('/') ? file_url.substring(1) : file_url;
         const fullPath = path.join(__dirname, relativePath);
@@ -275,7 +310,18 @@ router.put("/update/:id", handleUpload, async (req, res) => {
           try { fs.unlinkSync(fullPath); } catch (e) { console.error("Failed to delete old image", e); }
         }
       }
-      file_url = `/uploads/campaigns/${req.file.filename}`;
+
+      const oldMedia = await pool.query("SELECT file_url FROM campaign_media WHERE campaign_id = $1", [campaignId]);
+      oldMedia.rows.forEach(m => {
+        const relPath = m.file_url.startsWith('/') ? m.file_url.substring(1) : m.file_url;
+        const fPath = path.join(__dirname, relPath);
+        if (fs.existsSync(fPath)) {
+          try { fs.unlinkSync(fPath); } catch (e) { }
+        }
+      });
+      await pool.query("DELETE FROM campaign_media WHERE campaign_id = $1", [campaignId]);
+
+      file_url = `/uploads/campaigns/${req.files[0].filename}`;
       media_type = "image";
     }
 
@@ -294,6 +340,16 @@ router.put("/update/:id", handleUpload, async (req, res) => {
         campaignId
       ]
     );
+
+    if (req.files && req.files.length > 1) {
+      for (let i = 1; i < req.files.length; i++) {
+        const url = `/uploads/campaigns/${req.files[i].filename}`;
+        await pool.query(
+          `INSERT INTO campaign_media (campaign_id, file_url, media_type) VALUES ($1, $2, $3)`,
+          [campaignId, url, 'image']
+        );
+      }
+    }
 
     if (foundation_id) {
       await pool.query("DELETE FROM foundation_campaigns WHERE campaign_id = $1", [campaignId]);
