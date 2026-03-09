@@ -390,13 +390,7 @@ export default function Campaigns() {
                                                 )}
 
                                                 {/* Featured badge */}
-                                                {campaign.is_featured && (
-                                                    <div className="absolute bottom-3 left-3">
-                                                        <span className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                                                            ⭐ Featured
-                                                        </span>
-                                                    </div>
-                                                )}
+                                                {/* Featured Badge Removed */}
                                             </div>
 
                                             {/* Content */}

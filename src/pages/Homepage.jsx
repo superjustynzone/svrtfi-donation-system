@@ -21,7 +21,7 @@ export default function Homepage() {
         if (Array.isArray(data)) {
           // Prefer featured campaigns; fall back to most recent
           const featured = data.filter(c => c.is_featured);
-          const toShow = featured.length >= 3 ? featured.slice(0, 3) : data.slice(0, 3);
+          const toShow = featured.length >= 6 ? featured.slice(0, 6) : data.slice(0, 6);
           setFeaturedCampaigns(toShow);
         }
       })
@@ -190,11 +190,7 @@ export default function Homepage() {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                  {campaign.is_featured && (
-                    <div className="absolute top-3 left-3">
-                      <span className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold shadow">⭐ Featured</span>
-                    </div>
-                  )}
+                  {/* Featured Badge Removed */}
                 </div>
 
                 {/* Campaign Info */}
