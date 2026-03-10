@@ -10,6 +10,7 @@ import Foundations from './pages/Foundations';
 import Campaigns from './pages/Campaigns';
 import CampaignDetails from './pages/CampaignDetails';
 import CampaignDonation from './pages/CampaignDonation';
+import PaymentGateway from './pages/PaymentGateway';
 import DonationConfirmation from './pages/DonationConfirmation';
 import DonationReceipt from './pages/DonationReceipt';
 import FoundationDetails from './pages/FoundationDetails';
@@ -63,6 +64,7 @@ function App() {
         <Route path="/campaigns" element={<Campaigns />} />
         <Route path="/campaigns/:id" element={<CampaignDetails />} />
         <Route path="/campaigns/:id/donate" element={<CampaignDonation />} />
+        <Route path="/payment/:donationId" element={<PaymentGateway />} />
         <Route path="/donations/:donationId/confirmation" element={<DonationConfirmation />} />
         <Route path="/donations/:donationId/receipt" element={<DonationReceipt />} />
         <Route path="/foundations/:id" element={<FoundationDetails />} />

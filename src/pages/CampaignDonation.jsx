@@ -162,9 +162,9 @@ export default function CampaignDonation() {
 
             if (response.ok) {
                 setShowConfirmModal(false);
-                toast.success('Donation submitted successfully! Thank you for your generosity.');
+                toast.success('Donation initiated! Redirecting to payment gateway...');
                 setTimeout(() => {
-                    navigate(`/donations/${result.donation_id}/confirmation`);
+                    navigate(`/payment/${result.donation_id}`);
                 }, 1500);
             } else {
                 toast.error(result.message || 'Failed to submit donation');

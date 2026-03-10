@@ -193,17 +193,17 @@ router.get("/donors", async (req, res) => {
               dn.contact_number                                                          AS phone,
               dn.address,
               dn.email,
-              COUNT(d.donation_id) FILTER (WHERE pt.payment_status IN ('completed', 'pending'))::int  AS donation_count,
-              COALESCE(SUM(d.amount) FILTER (WHERE pt.payment_status IN ('completed', 'pending')), 0)::float AS total_donated,
-              MAX(d.initiated_at)  FILTER (WHERE pt.payment_status IN ('completed', 'pending'))       AS last_donation_at,
-              MIN(d.initiated_at)  FILTER (WHERE pt.payment_status IN ('completed', 'pending'))       AS first_donation_at,
-              BOOL_OR(d.frequency = 'monthly' AND pt.payment_status IN ('completed', 'pending'))      AS is_recurring
+              COUNT(d.donation_id)::int                                                  AS donation_count,
+              COALESCE(SUM(d.amount), 0)::float                                          AS total_donated,
+              MAX(d.initiated_at)                                                        AS last_donation_at,
+              MIN(d.initiated_at)                                                        AS first_donation_at,
+              BOOL_OR(d.frequency = 'monthly')                                           AS is_recurring
              FROM donors dn
              INNER JOIN donations d ON dn.donor_id = d.donor_id
-             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+             INNER JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+             WHERE pt.payment_status IN ('completed', 'pending')
              GROUP BY dn.donor_id, dn.first_name, dn.last_name,
                       dn.contact_number, dn.address, dn.email
-             HAVING COUNT(d.donation_id) > 0
              ORDER BY total_donated DESC`
         );
 
