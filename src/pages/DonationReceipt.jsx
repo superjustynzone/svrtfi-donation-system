@@ -154,15 +154,35 @@ export default function DonationReceipt() {
                     {/* Header */}
                     <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white p-8 rounded-t-2xl print:rounded-none">
                         <div className="flex justify-between items-start">
-                            <div>
-                                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-4">
-                                    <span className="text-2xl font-bold">SV</span>
+                            {/* Logos */}
+                            <div className="flex items-center gap-4 mb-4">
+                                {/* SVRTV Logo */}
+                                <div className="bg-white rounded-xl p-2 shadow-md flex items-center justify-center" style={{width: '120px', height: '80px'}}>
+                                    <img src="/images/logo.png" alt="SVRTV Logo" className="w-full h-full object-contain" />
                                 </div>
-                                <h1 className="text-3xl font-bold mb-2">Official Receipt</h1>
-                                <p className="text-teal-100">Tax Deductible Donation</p>
+                                {/* Divider */}
+                                <div className="w-px h-10 bg-white/30"></div>
+                                {/* Foundation Logo */}
+                                {campaign.foundation_logo ? (
+                                    <div className="bg-white rounded-xl p-2 shadow-md flex items-center justify-center" style={{width: '80px', height: '80px'}}>
+                                        <img
+                                            src={`http://localhost:5000${campaign.foundation_logo}`}
+                                            alt={`${campaign.foundation_name} Logo`}
+                                            className="w-full h-full object-contain"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center" style={{width: '80px', height: '80px'}}>
+                                        <span className="text-white font-bold text-2xl">
+                                            {campaign.foundation_name ? campaign.foundation_name.charAt(0) : 'F'}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <div className="text-right">
-                                <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 mb-2">
+                                <h1 className="text-2xl font-bold mb-1">Official Receipt</h1>
+                                <p className="text-teal-100 text-sm mb-3">Tax Deductible Donation</p>
+                                <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
                                     <p className="text-xs text-teal-100">Receipt No.</p>
                                     <p className="text-xl font-bold">RCP-2026-{String(donation.donation_id).padStart(6, '0')}</p>
                                 </div>
@@ -177,10 +197,9 @@ export default function DonationReceipt() {
                             <div className="space-y-1 text-sm">
                                 <p className="text-[#63A6B2] font-bold text-lg">{campaign.foundation_name}</p>
                                 <p className="text-gray-600">456 Faith Avenue, Manila, Metro Manila 1003</p>
-                                <p className="text-gray-600">Phone: (02) 1234-5678</p>
-                                <p className="text-gray-600">Email: info@svrtf.org</p>
+                                <p className="text-gray-600">Phone: (02) 8123-4567 | Mobile: +63 917 123 4567</p>
+                                <p className="text-gray-600">Email: donations@svrtf.org</p>
                                 <p className="text-gray-600">Website: www.svrtf.org</p>
-                                <p className="text-gray-600">TIN: 000-123-456-000</p>
                             </div>
                         </div>
 
@@ -188,26 +207,21 @@ export default function DonationReceipt() {
                         <div className="mb-8 pb-6 border-b-2 border-gray-200">
                             <h2 className="text-lg font-bold text-gray-900 mb-4">Donor Information</h2>
                             <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <p className="text-xs text-gray-500 font-semibold mb-1">Full Name</p>
-                                    <p className="text-gray-900 font-bold">{donation.donor_name}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 font-semibold mb-1">TIN Number</p>
-                                    <p className="text-gray-900 font-bold">123-456-789-000</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 font-semibold mb-1">Address</p>
-                                    <p className="text-gray-900">123 Sample Street, Quezon City, Metro Manila</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 font-semibold mb-1">Email</p>
-                                    <p className="text-gray-900">{donation.donor_email}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 font-semibold mb-1">Phone</p>
-                                    <p className="text-gray-900">{donation.donor_phone}</p>
-                                </div>
+                                {donation.is_anonymous ? (
+                                    <div className="col-span-2">
+                                        <span className="inline-flex items-center gap-2 bg-gray-100 text-gray-600 text-sm font-semibold px-4 py-2 rounded-full">
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                            </svg>
+                                            Anonymous Donor
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-semibold mb-1">Full Name</p>
+                                        <p className="text-gray-900 font-bold">{donation.donor_name}</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -235,7 +249,7 @@ export default function DonationReceipt() {
                                     <p className="text-gray-900 font-bold font-mono">DON-2026-{String(donation.donation_id).padStart(6, '0')}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-500 font-semibold mb-1">Campaign Purpose</p>
+                                    <p className="text-xs text-gray-500 font-semibold mb-1">Campaign</p>
                                     <p className="text-[#63A6B2] font-bold">{campaign.campaign_name}</p>
                                 </div>
                                 <div>

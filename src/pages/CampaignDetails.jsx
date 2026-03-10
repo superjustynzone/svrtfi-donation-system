@@ -9,11 +9,13 @@ export default function CampaignDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [campaign, setCampaign] = useState(null);
+    const [otherCampaigns, setOtherCampaigns] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState(0);
 
     useEffect(() => {
         fetchCampaignDetails();
+        fetchOtherCampaigns();
     }, [id]);
 
     const fetchCampaignDetails = async () => {
@@ -34,6 +36,18 @@ export default function CampaignDetails() {
             navigate('/campaigns');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const fetchOtherCampaigns = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/campaigns/published');
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                setOtherCampaigns(data.filter(c => String(c.campaign_id) !== String(id)).slice(0, 4));
+            }
+        } catch (error) {
+            console.error('Error fetching other campaigns:', error);
         }
     };
 
@@ -245,9 +259,10 @@ export default function CampaignDetails() {
                         </div>
                     </div>
 
-                    {/* Right Column - Donation Card */}
+                    {/* Right Column - Donation Card + Other Campaigns */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 sticky top-24">
+                        <div className="sticky top-24 space-y-6">
+                        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
                             {/* Days Remaining */}
                             {daysRemaining !== null && (
                                 <div className="mb-6">
@@ -383,6 +398,65 @@ export default function CampaignDetails() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Other Campaigns */}
+                        {otherCampaigns.length > 0 && (
+                            <div className="bg-white rounded-2xl shadow-lg p-5 border border-gray-100 mt-6">
+                                <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-[#63A6B2]" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                    </svg>
+                                    Other Campaigns
+                                </h3>
+                                <div className="space-y-3">
+                                    {otherCampaigns.map(c => (
+                                        <div
+                                            key={c.campaign_id}
+                                            className="group flex gap-3 p-3 rounded-xl hover:bg-gray-50 transition-all cursor-pointer border border-transparent hover:border-gray-200"
+                                            onClick={() => navigate(`/campaigns/${c.campaign_id}`)}
+                                        >
+                                            {/* Thumbnail */}
+                                            <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-200">
+                                                {c.file_url ? (
+                                                    <img
+                                                        src={`http://localhost:5000${c.file_url}`}
+                                                        alt={c.campaign_name}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full bg-gradient-to-br from-[#63A6B2]/20 to-[#4a8a95]/20 flex items-center justify-center">
+                                                        <svg className="w-6 h-6 text-[#63A6B2]/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-gray-900 line-clamp-2 leading-snug group-hover:text-[#63A6B2] transition-colors">{c.campaign_name}</p>
+                                                {c.foundation_name && (
+                                                    <p className="text-xs text-[#63A6B2] mt-0.5 truncate">{c.foundation_name}</p>
+                                                )}
+                                                {/* Mini progress bar */}
+                                                <div className="mt-1.5 w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                                    <div
+                                                        className="bg-[#63A6B2] h-full rounded-full"
+                                                        style={{ width: `${Math.min((c.current_amount || 0) / c.goal_amount * 100, 100)}%` }}
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={e => { e.stopPropagation(); navigate(`/campaigns/${c.campaign_id}/donate`); }}
+                                                    className="mt-2 text-xs font-bold text-white bg-[#63A6B2] hover:bg-[#4a8a95] px-3 py-1 rounded-full transition-colors"
+                                                >
+                                                    Donate
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        </div> {/* end sticky wrapper */}
                     </div>
                 </div>
             </div>

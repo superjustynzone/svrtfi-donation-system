@@ -13,6 +13,8 @@ export default function CampaignDonation() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+    const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+    const [showTermsModal, setShowTermsModal] = useState(false);
 
     // Detect logged-in user
     const loggedInUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
@@ -414,9 +416,17 @@ export default function CampaignDonation() {
                                 />
                                 <label htmlFor="privacy" className="text-sm text-gray-700 cursor-pointer leading-relaxed">
                                     I agree to the{' '}
-                                    <span className="font-bold text-[#63A6B2] hover:underline cursor-pointer">Data Privacy Policy</span>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }}
+                                        className="font-bold text-[#63A6B2] hover:underline focus:outline-none"
+                                    >Data Privacy Policy</button>
                                     {' '}and{' '}
-                                    <span className="font-bold text-[#63A6B2] hover:underline cursor-pointer">Terms and Conditions</span>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }}
+                                        className="font-bold text-[#63A6B2] hover:underline focus:outline-none"
+                                    >Terms and Conditions</button>
                                     {' '}of SVRTV Donation. My personal information will be used solely for donation processing and official receipting.
                                 </label>
                             </div>
@@ -712,6 +722,90 @@ export default function CampaignDonation() {
                                 ) : (
                                     'Yes, Confirm'
                                 )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Data Privacy Policy Modal */}
+            {showPrivacyModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-full flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900">Data Privacy Policy</h3>
+                            </div>
+                            <button onClick={() => setShowPrivacyModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto p-6 space-y-4 text-sm text-gray-700 leading-relaxed">
+                            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Effective Date: January 1, 2025</p>
+                            <h4 className="font-bold text-gray-900 text-base">1. Information We Collect</h4>
+                            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+                            <h4 className="font-bold text-gray-900 text-base">2. How We Use Your Information</h4>
+                            <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+                            <h4 className="font-bold text-gray-900 text-base">3. Data Sharing & Disclosure</h4>
+                            <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.</p>
+                            <h4 className="font-bold text-gray-900 text-base">4. Data Security</h4>
+                            <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi.</p>
+                            <h4 className="font-bold text-gray-900 text-base">5. Your Rights</h4>
+                            <p>Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae.</p>
+                            <h4 className="font-bold text-gray-900 text-base">6. Contact Us</h4>
+                            <p>Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat. For privacy concerns, contact us at privacy@svrtv.org.</p>
+                        </div>
+                        <div className="p-6 border-t border-gray-200">
+                            <button
+                                onClick={() => setShowPrivacyModal(false)}
+                                className="w-full py-3 bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white rounded-xl font-bold hover:shadow-lg transition-all"
+                            >
+                                I Understand
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Terms and Conditions Modal */}
+            {showTermsModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-full flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900">Terms & Conditions for Donation</h3>
+                            </div>
+                            <button onClick={() => setShowTermsModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto p-6 space-y-4 text-sm text-gray-700 leading-relaxed">
+                            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Last Updated: January 1, 2025</p>
+                            <h4 className="font-bold text-gray-900 text-base">1. Acceptance of Terms</h4>
+                            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. By making a donation to SVRTV, you agree to be bound by these Terms and Conditions. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                            <h4 className="font-bold text-gray-900 text-base">2. Donation Policy</h4>
+                            <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. All donations are considered final and non-refundable unless required by applicable law. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+                            <h4 className="font-bold text-gray-900 text-base">3. Use of Donated Funds</h4>
+                            <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium. SVRTV reserves the right to allocate donated funds where they are most needed to fulfill our mission. Totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+                            <h4 className="font-bold text-gray-900 text-base">4. Recurring Donations</h4>
+                            <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. Monthly recurring donations will be automatically processed each month until you cancel. Sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. You may cancel your recurring donation at any time by contacting us.</p>
+                            <h4 className="font-bold text-gray-900 text-base">5. Tax Deductibility</h4>
+                            <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi. Donations may be tax-deductible to the extent allowed by law. Please consult your tax advisor for guidance specific to your situation.</p>
+                            <h4 className="font-bold text-gray-900 text-base">6. Amendments</h4>
+                            <p>Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur. SVRTV reserves the right to amend these terms at any time. Continued use of our donation platform constitutes acceptance of the updated terms. Contact us at terms@svrtv.org for questions.</p>
+                        </div>
+                        <div className="p-6 border-t border-gray-200">
+                            <button
+                                onClick={() => setShowTermsModal(false)}
+                                className="w-full py-3 bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white rounded-xl font-bold hover:shadow-lg transition-all"
+                            >
+                                I Understand
                             </button>
                         </div>
                     </div>

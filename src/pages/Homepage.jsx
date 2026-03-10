@@ -172,7 +172,7 @@ export default function Homepage() {
                 key={campaign.campaign_id}
                 className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer"
                 style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` }}
-                onClick={() => navigate(`/campaigns/${campaign.campaign_id}`)}
+                onClick={() => navigate(`/campaigns/${campaign.campaign_id}/donate`)}
               >
                 {/* Campaign Image */}
                 <div className="relative h-64 overflow-hidden">
@@ -218,7 +218,7 @@ export default function Homepage() {
 
                   {/* Donate Button */}
                   <button
-                    onClick={e => { e.stopPropagation(); navigate(`/campaigns/${campaign.campaign_id}`); }}
+                    onClick={e => { e.stopPropagation(); navigate(`/campaigns/${campaign.campaign_id}/donate`); }}
                     className="w-full bg-[#63A6B2] hover:bg-[#5a959f] text-white py-3 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg"
                   >
                     Donate
