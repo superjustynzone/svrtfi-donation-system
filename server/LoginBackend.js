@@ -54,7 +54,13 @@ router.post("/login", async (req, res) => {
 
     const role = roleResult.rows[0]?.role_name || "viewer";
 
-    // 4. Create JWT Token
+    // 4. Update last_login
+    await pool.query(
+      `UPDATE users SET last_login = NOW() WHERE user_id = $1`,
+      [user.user_id]
+    );
+
+    // 5. Create JWT Token
     const token = jwt.sign(
       {
         user_id: user.user_id,

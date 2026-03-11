@@ -77,6 +77,9 @@ export default function AdminDonors() {
     useEffect(() => {
         let filtered = [...donors];
 
+        // Exclude anonymous donors (those without first_name and last_name)
+        filtered = filtered.filter(d => d.first_name || d.last_name);
+
         if (searchTerm) {
             const q = searchTerm.toLowerCase();
             filtered = filtered.filter(d =>

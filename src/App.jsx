@@ -27,6 +27,7 @@ import AdminTransactions from './pages/AdminTransactions';
 import AdminReports from './pages/AdminReports';
 import AdminMailing from './pages/AdminMailing';
 import Profile from './pages/Profile';
+import DonationNotification from './components/DonationNotification';
 
 // Global CSS imports
 import './index.css';
@@ -52,6 +53,7 @@ function App() {
 
   return (
     <Router>
+      <DonationNotification />
       <Routes>
 
         {/* Redirect root to correct dashboard */}

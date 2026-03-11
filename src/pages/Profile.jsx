@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Heart, Users, Edit2, Eye, Download, LogOut, ChevronDown } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Heart, Users, Edit2, Eye, Download, LogOut, ChevronDown, FileText, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { provinces, citiesByProvince } from '../data/philippineLocations';
 import Navbar from '../components/Navbar';
@@ -14,8 +14,12 @@ export default function Profile() {
     const [editedData, setEditedData] = useState({});
     const [selectedImage, setSelectedImage] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
-    const [isUploading, setIsUploading] = useState(false); const [donationHistory, setDonationHistory] = useState([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [donationHistory, setDonationHistory] = useState([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [viewReceiptId, setViewReceiptId] = useState(null);
+    const [receiptData, setReceiptData] = useState(null);
+    const [isReceiptLoading, setIsReceiptLoading] = useState(false);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-PH', {
@@ -229,6 +233,24 @@ export default function Profile() {
         toast.success('Exporting donation history...');
     };
 
+    const fetchReceiptDetails = async (id) => {
+        setIsReceiptLoading(true);
+        try {
+            const res = await fetch(`http://localhost:5000/api/donations/${id}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            setReceiptData(data);
+            setViewReceiptId(id);
+        } catch (err) {
+            console.error(err);
+            toast.error('Failed to load receipt details.');
+        } finally {
+            setIsReceiptLoading(false);
+        }
+    };
+
 
     const handleViewReceipt = (campaignName) => {
         toast.info(`Viewing receipt for ${campaignName}`);
@@ -340,11 +362,26 @@ export default function Profile() {
         if (!storedUser || !storedUser.user_id) return;
 
         setIsLoadingHistory(true);
-        fetch(`http://localhost:5000/api/user/donations/${storedUser.user_id}`)
+        fetch(`http://localhost:5000/api/donations/user/${storedUser.user_id}`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) {
                     setDonationHistory(data);
+                    // Only count completed and pending (processing) donations
+                    const activeDonations = data.filter(d =>
+                        d.payment_status === 'completed' || d.payment_status === 'pending'
+                    );
+                    const totalAmount = activeDonations.reduce((sum, d) => sum + parseFloat(d.amount || 0), 0);
+                    const lastCompleted = data.find(d => d.payment_status === 'completed');
+                    const lastDonation = lastCompleted
+                        ? new Date(lastCompleted.initiated_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
+                        : (data.length > 0 ? new Date(data[0].initiated_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'No donations yet');
+                    setUserData(prev => ({
+                        ...prev,
+                        totalDonations: activeDonations.length,
+                        totalAmount,
+                        lastDonation
+                    }));
                 }
             })
             .catch(err => console.error("Error fetching donations:", err))
@@ -708,6 +745,7 @@ export default function Profile() {
                                                     <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Date</th>
                                                     <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Campaign</th>
                                                     <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Amount</th>
+                                                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Frequency</th>
                                                     <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
                                                     <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Actions</th>
                                                 </tr>
@@ -724,23 +762,41 @@ export default function Profile() {
                                                     </tr>
                                                 ) : donationHistory.length > 0 ? (
                                                     donationHistory.map((donation) => (
-                                                        <tr key={donation.id || donation.donation_id} className="border-b border-gray-100 hover:bg-gray-50">
+                                                        <tr key={donation.donation_id} className="border-b border-gray-100 hover:bg-gray-50">
                                                             <td className="py-4 px-4 text-sm text-gray-900">
-                                                                {donation.date || new Date(donation.donation_date).toLocaleDateString()}
+                                                                {new Date(donation.initiated_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
                                                             </td>
-                                                            <td className="py-4 px-4 text-sm text-gray-900">{donation.campaign || donation.campaign_name}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-900">{donation.campaign_name || 'N/A'}</td>
                                                             <td className="py-4 px-4 text-sm font-semibold text-[#63A6B2]">{formatCurrency(donation.amount)}</td>
                                                             <td className="py-4 px-4">
-                                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${donation.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                                                                    }`}>
-                                                                    {donation.status}
+                                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                                                                    donation.frequency === 'monthly' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                                                }`}>
+                                                                    {donation.frequency === 'monthly' ? 'Monthly' : 'One-time'}
                                                                 </span>
                                                             </td>
                                                             <td className="py-4 px-4">
-                                                                <button onClick={() => handleViewReceipt(donation.campaign || donation.campaign_name)} className="flex items-center gap-1 text-[#63A6B2] hover:text-[#5a959f] text-sm font-medium">
-                                                                    <Eye className="w-4 h-4" />
-                                                                    View Receipt
-                                                                </button>
+                                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                                                    donation.payment_status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                                    donation.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                                    'bg-gray-100 text-gray-600'
+                                                                }`}>
+                                                                    {donation.payment_status ? donation.payment_status.charAt(0).toUpperCase() + donation.payment_status.slice(1) : 'Pending'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-4 px-4">
+                                                                {donation.payment_status === 'completed' ? (
+                                                                    <button
+                                                                        onClick={() => fetchReceiptDetails(donation.donation_id)}
+                                                                        disabled={isReceiptLoading && viewReceiptId === donation.donation_id}
+                                                                        className="flex items-center gap-1 text-teal-600 hover:text-teal-800 text-sm font-medium"
+                                                                    >
+                                                                        <FileText className={`w-4 h-4 ${isReceiptLoading && viewReceiptId === donation.donation_id ? 'animate-pulse' : ''}`} />
+                                                                        View Receipt
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-400 italic">Not available</span>
+                                                                )}
                                                             </td>
                                                         </tr>
                                                     ))
@@ -763,6 +819,161 @@ export default function Profile() {
 
 
             <Footer />
+
+            {/* Receipt Modal */}
+            {viewReceiptId && receiptData && (
+                <ProfileReceiptModal
+                    data={receiptData}
+                    handleClose={() => { setViewReceiptId(null); setReceiptData(null); }}
+                />
+            )}
+        </div>
+    );
+}
+
+// ─── Profile Receipt Modal ────────────────────────────
+function ProfileReceiptModal({ data: d, handleClose }) {
+    const printRef = React.useRef();
+
+    const handlePrint = () => {
+        const content = printRef.current;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write('<html><head><title>Official Receipt</title>');
+        printWindow.document.write('<script src="https://cdn.tailwindcss.com"></script>');
+        printWindow.document.write('<style>@media print { body { -webkit-print-color-adjust: exact; } .no-print { display: none; } }</style>');
+        printWindow.document.write('</head><body class="bg-white">');
+        printWindow.document.write(content.innerHTML);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        setTimeout(() => { printWindow.print(); printWindow.close(); }, 800);
+    };
+
+    const formatDateTime = (dateString) => {
+        if (!dateString) return '';
+        return new Date(dateString).toLocaleString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: true
+        });
+    };
+
+    const fmt = (amount) =>
+        `₱${parseFloat(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    const getPaymentMethodName = (method) => {
+        const methods = { gcash: 'GCash', paymaya: 'PayMaya', bank: 'Bank Transfer', card: 'Credit/Debit Card' };
+        return methods[method] || method || 'N/A';
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden">
+            <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[95vh]">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
+                    <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-[#63A6B2]" /> Official Receipt Preview
+                    </h3>
+                    <div className="flex gap-2">
+                        <button onClick={handlePrint} className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#4d8b96] transition shadow-sm">
+                            <Download className="w-4 h-4" /> Download / Print
+                        </button>
+                        <button onClick={handleClose} className="p-2 hover:bg-gray-200 rounded-lg transition text-gray-500">
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-100/50">
+                    <div ref={printRef} className="bg-white mx-auto shadow-xl rounded-2xl overflow-hidden max-w-3xl text-left border border-gray-200">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white p-6 md:p-8">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 text-2xl font-bold">SV</div>
+                                    <h1 className="text-3xl font-bold mb-2">Official Receipt</h1>
+                                    <p className="text-teal-100">Tax Deductible Donation</p>
+                                </div>
+                                <div className="text-right">
+                                    <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 mb-2">
+                                        <p className="text-xs text-teal-100">Receipt No.</p>
+                                        <p className="text-xl font-bold">RCP-2026-{String(d.donation_id).padStart(6, '0')}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 md:p-8 space-y-8">
+                            {/* Org Info */}
+                            <div className="pb-6 border-b-2 border-gray-50">
+                                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><div className="w-1 h-6 bg-[#63A6B2] rounded-full"></div>Organization Information</h2>
+                                <div className="space-y-1 text-sm">
+                                    <p className="text-[#63A6B2] font-extrabold text-xl">{d.foundation_name || "Shepherd's Voice Radio and Television Foundation, Inc."}</p>
+                                    <p className="text-gray-600">456 Faith Avenue, Manila, Metro Manila 1003</p>
+                                    <p className="text-gray-600">Phone: (02) 1234-5678</p>
+                                    <p className="text-gray-600">Email: info@svrtf.org</p>
+                                    <p className="text-gray-600">TIN: 000-123-456-000</p>
+                                </div>
+                            </div>
+
+                            {/* Donor Info */}
+                            <div className="pb-6 border-b-2 border-gray-50 text-sm">
+                                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><div className="w-1 h-6 bg-[#63A6B2] rounded-full"></div>Donor Information</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Full Name</p><p className="text-gray-900 font-bold text-base">{d.donor_name || 'N/A'}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Email Address</p><p className="text-gray-900 font-medium">{d.donor_email || 'N/A'}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Contact Number</p><p className="text-gray-900 font-medium">{d.donor_phone || 'N/A'}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Address</p><p className="text-gray-900 font-medium">{d.address || 'N/A'}</p></div>
+                                </div>
+                            </div>
+
+                            {/* Donation Details */}
+                            <div className="pb-6 border-b-2 border-gray-50 text-sm">
+                                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><div className="w-1 h-6 bg-[#63A6B2] rounded-full"></div>Donation Details</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Date &amp; Time</p><p className="text-gray-900 font-bold">{formatDateTime(d.created_at)}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Reference Number</p><p className="text-gray-900 font-bold font-mono">DON-2026-{String(d.donation_id).padStart(6, '0')}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Campaign Purpose</p><p className="text-[#63A6B2] font-bold">{d.campaign_name || 'N/A'}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Payment Method</p><p className="text-gray-900 font-bold">{getPaymentMethodName(d.payment_method)}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Donation Type</p><p className="text-gray-900 font-bold">{d.frequency === 'monthly' ? 'Monthly (Recurring)' : 'One-Time'}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Transaction ID</p><p className="text-gray-900 font-mono italic">{d.payment_reference || `TXN-${d.donation_id}-SVRTF`}</p></div>
+                                </div>
+                            </div>
+
+                            {/* Total Amount */}
+                            <div className="pb-6 border-b-2 border-gray-50">
+                                <div className="flex flex-col md:flex-row justify-between items-center bg-gradient-to-br from-teal-50 to-blue-50 p-6 rounded-2xl border-2 border-[#63A6B2] gap-4">
+                                    <span className="text-xl font-bold text-gray-900">TOTAL DONATION AMOUNT:</span>
+                                    <span className="text-5xl font-black text-[#63A6B2] drop-shadow-sm">{fmt(d.amount)}</span>
+                                </div>
+                                <p className="text-[10px] text-gray-400 text-right mt-3 italic font-semibold uppercase tracking-widest">Confirmed &amp; Verified Transaction</p>
+                            </div>
+
+                            {/* Tax Deductible Info */}
+                            <div className="pb-6 border-b-2 border-gray-50">
+                                <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6">
+                                    <h3 className="font-bold text-orange-800 mb-2 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-orange-600" />Tax Deductible Information</h3>
+                                    <p className="text-xs text-orange-900 leading-relaxed font-medium">This donation is <strong>tax deductible</strong> under the laws of the Republic of the Philippines. Please retain this receipt for your tax filing purposes.</p>
+                                </div>
+                            </div>
+
+                            {d.message && (
+                                <div className="pb-6 border-b-2 border-gray-50">
+                                    <h3 className="font-bold text-gray-900 mb-2">Notes &amp; Recognition</h3>
+                                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                        <p className="text-xs font-black text-[#63A6B2] mb-2 uppercase tracking-widest">Donor Message:</p>
+                                        <p className="text-sm italic text-gray-800 font-medium">"{d.message}"</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Footer */}
+                            <div className="text-center pt-8 border-t border-gray-100">
+                                <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-3" />
+                                <p className="text-base font-black text-[#63A6B2] mb-2">Your support makes a difference!</p>
+                                <p className="text-[10px] text-gray-400 leading-relaxed font-medium">This is a computer-generated receipt valid for tax deduction purposes.<br />© 2026 Shepherd's Voice Radio and Television Foundation, Inc.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

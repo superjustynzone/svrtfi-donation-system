@@ -1,36 +1,21 @@
 const { Pool } = require('pg');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-async function listTables() {
-    try {
-        const res = await pool.query(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-            ORDER BY table_name
-        `);
-        console.log('--- Database Tables ---');
-        console.table(res.rows);
-
-        for (const row of res.rows) {
-            const columns = await pool.query(`
-                SELECT column_name, data_type 
-                FROM information_schema.columns 
-                WHERE table_name = $1
-            `, [row.table_name]);
-            console.log(`\n--- ${row.table_name} Columns ---`);
-            console.table(columns.rows);
-        }
-
-        process.exit(0);
-    } catch (err) {
-        console.error('Error listing tables:', err.message);
-        process.exit(1);
+async function check() {
+    const tables = ['payment_transactions', 'donations', 'donors'];
+    for (const table of tables) {
+        const columns = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = $1
+        `, [table]);
+        console.log(`--- ${table} ---`);
+        columns.rows.forEach(r => console.log(r.column_name));
     }
+    process.exit(0);
 }
 
-listTables();
+check().catch(e => { console.error(e); process.exit(1); });

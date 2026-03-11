@@ -22,13 +22,6 @@ const verifyAdmin = async (req, res, next) => {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        // Check if user has an admin-level role
-        const adminRoles = ["admin", "super_admin", "finance", "encoder", "auditor"];
-        if (!adminRoles.includes(decoded.role)) {
-            return res.status(403).json({ message: "Access denied. Admin only." });
-        }
-
         req.user = decoded;
         next();
     } catch (error) {
@@ -49,6 +42,7 @@ router.get("/users", verifyAdmin, async (req, res) => {
         u.address,
         u.is_active,
         u.created_at,
+        u.last_login,
         a.email,
         r.role_name as role,
         r.role_id

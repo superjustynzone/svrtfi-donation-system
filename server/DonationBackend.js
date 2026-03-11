@@ -276,6 +276,33 @@ router.get("/all", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
+// GET /api/donations/recent — Get recent completed donations for public notification
+// ─────────────────────────────────────────────
+router.get("/recent", async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT
+              d.amount,
+              d.initiated_at,
+              c.campaign_name,
+              dn.first_name,
+              dn.last_name
+             FROM donations d
+             LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
+             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+             LEFT JOIN donors dn ON d.donor_id = dn.donor_id
+             WHERE pt.payment_status = 'completed'
+             ORDER BY d.initiated_at DESC
+             LIMIT 10`
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error("GET RECENT DONATIONS ERROR:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    }
+});
+
+// ─────────────────────────────────────────────
 // GET /api/donations/donor/:donorId — Donations by donor_id
 // ─────────────────────────────────────────────
 router.get("/donor/:donorId", async (req, res) => {
@@ -496,16 +523,33 @@ router.put("/:id", async (req, res) => {
             ]
         );
 
-        // Sync payment_transactions amount
-        if (amount !== undefined) {
+        const row = updated.rows[0];
+        const newCampaignId = campaign_id !== undefined ? parseInt(campaign_id) : parseInt(old.campaign_id);
+
+        // 1. Sync payment_transactions
+        if (amount !== undefined || campaign_id !== undefined) {
             await client.query(
-                `UPDATE payment_transactions SET amount = $1 WHERE donation_id = $2`,
-                [newAmount, id]
+                `UPDATE payment_transactions 
+                 SET amount = COALESCE($1, amount), 
+                     campaign_id = COALESCE($2, campaign_id) 
+                 WHERE donation_id = $3`,
+                [amount !== undefined ? newAmount : null, campaign_id || null, id]
             );
         }
 
-        // Adjust campaign current_amount by the diff
-        if (amountDiff !== 0) {
+        // 2. Adjust campaign current_amount
+        if (campaign_id !== undefined && parseInt(campaign_id) !== parseInt(old.campaign_id)) {
+            // Campaign changed: subtract from old, add to new
+            await client.query(
+                `UPDATE campaigns SET current_amount = GREATEST(COALESCE(current_amount,0) - $1, 0), updated_at = NOW() WHERE campaign_id = $2`,
+                [parseFloat(old.amount), old.campaign_id]
+            );
+            await client.query(
+                `UPDATE campaigns SET current_amount = COALESCE(current_amount,0) + $1, updated_at = NOW() WHERE campaign_id = $2`,
+                [newAmount, campaign_id]
+            );
+        } else if (amountDiff !== 0) {
+            // Same campaign, different amount
             await client.query(
                 `UPDATE campaigns SET current_amount = GREATEST(COALESCE(current_amount,0) + $1, 0), updated_at = NOW() WHERE campaign_id = $2`,
                 [amountDiff, old.campaign_id]
@@ -513,7 +557,7 @@ router.put("/:id", async (req, res) => {
         }
 
         await client.query("COMMIT");
-        res.json({ message: "Donation updated", donation: updated.rows[0] });
+        res.json({ message: "Donation updated", donation: row });
     } catch (err) {
         await client.query("ROLLBACK");
         console.error("EDIT DONATION ERROR:", err);

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
     CreditCard, Search, Calendar, Download,
     ChevronLeft, ChevronRight, RefreshCw,
-    CheckCircle, XCircle, Clock, User, TrendingUp
+    CheckCircle, XCircle, Clock, User, TrendingUp,
+    Eye, X, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminSidebar from '../components/AdminSidebar';
@@ -57,6 +58,7 @@ export default function AdminTransactions() {
     const [statusFilter, setStatusFilter] = useState('');
     const [startDate, setStartDate] = useState('');
     const [isExporting, setIsExporting] = useState(false);
+    const [viewDonation, setViewDonation] = useState(null);
 
     const fetchTransactions = async () => {
         setLoading(true);
@@ -64,7 +66,7 @@ export default function AdminTransactions() {
             const params = new URLSearchParams({ page, limit, search, startDate });
             if (statusFilter) params.append('status', statusFilter);
             const token = localStorage.getItem('token');
-            const res = await fetch(`http://localhost:5000/api/transactions?${params}`, {
+            const res = await fetch(`/api/transactions?${params}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!res.ok) throw new Error();
@@ -82,7 +84,7 @@ export default function AdminTransactions() {
     const updateStatus = async (txnId, newStatus) => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`http://localhost:5000/api/transactions/${txnId}/status`, {
+            const res = await fetch(`/api/transactions/${txnId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ status: newStatus })
@@ -117,6 +119,8 @@ export default function AdminTransactions() {
             toast.success('Exported!');
         } finally { setIsExporting(false); }
     };
+
+
 
     useEffect(() => { fetchTransactions(); }, [page, statusFilter, startDate]);
 
@@ -276,7 +280,16 @@ export default function AdminTransactions() {
 
                                                 {/* Status + Switch */}
                                                 <div className="flex flex-col items-end gap-2">
-                                                    <StatusPill status={txn.status} />
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => setViewDonation(txn)}
+                                                            className="p-2 hover:bg-blue-50 rounded-lg transition text-blue-500"
+                                                            title="View Details"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </button>
+                                                        <StatusPill status={txn.status} />
+                                                    </div>
                                                     <StatusSwitcher current={txn.status} onUpdate={(s) => updateStatus(txn.transaction_id, s)} />
                                                 </div>
                                             </div>
@@ -317,6 +330,93 @@ export default function AdminTransactions() {
                     </div>
                 </main>
             </div>
+
+            {viewDonation && (
+                <ViewDonationModal 
+                    donation={viewDonation} 
+                    handleClose={() => setViewDonation(null)} 
+                />
+            )}
+        </div>
+    );
+}
+
+// ─── View Donation Modal ──────────────────────
+function ViewDonationModal({ donation: d, handleClose }) {
+    const status = d.status || 'pending';
+    const donorName = d.donor_name || 'Anonymous';
+
+    const formatCurrency = (v) => {
+        if (v === undefined || v === null || isNaN(v)) return '₱0';
+        return '₱' + Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+    };
+
+    const fmtDate = (iso) => {
+        if (!iso) return 'N/A';
+        return new Date(iso).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
+    const STATUS_STYLES = {
+        completed: 'bg-green-100 text-green-700',
+        pending: 'bg-yellow-100 text-yellow-700',
+        failed: 'bg-red-100 text-red-700',
+        cancelled: 'bg-gray-100 text-gray-600',
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-[#63A6B2] to-[#4d8b96] p-6 text-white relative text-left">
+                    <button onClick={handleClose} className="absolute right-6 top-6 text-white/80 hover:text-white">
+                        <X className="w-6 h-6" />
+                    </button>
+                    <p className="text-sm text-white/70 mb-1">Donation Details</p>
+                    <h3 className="text-2xl font-bold">{formatCurrency(d.amount)}</h3>
+                    <p className="text-white/80 mt-1 font-mono text-sm">{d.reference_number || `Donation #${d.donation_id}`}</p>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 space-y-4 text-left">
+                    <div className="grid grid-cols-2 gap-4">
+                        <DetailRow label="Donor" value={donorName} />
+                        <DetailRow label="Campaign" value={d.campaign_name || 'N/A'} />
+                        <DetailRow label="Amount" value={formatCurrency(d.amount)} />
+                        <DetailRow label="Currency" value={d.currency || 'PHP'} />
+                        <DetailRow label="Payment Method" value={d.payment_method || 'N/A'} />
+                        <DetailRow label="Frequency" value={d.frequency === 'monthly' ? 'Monthly' : 'One-time'} />
+                        <DetailRow label="Initiated" value={fmtDate(d.initiated_at)} />
+                        <DetailRow label="Completed" value={fmtDate(d.completed_at)} />
+                        <div className="col-span-2">
+                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">Status</p>
+                            <span className={`px-3 py-1 rounded text-xs font-bold uppercase ${STATUS_STYLES[status] || 'bg-gray-100 text-gray-700'}`}>{status}</span>
+                        </div>
+                        {d.message && (
+                            <div className="col-span-2">
+                                <p className="text-xs text-gray-400 uppercase font-bold mb-1">Message</p>
+                                <p className="text-gray-700 text-sm italic bg-gray-50 p-3 rounded-lg border border-gray-100">"{d.message}"</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-6 border-t border-gray-100 bg-[#f8fafb] flex gap-3 justify-end">
+                    <button
+                        onClick={handleClose}
+                        className="px-8 py-2 bg-[#63A6B2] text-white rounded-lg font-bold text-sm hover:bg-[#4d8b96] transition"
+                    >Close</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function DetailRow({ label, value }) {
+    return (
+        <div>
+            <p className="text-xs text-gray-400 uppercase font-bold mb-1">{label}</p>
+            <p className="text-gray-900 font-semibold text-sm">{value}</p>
         </div>
     );
 }

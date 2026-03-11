@@ -147,7 +147,12 @@ export default function AdminUserManagement() {
                     username: user.email?.split('@')[0] || '',
                     initials: `${user.first_name?.charAt(0) || ''}${user.last_name?.charAt(0) || ''}`,
                     color: roleInfo.color,
-                    lastLogin: 'N/A',
+                    lastLogin: user.last_login 
+                        ? new Date(user.last_login).toLocaleString('en-US', {
+                            year: 'numeric', month: 'short', day: 'numeric',
+                            hour: 'numeric', minute: '2-digit', hour12: true
+                          }) 
+                        : 'N/A',
                     createdAt: user.created_at,
                     address: user.address || '', // Renamed from department
                     employeeId: user.user_id, // Display user_id directly
