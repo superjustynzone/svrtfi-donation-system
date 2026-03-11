@@ -24,6 +24,7 @@ import AdminSettings from './pages/AdminSettings';
 import AdminAuditLogs from './pages/AdminAuditLogs';
 import AdminDonations from './pages/AdminDonations';
 import AdminReports from './pages/AdminReports';
+import AdminMailing from './pages/AdminMailing';
 import Profile from './pages/Profile';
 
 function App() {
@@ -81,6 +82,7 @@ function App() {
         <Route path="/admin_audit" element={<AdminRoute><AdminAuditLogs /></AdminRoute>} />
         <Route path="/admin_donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />
         <Route path="/admin_reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
+        <Route path="/admin_mailing" element={<AdminRoute><AdminMailing /></AdminRoute>} />
 
       </Routes>
 

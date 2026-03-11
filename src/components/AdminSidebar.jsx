@@ -14,7 +14,8 @@ import {
     LogOut,
     X,
     Menu,
-    LayoutTemplate
+    LayoutTemplate,
+    Mail
 } from 'lucide-react';
 
 
@@ -24,7 +25,7 @@ const getAppSettings = () => {
 
 // Role-based permissions configuration
 const rolePermissions = {
-    admin: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations', 'reports', 'users', 'settings', 'audit'],
+    admin: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations', 'reports', 'users', 'settings', 'audit', 'mailing'],
     finance: ['dashboard', 'donors', 'donations', 'reports'],
     encoder: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations', 'reports'],
     auditor: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations', 'reports', 'audit'],
@@ -44,7 +45,8 @@ const navigationItems = [
 
 const systemItems = [
     { id: 'settings', icon: Settings, label: 'Settings', path: '/admin_settings' },
-    { id: 'audit', icon: AlertTriangle, label: 'Audit Logs', path: '/admin_audit' }
+    { id: 'audit', icon: AlertTriangle, label: 'Audit Logs', path: '/admin_audit' },
+    { id: 'mailing', icon: Mail, label: 'Mailing', path: '/admin_mailing' }
 ];
 
 // NavItem Component
