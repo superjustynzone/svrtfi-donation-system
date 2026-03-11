@@ -15,7 +15,8 @@ import {
     X,
     Menu,
     LayoutTemplate,
-    Mail
+    Mail,
+    CreditCard
 } from 'lucide-react';
 
 
@@ -25,10 +26,10 @@ const getAppSettings = () => {
 
 // Role-based permissions configuration
 const rolePermissions = {
-    admin: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations', 'reports', 'users', 'settings', 'audit', 'mailing'],
-    finance: ['dashboard', 'donors', 'donations', 'reports'],
-    encoder: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations', 'reports'],
-    auditor: ['dashboard', 'donors', 'donations', 'campaigns', 'foundations', 'reports', 'audit'],
+    admin: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'reports', 'users', 'settings', 'audit', 'mailing'],
+    finance: ['dashboard', 'donors', 'donations', 'transactions', 'reports'],
+    encoder: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'reports'],
+    auditor: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'reports', 'audit'],
     viewer: [] // Blocked from admin pages
 };
 
@@ -37,6 +38,7 @@ const navigationItems = [
     { id: 'dashboard', icon: Home, label: 'Dashboard', path: '/admin_dashboard' },
     { id: 'donors', icon: Users, label: 'Donors', path: '/admin_donors' },
     { id: 'donations', icon: DollarSign, label: 'Donations', path: '/admin_donations' },
+    { id: 'transactions', icon: CreditCard, label: 'Transactions', path: '/admin_transactions' },
     { id: 'campaigns', icon: PieChart, label: 'Campaigns', path: '/admin_campaigns' },
     { id: 'foundations', icon: FileText, label: 'Foundations', path: '/admin_foundations' },
     { id: 'reports', icon: BarChart3, label: 'Reports', path: '/admin_reports' },
@@ -45,7 +47,7 @@ const navigationItems = [
 
 const systemItems = [
     { id: 'settings', icon: Settings, label: 'Settings', path: '/admin_settings' },
-    { id: 'audit', icon: AlertTriangle, label: 'Audit Logs', path: '/admin_audit' },
+    { id: 'audit', icon: AlertTriangle, label: 'Logs', path: '/admin_audit' },
     { id: 'mailing', icon: Mail, label: 'Mailing', path: '/admin_mailing' }
 ];
 

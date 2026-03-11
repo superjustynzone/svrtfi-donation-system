@@ -234,7 +234,11 @@ export default function CampaignDetails() {
                             {/* Description */}
                             <div className="mb-8">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Campaign</h2>
-                                <div className="text-gray-700 leading-relaxed ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: campaign.campaign_description || 'No description available.' }} />
+                                <div 
+                                    className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed ql-editor" 
+                                    style={{ padding: 0 }} 
+                                    dangerouslySetInnerHTML={{ __html: campaign.campaign_description || 'No description available.' }} 
+                                />
                             </div>
 
                             {/* Campaign Dates */}
@@ -253,7 +257,11 @@ export default function CampaignDetails() {
                             {campaign.foundation_desc && (
                                 <div className="mt-8 pt-8 border-t border-gray-200">
                                     <h3 className="text-xl font-bold text-gray-900 mb-3">About {campaign.foundation_name}</h3>
-                                    <div className="text-gray-700 leading-relaxed ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: campaign.foundation_desc }} />
+                                    <div 
+                                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed ql-editor" 
+                                        style={{ padding: 0 }} 
+                                        dangerouslySetInnerHTML={{ __html: campaign.foundation_desc }} 
+                                    />
                                 </div>
                             )}
                         </div>
@@ -460,6 +468,85 @@ export default function CampaignDetails() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Stories & Testimonials (full-width) ── */}
+            {(() => {
+                const mockStories = [
+                    {
+                        id: 1,
+                        name: 'Maria Santos',
+                        role: 'Donor',
+                        initials: 'MS',
+                        color: 'from-teal-400 to-cyan-500',
+                        date: 'March 5, 2026',
+                        story: "Seeing the impact of this campaign firsthand moved me deeply. I donated because I believe in the mission, and I'm so proud to be a part of something this meaningful.",
+                    },
+                    {
+                        id: 2,
+                        name: 'Jose Reyes',
+                        role: 'Community Member',
+                        initials: 'JR',
+                        color: 'from-purple-400 to-pink-500',
+                        date: 'February 28, 2026',
+                        story: 'This campaign helped our community get access to resources we never had before. We are forever grateful for everyone who contributed and made this possible.',
+                    },
+                    {
+                        id: 3,
+                        name: 'Ana Villanueva',
+                        role: 'Volunteer',
+                        initials: 'AV',
+                        color: 'from-orange-400 to-rose-500',
+                        date: 'February 20, 2026',
+                        story: "I volunteered during the distribution day and the smiles on people's faces were unforgettable. This is what giving is all about — real, tangible impact.",
+                    },
+                ];
+                return (
+                    <section className="bg-gradient-to-br from-gray-50 via-teal-50/40 to-blue-50/30 py-14">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            {/* Heading */}
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-3">
+                                <div>
+                                    <h2 className="text-3xl font-bold text-gray-900">Stories &amp; Testimonials</h2>
+                                    <p className="text-gray-500 mt-1 text-sm">Hear from donors and community members</p>
+                                </div>
+                                <span className="self-start sm:self-auto bg-[#63A6B2]/10 text-[#4a8a95] text-sm font-bold px-4 py-2 rounded-full border border-[#63A6B2]/30">
+                                    {mockStories.length} Stories
+                                </span>
+                            </div>
+
+                            {/* Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {mockStories.map((s) => (
+                                    <div
+                                        key={s.id}
+                                        className="relative bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex flex-col gap-4 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group overflow-hidden"
+                                    >
+                                        <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${s.color}`} />
+                                        <svg className="absolute top-5 right-5 w-12 h-12 text-gray-100 group-hover:text-gray-200 transition-colors" fill="currentColor" viewBox="0 0 32 32">
+                                            <path d="M10 8C5.6 8 2 11.6 2 16s3.6 8 8 8c.7 0 1.3-.1 1.9-.3C10.6 25.5 9 27.1 7 28h4c4.4 0 8-3.6 8-8V8h-9zm16 0c-4.4 0-8 3.6-8 8s3.6 8 8 8c.7 0 1.3-.1 1.9-.3-.3 1.8-1.9 3.4-3.9 4.3h4c4.4 0 8-3.6 8-8V8h-10z" />
+                                        </svg>
+                                        <div className="flex items-center gap-3 mt-2">
+                                            <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${s.color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-md`}>
+                                                {s.initials}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-gray-900 text-sm leading-tight">{s.name}</p>
+                                                <p className="text-xs text-[#63A6B2] font-semibold">{s.role}</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-gray-600 text-sm leading-relaxed line-clamp-4 flex-1">"{s.story}"</p>
+                                        <p className="text-xs text-gray-400 font-medium border-t border-gray-100 pt-3">{s.date}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <p className="text-center text-xs text-gray-400 mt-8 italic">
+                                ✦ Stories are shared by real donors and community members
+                            </p>
+                        </div>
+                    </section>
+                );
+            })()}
 
             <Footer />
         </div>

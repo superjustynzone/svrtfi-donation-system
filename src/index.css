@@ -114,12 +114,76 @@ input[type="checkbox"] {
 }
 
 /* QuillJS Global Overrides */
-.ql-editor {
+/* Only apply min-height when inside the actual editor wrapper (.quill) */
+.quill .ql-editor {
   min-height: 250px !important;
+}
+
+/* Reset default padding and fonts universally */
+.ql-editor {
+  padding: 0 !important;
   font-size: 1rem !important;
   font-family: inherit !important;
 }
+
 .ql-container {
   font-size: 1rem !important;
   font-family: inherit !important;
+}
+
+/* Fix Tailwind 'prose' introducing huge margins on paragraphs */
+.prose.ql-editor p {
+  margin-top: 0.5em !important;
+  margin-bottom: 0.5em !important;
+}
+.prose.ql-editor ul, .prose.ql-editor ol {
+  margin-top: 0.5em !important;
+  margin-bottom: 0.5em !important;
+}
+
+/* Force hidden overflow for clamped preview editors to prevent scrollbars */
+.ql-editor.line-clamp-2,
+.ql-editor.line-clamp-3 {
+  overflow: hidden !important;
+  overflow-y: hidden !important;
+}
+
+/* --- BULLET DISPLAY FIXES (VIEWER ONLY, SCOPED TO .prose) --- */
+/* Tailwind wipes out list styles globally. The read-only Quill viewer divs have both
+   .prose and .ql-editor classes applied (e.g. <div class="prose ... ql-editor">).
+   We use that combination so that ONLY those viewer elements restore proper list styles.
+   Footer/nav lists (which are plain <ul>/<li> with no .prose) are unaffected. */
+
+/* Unordered lists: show bullet disc */
+.prose.ql-editor ul,
+.prose.ql-editor ul li {
+  list-style-type: disc !important;
+  list-style-position: outside !important;
+}
+
+/* Ordered lists: show decimal numbers */
+.prose.ql-editor ol,
+.prose.ql-editor ol li {
+  list-style-type: decimal !important;
+  list-style-position: outside !important;
+}
+
+/* Ensure list items render as block list items */
+.prose.ql-editor li {
+  display: list-item !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/* Add padding so markers are visible */
+.prose.ql-editor ul,
+.prose.ql-editor ol {
+  padding-left: 1.5rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Suppress any Quill custom ::before pseudo-element in the viewer */
+.prose.ql-editor li::before {
+  content: none !important;
+  display: none !important;
 }

@@ -3,7 +3,7 @@ import {
     DollarSign, Search, Menu, Download,
     RefreshCw, Eye, X, CheckCircle, Clock,
     TrendingUp, Users, CreditCard, BarChart3, XCircle, FileText,
-    MessageSquare
+    MessageSquare, Pencil, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -60,6 +60,12 @@ export default function AdminDonations() {
     // view modal
     const [viewDonation, setViewDonation] = useState(null);
 
+    // edit modal
+    const [editDonation, setEditDonation] = useState(null);
+
+    // delete confirm
+    const [deleteConfirm, setDeleteConfirm] = useState(null); // holds donation object
+
     // receipt modal
     const [viewReceiptId, setViewReceiptId] = useState(null);
     const [receiptData, setReceiptData] = useState(null);
@@ -114,7 +120,7 @@ export default function AdminDonations() {
         }
     };
 
-    // mark as completed
+    // mark as completed - kept for payment gateway flow compatibility
     const handleMarkCompleted = async (donationId) => {
         try {
             const res = await fetch(`/api/donations/${donationId}/complete`, {
@@ -130,19 +136,40 @@ export default function AdminDonations() {
         }
     };
 
-    // mark as cancelled
-    const handleMarkCancelled = async (donationId) => {
+    // Edit donation
+    const handleEdit = async (donationId, formData) => {
         try {
-            const res = await fetch(`/api/donations/${donationId}/cancel`, {
-                method: 'PATCH',
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+            const res = await fetch(`/api/donations/${donationId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify(formData)
             });
             if (!res.ok) throw new Error();
-            toast.success('Donation cancelled.');
+            toast.success('Donation updated!');
+            setEditDonation(null);
             await fetchAll();
-            if (viewDonation?.donation_id === donationId) setViewDonation(null);
         } catch {
-            toast.error('Failed to cancel donation.');
+            toast.error('Failed to update donation.');
+        }
+    };
+
+    // Delete donation
+    const handleDelete = async (donationId) => {
+        try {
+            const res = await fetch(`/api/donations/${donationId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (!res.ok) throw new Error();
+            toast.success('Donation deleted.');
+            setDeleteConfirm(null);
+            if (viewDonation?.donation_id === donationId) setViewDonation(null);
+            await fetchAll();
+        } catch {
+            toast.error('Failed to delete donation.');
         }
     };
 
@@ -375,13 +402,20 @@ export default function AdminDonations() {
                                                     </td>
                                                     <td className="py-4 px-6 text-sm text-gray-500 whitespace-nowrap">{fmtShortDate(d.initiated_at)}</td>
                                                     <td className="py-4 px-6">
-                                                        <div className="flex items-center justify-end gap-2">
+                                                        <div className="flex items-center justify-end gap-1">
                                                             <button
                                                                 onClick={() => setViewDonation(d)}
-                                                                className="p-2 hover:bg-blue-50 rounded-lg transition text-blue-600"
+                                                                className="p-2 hover:bg-blue-50 rounded-lg transition text-blue-500"
                                                                 title="View Details"
                                                             >
-                                                                <Eye className="w-5 h-5" />
+                                                                <Eye className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setEditDonation(d)}
+                                                                className="p-2 hover:bg-amber-50 rounded-lg transition text-amber-500"
+                                                                title="Edit Donation"
+                                                            >
+                                                                <Pencil className="w-4 h-4" />
                                                             </button>
                                                             {status === 'completed' && (
                                                                 <button
@@ -390,27 +424,16 @@ export default function AdminDonations() {
                                                                     title="View Receipt"
                                                                     disabled={isReceiptLoading && viewReceiptId === d.donation_id}
                                                                 >
-                                                                    <FileText className={`w-5 h-5 ${isReceiptLoading && viewReceiptId === d.donation_id ? 'animate-pulse' : ''}`} />
+                                                                    <FileText className={`w-4 h-4 ${isReceiptLoading && viewReceiptId === d.donation_id ? 'animate-pulse' : ''}`} />
                                                                 </button>
                                                             )}
-                                                            {status === 'pending' && (
-                                                                <>
-                                                                    <button
-                                                                        onClick={() => handleMarkCompleted(d.donation_id)}
-                                                                        className="p-2 hover:bg-green-50 rounded-lg transition text-green-600"
-                                                                        title="Mark as Completed"
-                                                                    >
-                                                                        <CheckCircle className="w-5 h-5" />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleMarkCancelled(d.donation_id)}
-                                                                        className="p-2 hover:bg-red-50 rounded-lg transition text-red-500"
-                                                                        title="Cancel Donation"
-                                                                    >
-                                                                        <XCircle className="w-5 h-5" />
-                                                                    </button>
-                                                                </>
-                                                            )}
+                                                            <button
+                                                                onClick={() => setDeleteConfirm(d)}
+                                                                className="p-2 hover:bg-red-50 rounded-lg transition text-red-400"
+                                                                title="Delete Donation"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -457,16 +480,49 @@ export default function AdminDonations() {
                 </div>
             </main>
 
-            {/* View Donation Modal */}
             {viewDonation && (
                 <ViewDonationModal
                     donation={viewDonation}
                     handleClose={() => setViewDonation(null)}
-                    handleMarkCompleted={handleMarkCompleted}
-                    handleMarkCancelled={handleMarkCancelled}
+                    onEdit={() => { setEditDonation(viewDonation); setViewDonation(null); }}
+                    onDelete={() => { setDeleteConfirm(viewDonation); setViewDonation(null); }}
                     formatCurrency={formatCurrency}
                     fmtDate={fmtDate}
                 />
+            )}
+
+            {/* Edit Donation Modal */}
+            {editDonation && (
+                <EditDonationModal
+                    donation={editDonation}
+                    handleClose={() => setEditDonation(null)}
+                    handleSave={handleEdit}
+                />
+            )}
+
+            {/* Delete Confirmation */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
+                        <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Trash2 className="w-7 h-7 text-red-500" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">Delete Donation?</h3>
+                        <p className="text-sm text-gray-500 mb-6">
+                            This will permanently delete the donation record and its payment transaction. This cannot be undone.
+                        </p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setDeleteConfirm(null)}
+                                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">
+                                Cancel
+                            </button>
+                            <button onClick={() => handleDelete(deleteConfirm.donation_id)}
+                                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 transition">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Receipt Modal */}
@@ -738,7 +794,7 @@ function ReceiptModal({ data: d, handleClose }) {
 }
 
 // ─── View Donation Modal ──────────────────────
-function ViewDonationModal({ donation: d, handleClose, handleMarkCompleted, handleMarkCancelled, formatCurrency, fmtDate }) {
+function ViewDonationModal({ donation: d, handleClose, onEdit, onDelete, formatCurrency, fmtDate }) {
     const status = d.payment_status || 'pending';
     const donorName = d.first_name ? `${d.first_name} ${d.last_name}` : 'Anonymous';
 
@@ -781,22 +837,18 @@ function ViewDonationModal({ donation: d, handleClose, handleMarkCompleted, hand
 
                 {/* Footer */}
                 <div className="p-6 border-t border-gray-100 bg-[#f8fafb] flex gap-3 justify-end">
-                    {status === 'pending' && (
-                        <>
-                            <button
-                                onClick={() => handleMarkCancelled(d.donation_id)}
-                                className="px-6 py-2 bg-red-100 text-red-600 rounded-lg font-semibold text-sm hover:bg-red-200 transition flex items-center gap-2"
-                            >
-                                <XCircle className="w-4 h-4" /> Cancel
-                            </button>
-                            <button
-                                onClick={() => handleMarkCompleted(d.donation_id)}
-                                className="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold text-sm hover:bg-green-700 transition flex items-center gap-2"
-                            >
-                                <CheckCircle className="w-4 h-4" /> Mark Completed
-                            </button>
-                        </>
-                    )}
+                    <button
+                        onClick={onDelete}
+                        className="px-6 py-2 bg-red-100 text-red-600 rounded-lg font-semibold text-sm hover:bg-red-200 transition flex items-center gap-2"
+                    >
+                        <Trash2 className="w-4 h-4" /> Delete
+                    </button>
+                    <button
+                        onClick={onEdit}
+                        className="px-6 py-2 bg-amber-100 text-amber-600 rounded-lg font-semibold text-sm hover:bg-amber-200 transition flex items-center gap-2"
+                    >
+                        <Pencil className="w-4 h-4" /> Edit Donation
+                    </button>
                     {status === 'completed' && (
                         <button
                             onClick={() => fetchReceiptDetails(d.donation_id)}
@@ -821,6 +873,105 @@ function DetailRow({ label, value }) {
         <div>
             <p className="text-xs text-gray-400 uppercase font-bold mb-1">{label}</p>
             <p className="text-gray-900 font-semibold text-sm">{value}</p>
+        </div>
+    );
+}
+
+// ─── Edit Donation Modal ──────────────────────
+function EditDonationModal({ donation, handleClose, handleSave }) {
+    const [formData, setFormData] = useState({
+        amount: donation.amount || '',
+        campaign_id: donation.campaign_id || '',
+        frequency: donation.frequency || 'one_time',
+        message: donation.message || ''
+    });
+    const [campaigns, setCampaigns] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        fetch('http://localhost:5000/api/campaigns')
+            .then(r => r.json())
+            .then(data => setCampaigns(data))
+            .catch(err => console.error('Failed to load campaigns', err));
+    }, []);
+
+    const onSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        await handleSave(donation.donation_id, formData);
+        setSubmitting(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-6 text-white relative">
+                    <button onClick={handleClose} type="button" className="absolute right-6 top-6 text-white/80 hover:text-white">
+                        <X className="w-6 h-6" />
+                    </button>
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                        <Pencil className="w-5 h-5" /> Edit Donation
+                    </h3>
+                    <p className="text-white/80 text-sm mt-1">Ref: {donation.payment_reference || `#${donation.donation_id}`}</p>
+                </div>
+                
+                <form onSubmit={onSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Amount (PHP)</label>
+                        <input 
+                            type="number" step="0.01" required
+                            value={formData.amount} 
+                            onChange={e => setFormData({...formData, amount: e.target.value})}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Campaign</label>
+                        <select 
+                            value={formData.campaign_id || ''} 
+                            onChange={e => setFormData({...formData, campaign_id: e.target.value})}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                        >
+                            <option value="">General Donation (No Campaign)</option>
+                            {campaigns.map(c => (
+                                <option key={c.campaign_id} value={c.campaign_id}>{c.title || c.campaign_name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Frequency</label>
+                        <select 
+                            value={formData.frequency} 
+                            onChange={e => setFormData({...formData, frequency: e.target.value})}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                        >
+                            <option value="one_time">One-time</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Message</label>
+                        <textarea 
+                            rows="3"
+                            value={formData.message} 
+                            onChange={e => setFormData({...formData, message: e.target.value})}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                            placeholder="Optional donor message..."
+                        />
+                    </div>
+
+                    <div className="pt-4 flex gap-3">
+                        <button type="button" onClick={handleClose}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-xl font-semibold text-gray-600 hover:bg-gray-50 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" disabled={submitting}
+                            className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 transition disabled:opacity-50">
+                            {submitting ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

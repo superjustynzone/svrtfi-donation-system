@@ -458,4 +458,110 @@ router.patch("/:id/cancel", async (req, res) => {
     }
 });
 
+// ─────────────────────────────────────────────
+// PUT /api/donations/:id — Edit donation fields
+// ─────────────────────────────────────────────
+router.put("/:id", async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { amount, message, frequency, campaign_id } = req.body;
+        const id = req.params.id;
+
+        // Fetch current to compute amount diff for campaigns
+        const existing = await client.query(
+            `SELECT amount, campaign_id FROM donations WHERE donation_id = $1`, [id]
+        );
+        if (existing.rows.length === 0)
+            return res.status(404).json({ message: "Donation not found" });
+
+        const old = existing.rows[0];
+        const newAmount = amount !== undefined ? parseFloat(amount) : parseFloat(old.amount);
+        const amountDiff = newAmount - parseFloat(old.amount);
+
+        await client.query("BEGIN");
+
+        const updated = await client.query(
+            `UPDATE donations SET
+                amount    = COALESCE($1, amount),
+                message   = COALESCE($2, message),
+                frequency = COALESCE($3, frequency),
+                campaign_id = COALESCE($4, campaign_id)
+             WHERE donation_id = $5 RETURNING *`,
+            [
+                amount !== undefined ? newAmount : null,
+                message !== undefined ? message : null,
+                frequency || null,
+                campaign_id || null,
+                id
+            ]
+        );
+
+        // Sync payment_transactions amount
+        if (amount !== undefined) {
+            await client.query(
+                `UPDATE payment_transactions SET amount = $1 WHERE donation_id = $2`,
+                [newAmount, id]
+            );
+        }
+
+        // Adjust campaign current_amount by the diff
+        if (amountDiff !== 0) {
+            await client.query(
+                `UPDATE campaigns SET current_amount = GREATEST(COALESCE(current_amount,0) + $1, 0), updated_at = NOW() WHERE campaign_id = $2`,
+                [amountDiff, old.campaign_id]
+            );
+        }
+
+        await client.query("COMMIT");
+        res.json({ message: "Donation updated", donation: updated.rows[0] });
+    } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("EDIT DONATION ERROR:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        client.release();
+    }
+});
+
+// ─────────────────────────────────────────────
+// DELETE /api/donations/:id — Delete donation
+// ─────────────────────────────────────────────
+router.delete("/:id", async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const existing = await client.query(
+            `SELECT amount, campaign_id, completed_at FROM donations WHERE donation_id = $1`, [req.params.id]
+        );
+        if (existing.rows.length === 0)
+            return res.status(404).json({ message: "Donation not found" });
+
+        const { amount, campaign_id, completed_at } = existing.rows[0];
+
+        await client.query("BEGIN");
+
+        // Delete payment transactions first (FK)
+        await client.query(`DELETE FROM payment_transactions WHERE donation_id = $1`, [req.params.id]);
+
+        // Delete the donation
+        await client.query(`DELETE FROM donations WHERE donation_id = $1`, [req.params.id]);
+
+        // If the donation was completed, subtract from campaign
+        if (completed_at) {
+            await client.query(
+                `UPDATE campaigns SET current_amount = GREATEST(COALESCE(current_amount,0) - $1, 0), updated_at = NOW() WHERE campaign_id = $2`,
+                [parseFloat(amount), campaign_id]
+            );
+        }
+
+        await client.query("COMMIT");
+        res.json({ message: "Donation deleted successfully" });
+    } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("DELETE DONATION ERROR:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        client.release();
+    }
+});
+
 module.exports = router;

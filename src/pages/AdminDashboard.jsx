@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Home, Users, DollarSign, PieChart, FileText, BarChart3,
-    UserCog, Settings, AlertTriangle, Search, Bell, Plus,
+    UserCog, Settings, AlertTriangle, Search, Plus,
     TrendingUp, TrendingDown, X, Menu, LogOut
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -316,27 +316,7 @@ export default function AdminDashboard() {
                     title="Dashboard Overview"
                     subtitle="Welcome back, monitor your donation activities"
                     onMobileMenuClick={() => setMobileMenuOpen(true)}
-                >
-                    <div className="hidden md:block relative">
-                        <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search donors, campaigns..."
-                            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 w-64 lg:w-80"
-                        />
-                    </div>
-                    <button className="relative p-2 hover:bg-gray-100 rounded-lg transition">
-                        <Bell className="w-6 h-6 text-gray-600" />
-                        <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                    </button>
-                    <button
-                        onClick={() => setModalOpen(true)}
-                        className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#4d8b96] transition flex items-center gap-2"
-                    >
-                        <Plus className="w-5 h-5" />
-                        <span className="hidden sm:inline">Add Donation</span>
-                    </button>
-                </AdminHeader>
+                />
 
                 <div className="p-4 lg:p-8">
                     {/* Stats Cards */}

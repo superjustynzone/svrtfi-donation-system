@@ -23,9 +23,13 @@ import AdminFoundationCreation from './pages/AdminFoundationCreation';
 import AdminSettings from './pages/AdminSettings';
 import AdminAuditLogs from './pages/AdminAuditLogs';
 import AdminDonations from './pages/AdminDonations';
+import AdminTransactions from './pages/AdminTransactions';
 import AdminReports from './pages/AdminReports';
 import AdminMailing from './pages/AdminMailing';
 import Profile from './pages/Profile';
+
+// Global CSS imports
+import './index.css';
 
 function App() {
 
@@ -81,6 +85,7 @@ function App() {
         <Route path="/admin_settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
         <Route path="/admin_audit" element={<AdminRoute><AdminAuditLogs /></AdminRoute>} />
         <Route path="/admin_donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />
+        <Route path="/admin_transactions" element={<AdminRoute><AdminTransactions /></AdminRoute>} />
         <Route path="/admin_reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
         <Route path="/admin_mailing" element={<AdminRoute><AdminMailing /></AdminRoute>} />
 

@@ -432,6 +432,101 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", time: new Date() });
 });
 
+// GET /api/transactions - Fetch payment transactions with pagination, search, status & date filters
+app.get("/api/transactions", async (req, res) => {
+  const { page = 1, limit = 15, search = '', status = '', startDate = '', endDate = '' } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+
+  try {
+    const conditions = [];
+    const values = [];
+    let idx = 1;
+
+    if (search) {
+      conditions.push(`(dn.first_name ILIKE $${idx} OR dn.last_name ILIKE $${idx} OR pt.payment_reference ILIKE $${idx})`);
+      values.push(`%${search}%`);
+      idx++;
+    }
+    if (status) {
+      conditions.push(`pt.payment_status = $${idx}`);
+      values.push(status);
+      idx++;
+    }
+    if (startDate) {
+      conditions.push(`pt.created_at >= $${idx}`);
+      values.push(startDate);
+      idx++;
+    }
+    if (endDate) {
+      conditions.push(`pt.created_at <= $${idx}::date + interval '1 day'`);
+      values.push(endDate);
+      idx++;
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const dataQuery = await pool.query(`
+      SELECT
+        pt.payment_id AS transaction_id,
+        pt.payment_reference AS reference_number,
+        pt.amount,
+        pt.payment_status AS status,
+        COALESCE(d.payment_method, 'N/A') AS payment_method,
+        pt.created_at,
+        COALESCE(
+          NULLIF(CONCAT(COALESCE(dn.first_name,''), ' ', COALESCE(dn.last_name,'')), ' '),
+          'Anonymous'
+        ) AS donor_name
+      FROM payment_transactions pt
+      LEFT JOIN donations d ON pt.donation_id = d.donation_id
+      LEFT JOIN donors dn ON d.donor_id = dn.donor_id
+      ${where}
+      ORDER BY pt.created_at DESC
+      LIMIT $${idx} OFFSET $${idx + 1}
+    `, [...values, parseInt(limit), offset]);
+
+    const countQuery = await pool.query(`
+      SELECT COUNT(*) FROM payment_transactions pt
+      LEFT JOIN donations d ON pt.donation_id = d.donation_id
+      LEFT JOIN donors dn ON d.donor_id = dn.donor_id
+      ${where}
+    `, values);
+
+    res.json({
+      transactions: dataQuery.rows,
+      total: parseInt(countQuery.rows[0].count),
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+  } catch (err) {
+    console.error("TRANSACTIONS ERROR:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+// PATCH /api/transactions/:id/status - Update transaction payment status
+app.patch("/api/transactions/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const allowed = ['pending', 'completed', 'failed', 'cancelled'];
+  if (!allowed.includes(status)) {
+    return res.status(400).json({ message: "Invalid status" });
+  }
+  try {
+    const result = await pool.query(
+      `UPDATE payment_transactions SET payment_status = $1 WHERE payment_id = $2 RETURNING *`,
+      [status, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+    res.json({ message: "Status updated", transaction: result.rows[0] });
+  } catch (err) {
+    console.error("UPDATE TRANSACTION STATUS ERROR:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
 // Get all users example
 app.get("/api/users", async (req, res) => {
   try {

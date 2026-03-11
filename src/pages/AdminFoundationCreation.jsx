@@ -589,7 +589,7 @@ export default function AdminFoundationCreation() {
                                                 <td className="px-6 py-4">
                                                     <div className="text-sm font-bold text-gray-900">{foundation.foundation_name}</div>
                                                     {foundation.about_foundation && (
-                                                        <div className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-xs ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.about_foundation }} />
+                                                        <div className="prose prose-sm max-w-none text-gray-500 mt-1 line-clamp-2 max-w-xs overflow-hidden ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.about_foundation }} />
                                                     )}
 
                                                 </td>
@@ -646,7 +646,7 @@ export default function AdminFoundationCreation() {
                                                         </div>
                                                     )}
                                                     {foundation.mission && (
-                                                        <div className="text-xs text-gray-500 italic line-clamp-2 max-w-xs ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.mission }} />
+                                                        <div className="prose prose-sm max-w-none text-gray-500 italic line-clamp-2 max-w-xs overflow-hidden ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.mission }} />
                                                     )}
                                                 </td>
 
@@ -721,7 +721,7 @@ export default function AdminFoundationCreation() {
                             {viewingFoundation.about_foundation && (
                                 <div className="mb-5">
                                     <h4 className="text-sm font-bold text-gray-700 mb-2">About Foundation</h4>
-                                    <div className="text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.about_foundation }} />
+                                    <div className="prose prose-sm max-w-none text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.about_foundation }} />
                                 </div>
                             )}
 
@@ -730,13 +730,13 @@ export default function AdminFoundationCreation() {
                                 {viewingFoundation.mission && (
                                     <div>
                                         <h4 className="text-sm font-bold text-gray-700 mb-2">Mission</h4>
-                                        <div className="text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.mission }} />
+                                        <div className="prose prose-sm max-w-none text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.mission }} />
                                     </div>
                                 )}
                                 {viewingFoundation.vision && (
                                     <div>
                                         <h4 className="text-sm font-bold text-gray-700 mb-2">Vision</h4>
-                                        <div className="text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.vision }} />
+                                        <div className="prose prose-sm max-w-none text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.vision }} />
                                     </div>
                                 )}
                             </div>

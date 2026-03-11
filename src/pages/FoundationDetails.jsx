@@ -249,7 +249,11 @@ export default function FoundationDetails() {
                                 </div>
                                 {/* Campaign Info */}
                                 <div className="p-6">
-                                    <div className="text-sm text-gray-600 mb-4 line-clamp-2 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: featuredCampaign.campaign_description || 'Support this campaign and make a difference.' }} />
+                                    <div 
+                                        className="prose prose-sm max-w-none text-gray-600 mb-4 line-clamp-2 ql-editor" 
+                                        style={{ padding: 0 }} 
+                                        dangerouslySetInnerHTML={{ __html: featuredCampaign.campaign_description || 'Support this campaign and make a difference.' }} 
+                                    />
                                     {featuredCampaign.goal_amount && (
                                         <div>
                                             <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -281,7 +285,11 @@ export default function FoundationDetails() {
                         {/* About Section */}
                         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
                             <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Foundation</h2>
-                            <div className="text-gray-700 leading-relaxed ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.about_foundation || foundation.description || '' }} />
+                            <div 
+                                className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed ql-editor" 
+                                style={{ padding: 0 }} 
+                                dangerouslySetInnerHTML={{ __html: foundation.about_foundation || foundation.description || '' }} 
+                            />
                         </div>
 
                         {/* Mission & Vision */}
@@ -296,7 +304,11 @@ export default function FoundationDetails() {
                                     </div>
                                     <h3 className="text-xl font-bold text-blue-600">Mission</h3>
                                 </div>
-                                <div className="text-gray-700 leading-relaxed text-sm ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.mission || '' }} />
+                                <div 
+                                    className="prose prose-sm max-w-none text-gray-700 leading-relaxed text-sm ql-editor" 
+                                    style={{ padding: 0 }} 
+                                    dangerouslySetInnerHTML={{ __html: foundation.mission || '' }} 
+                                />
                             </div>
 
                             {/* Vision */}
@@ -310,7 +322,11 @@ export default function FoundationDetails() {
                                     </div>
                                     <h3 className="text-xl font-bold text-pink-600">Vision</h3>
                                 </div>
-                                <div className="text-gray-700 leading-relaxed text-sm ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: foundation.vision || '' }} />
+                                <div 
+                                    className="prose prose-sm max-w-none text-gray-700 leading-relaxed text-sm ql-editor" 
+                                    style={{ padding: 0 }} 
+                                    dangerouslySetInnerHTML={{ __html: foundation.vision || '' }} 
+                                />
                             </div>
                         </div>
 

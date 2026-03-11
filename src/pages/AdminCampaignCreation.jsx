@@ -666,7 +666,7 @@ export default function AdminCampaignCreation() {
                             {viewingCampaign.campaign_description && (
                                 <div className="mb-5">
                                     <h4 className="text-sm font-bold text-gray-700 mb-2">Description</h4>
-                                    <div className="text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingCampaign.campaign_description }} />
+                                    <div className="prose prose-sm max-w-none text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingCampaign.campaign_description }} />
                                 </div>
                             )}
 
@@ -881,7 +881,7 @@ function CampaignCard({ campaign, onEdit, onDelete, onView, onToggleStatus, form
                 </div>
 
                 {campaign.campaign_description && (
-                    <div className="text-sm text-gray-600 mb-4 line-clamp-2 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: campaign.campaign_description }} />
+                    <div className="prose prose-sm max-w-none text-gray-600 mb-4 line-clamp-2 overflow-hidden ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: campaign.campaign_description }} />
                 )}
 
                 {/* Progress Bar */}

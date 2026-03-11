@@ -421,7 +421,7 @@ export default function Campaigns() {
                                                 </h3>
 
                                                 {campaign.campaign_description && (
-                                                    <div className="text-sm text-gray-600 mb-4 line-clamp-2 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: campaign.campaign_description }} />
+                                                    <div className="prose prose-sm max-w-none text-gray-600 mb-4 line-clamp-2 overflow-hidden ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: campaign.campaign_description }} />
                                                 )}
 
                                                 {/* Progress */}
