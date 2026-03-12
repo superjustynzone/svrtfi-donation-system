@@ -10,9 +10,9 @@ export default function PaymentGateway() {
     const [campaign, setCampaign] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
-    
+
     // Timer state
-    const [timeLeft, setTimeLeft] = useState(60); // 60 seconds timeout
+    const [timeLeft, setTimeLeft] = useState(3600); // 60 seconds timeout
 
     useEffect(() => {
         fetchDonationDetails();
@@ -39,7 +39,7 @@ export default function PaymentGateway() {
         try {
             setIsLoading(true);
             const response = await fetch(`http://localhost:5000/api/donations/${donationId}`);
-            
+
             if (response.ok) {
                 const data = await response.json();
                 setDonation(data);
@@ -110,7 +110,7 @@ export default function PaymentGateway() {
                 } else {
                     toast.info('Payment was cancelled.');
                 }
-                
+
                 setTimeout(() => {
                     navigate(campaign ? `/campaigns/${campaign.campaign_id}` : '/campaigns');
                 }, 2000);
@@ -157,7 +157,7 @@ export default function PaymentGateway() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-            
+
             {/* Header / Logo Simulation */}
             <div className="mb-8 text-center">
                 <h1 className={`text-3xl font-extrabold ${provider.text} tracking-tight`}>
@@ -210,19 +210,19 @@ export default function PaymentGateway() {
                 {/* Developer / Simulator Controls */}
                 <div className="bg-gray-50 p-6 border-t border-gray-100">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 text-center">Simulator Controls</p>
-                    
+
                     <div className="space-y-3">
                         <button
                             onClick={handleSuccess}
                             disabled={isProcessing || timeLeft <= 0}
-                            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-md transition-all ${isProcessing 
-                                ? 'bg-gray-400 cursor-not-allowed' 
+                            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-md transition-all ${isProcessing
+                                ? 'bg-gray-400 cursor-not-allowed'
                                 : `${provider.color} hover:opacity-90 hover:shadow-lg transform hover:-translate-y-0.5`
-                            }`}
+                                }`}
                         >
                             {isProcessing ? 'Processing...' : 'Authorize Payment (Success)'}
                         </button>
-                        
+
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 onClick={() => handleCancel(false)}
