@@ -74,7 +74,7 @@ const contactDetails = [
   {
     icon: <MapPin className="w-5 h-5 text-[#63A6B2]" />,
     label: 'Address',
-    value: '456 Faith Avenue, Quezon City, Metro Manila',
+    value: 'J2GW+9H5, Ermin Garcia St, Quezon City, Metro Manila',
     href: null,
   },
   {

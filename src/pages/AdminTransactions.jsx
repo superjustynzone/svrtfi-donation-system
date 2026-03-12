@@ -59,6 +59,11 @@ export default function AdminTransactions() {
     const [startDate, setStartDate] = useState('');
     const [isExporting, setIsExporting] = useState(false);
     const [viewDonation, setViewDonation] = useState(null);
+    const [summaryStats, setSummaryStats] = useState({
+        completed: 0,
+        pending: 0,
+        totalAmount: 0
+    });
 
     const fetchTransactions = async () => {
         setLoading(true);
@@ -73,6 +78,9 @@ export default function AdminTransactions() {
             const data = await res.json();
             setTransactions(data.transactions || []);
             setTotal(data.total || 0);
+            if (data.stats) {
+                setSummaryStats(data.stats);
+            }
         } catch {
             toast.error('Failed to load transactions');
             setTransactions([]);
@@ -126,13 +134,8 @@ export default function AdminTransactions() {
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
-    // Summary stats
-    const stats = {
-        total: transactions.length,
-        completed: transactions.filter(t => t.status === 'completed').length,
-        pending: transactions.filter(t => t.status === 'pending').length,
-        totalAmount: transactions.reduce((s, t) => s + parseFloat(t.amount || 0), 0)
-    };
+    // Stats are now fetched from backend to show totals across all pages
+    const stats = summaryStats;
 
     return (
         <div className="flex h-screen bg-[#F0F4F8]">

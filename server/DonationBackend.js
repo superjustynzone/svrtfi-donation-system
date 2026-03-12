@@ -485,126 +485,136 @@ router.patch("/:id/cancel", async (req, res) => {
     }
 });
 
-// ─────────────────────────────────────────────
-// PUT /api/donations/:id — Edit donation fields
-// ─────────────────────────────────────────────
+// Edit donation fields
 router.put("/:id", async (req, res) => {
     const client = await pool.connect();
     try {
         const { amount, message, frequency, campaign_id } = req.body;
         const id = req.params.id;
 
-        // Fetch current to compute amount diff for campaigns
+        // 1. Fetch current donation and transaction status
         const existing = await client.query(
-            `SELECT amount, campaign_id FROM donations WHERE donation_id = $1`, [id]
+            `SELECT d.amount, d.campaign_id, pt.payment_status
+             FROM donations d
+             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+             WHERE d.donation_id = $1`, [id]
         );
+        
         if (existing.rows.length === 0)
             return res.status(404).json({ message: "Donation not found" });
 
         const old = existing.rows[0];
-        const newAmount = amount !== undefined ? parseFloat(amount) : parseFloat(old.amount);
-        const amountDiff = newAmount - parseFloat(old.amount);
+        const oldAmount = parseFloat(old.amount || 0);
+        const oldCampaignId = parseInt(old.campaign_id);
+        const currentStatus = old.payment_status || 'pending';
+
+        // Values for update
+        const newAmount = amount !== undefined ? parseFloat(amount) : oldAmount;
+        const newCampaignId = campaign_id !== undefined ? parseInt(campaign_id) : oldCampaignId;
+        const amountDiff = newAmount - oldAmount;
 
         await client.query("BEGIN");
 
+        // 2. Update donation record
         const updated = await client.query(
             `UPDATE donations SET
-                amount    = COALESCE($1, amount),
+                amount    = $1,
                 message   = COALESCE($2, message),
                 frequency = COALESCE($3, frequency),
-                campaign_id = COALESCE($4, campaign_id)
+                campaign_id = $4
              WHERE donation_id = $5 RETURNING *`,
-            [
-                amount !== undefined ? newAmount : null,
-                message !== undefined ? message : null,
-                frequency || null,
-                campaign_id || null,
-                id
-            ]
+            [newAmount, message !== undefined ? message : null, frequency || null, newCampaignId, id]
         );
 
-        const row = updated.rows[0];
-        const newCampaignId = campaign_id !== undefined ? parseInt(campaign_id) : parseInt(old.campaign_id);
+        // 3. Sync payment_transactions
+        await client.query(
+            `UPDATE payment_transactions 
+             SET amount = $1, 
+                 campaign_id = $2
+             WHERE donation_id = $3`,
+            [newAmount, newCampaignId, id]
+        );
 
-        // 1. Sync payment_transactions
-        if (amount !== undefined || campaign_id !== undefined) {
-            await client.query(
-                `UPDATE payment_transactions 
-                 SET amount = COALESCE($1, amount), 
-                     campaign_id = COALESCE($2, campaign_id) 
-                 WHERE donation_id = $3`,
-                [amount !== undefined ? newAmount : null, campaign_id || null, id]
-            );
-        }
-
-        // 2. Adjust campaign current_amount
-        if (campaign_id !== undefined && parseInt(campaign_id) !== parseInt(old.campaign_id)) {
-            // Campaign changed: subtract from old, add to new
-            await client.query(
-                `UPDATE campaigns SET current_amount = GREATEST(COALESCE(current_amount,0) - $1, 0), updated_at = NOW() WHERE campaign_id = $2`,
-                [parseFloat(old.amount), old.campaign_id]
-            );
-            await client.query(
-                `UPDATE campaigns SET current_amount = COALESCE(current_amount,0) + $1, updated_at = NOW() WHERE campaign_id = $2`,
-                [newAmount, campaign_id]
-            );
-        } else if (amountDiff !== 0) {
-            // Same campaign, different amount
-            await client.query(
-                `UPDATE campaigns SET current_amount = GREATEST(COALESCE(current_amount,0) + $1, 0), updated_at = NOW() WHERE campaign_id = $2`,
-                [amountDiff, old.campaign_id]
-            );
+        // 4. Adjust campaign current_amount
+        // Only adjust if the donation is in a 'countable' status (completed or pending)
+        if (currentStatus === 'completed' || currentStatus === 'pending') {
+            if (newCampaignId !== oldCampaignId) {
+                // Campaign changed: subtract from old, add to new
+                await client.query(
+                    `UPDATE campaigns SET current_amount = GREATEST(COALESCE(current_amount,0) - $1, 0), updated_at = NOW() WHERE campaign_id = $2`,
+                    [oldAmount, oldCampaignId]
+                );
+                await client.query(
+                    `UPDATE campaigns SET current_amount = COALESCE(current_amount,0) + $1, updated_at = NOW() WHERE campaign_id = $2`,
+                    [newAmount, newCampaignId]
+                );
+            } else if (amountDiff !== 0) {
+                // Same campaign, different amount
+                await client.query(
+                    `UPDATE campaigns SET current_amount = GREATEST(COALESCE(current_amount,0) + $1, 0), updated_at = NOW() WHERE campaign_id = $2`,
+                    [amountDiff, oldCampaignId]
+                );
+            }
         }
 
         await client.query("COMMIT");
-        res.json({ message: "Donation updated", donation: row });
+        res.json({ message: "Donation updated", donation: updated.rows[0] });
     } catch (err) {
-        await client.query("ROLLBACK");
+        if (client) await client.query("ROLLBACK");
         console.error("EDIT DONATION ERROR:", err);
         res.status(500).json({ message: "Server error: " + err.message });
     } finally {
-        client.release();
+        if (client) client.release();
     }
 });
 
-// ─────────────────────────────────────────────
-// DELETE /api/donations/:id — Delete donation
-// ─────────────────────────────────────────────
+// DELETE /api/donations/:id
 router.delete("/:id", async (req, res) => {
     const client = await pool.connect();
     try {
-        const existing = await client.query(
-            `SELECT amount, campaign_id, completed_at FROM donations WHERE donation_id = $1`, [req.params.id]
-        );
-        if (existing.rows.length === 0)
-            return res.status(404).json({ message: "Donation not found" });
-
-        const { amount, campaign_id, completed_at } = existing.rows[0];
-
         await client.query("BEGIN");
 
-        // Delete payment transactions first (FK)
-        await client.query(`DELETE FROM payment_transactions WHERE donation_id = $1`, [req.params.id]);
+        // 1. Fetch donation and status before deleting
+        const existing = await client.query(
+            `SELECT d.amount, d.campaign_id, pt.payment_status
+             FROM donations d
+             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+             WHERE d.donation_id = $1`, [req.params.id]
+        );
 
-        // Delete the donation
+        if (existing.rows.length === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ message: "Donation not found" });
+        }
+
+        const { amount, campaign_id, payment_status } = existing.rows[0];
+        const txnAmount = parseFloat(amount || 0);
+        const status = (payment_status || 'pending').toLowerCase();
+
+        // 2. Delete the donation (CASCADE will handle receipts and transactions if configured, 
+        // but we explicitly delete transactions here to be safe and match existing code)
+        await client.query(`DELETE FROM payment_transactions WHERE donation_id = $1`, [req.params.id]);
         await client.query(`DELETE FROM donations WHERE donation_id = $1`, [req.params.id]);
 
-        // If the donation was completed, subtract from campaign
-        if (completed_at) {
+        // 3. Subtract from campaign if it was countable
+        if (status === 'completed' || status === 'pending') {
             await client.query(
-                `UPDATE campaigns SET current_amount = GREATEST(COALESCE(current_amount,0) - $1, 0), updated_at = NOW() WHERE campaign_id = $2`,
-                [parseFloat(amount), campaign_id]
+                `UPDATE campaigns 
+                 SET current_amount = GREATEST(COALESCE(current_amount,0) - $1, 0), 
+                     updated_at = NOW() 
+                 WHERE campaign_id = $2`,
+                [txnAmount, campaign_id]
             );
         }
 
         await client.query("COMMIT");
         res.json({ message: "Donation deleted successfully" });
     } catch (err) {
-        await client.query("ROLLBACK");
+        if (client) await client.query("ROLLBACK");
         console.error("DELETE DONATION ERROR:", err);
         res.status(500).json({ message: "Server error: " + err.message });
     } finally {
-        client.release();
+        if (client) client.release();
     }
 });
 

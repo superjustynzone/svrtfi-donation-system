@@ -395,8 +395,8 @@ export default function AdminDashboard() {
                         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-6">
                                 <div>
-                                    <h3 className="text-xl font-bold text-gray-900">Recent Donations</h3>
-                                    <p className="text-sm text-gray-500">Latest transactions</p>
+                                    <h3 className="text-xl font-bold text-gray-900">Recent Transactions</h3>
+                                    <p className="text-sm text-gray-500">Transactions overview</p>
                                 </div>
                                 <a href="/admin_donations" className="text-sm font-semibold text-[#63A6B2] hover:underline">View All →</a>
                             </div>

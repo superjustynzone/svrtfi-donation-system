@@ -201,7 +201,6 @@ router.get("/published", async (req, res) => {
   }
 });
 
-// GET SPECIFIC CAMPAIGN
 router.get("/:id", async (req, res) => {
   const campaignId = req.params.id;
 
@@ -216,7 +215,13 @@ router.get("/:id", async (req, res) => {
           SELECT json_agg(json_build_object('media_id', cm.media_id, 'file_url', cm.file_url))
           FROM campaign_media cm
           WHERE cm.campaign_id = c.campaign_id
-        ) as media
+        ) as media,
+        (
+          SELECT COUNT(DISTINCT d.donor_id)::int
+          FROM donations d
+          JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+          WHERE d.campaign_id = c.campaign_id AND pt.payment_status IN ('completed', 'pending')
+        ) as donor_count
        FROM campaigns c
        LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
        LEFT JOIN foundations f ON fc.foundation_id = f.foundation_id

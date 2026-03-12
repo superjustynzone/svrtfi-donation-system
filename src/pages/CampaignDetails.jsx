@@ -16,7 +16,20 @@ export default function CampaignDetails() {
     useEffect(() => {
         fetchCampaignDetails();
         fetchOtherCampaigns();
+        setSelectedImage(0); // Reset to first image when campaign changes
     }, [id]);
+
+    // Auto-scroll carousel
+    useEffect(() => {
+        const mediaCount = (campaign?.media?.length || 0) + (campaign?.file_url ? 1 : 0);
+        if (mediaCount <= 1 || isLoading) return;
+
+        const interval = setInterval(() => {
+            setSelectedImage(prev => (prev + 1) % mediaCount);
+        }, 5000); // Change image every 5 seconds
+
+        return () => clearInterval(interval);
+    }, [campaign, isLoading]);
 
     const fetchCampaignDetails = async () => {
         try {
@@ -95,9 +108,17 @@ export default function CampaignDetails() {
         return null;
     }
 
+    const allMedia = [];
+    if (campaign.file_url) {
+        allMedia.push({ file_url: campaign.file_url, media_id: 'main' });
+    }
+    if (campaign.media && Array.isArray(campaign.media)) {
+        allMedia.push(...campaign.media);
+    }
+
     const progress = calculateProgress(campaign.current_amount, campaign.goal_amount);
     const daysRemaining = getDaysRemaining(campaign.end_date);
-    const hasMedia = (campaign.media && campaign.media.length > 0) || campaign.file_url;
+    const hasMedia = allMedia.length > 0;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-teal-50">
@@ -127,19 +148,17 @@ export default function CampaignDetails() {
                                     {/* Main Image */}
                                     <div className="relative h-96 bg-gray-200 group">
                                         <img
-                                            src={campaign.media && campaign.media.length > 0
-                                                ? `http://localhost:5000${campaign.media[selectedImage].file_url}`
-                                                : `http://localhost:5000${campaign.file_url}`}
+                                            src={`http://localhost:5000${allMedia[selectedImage].file_url}`}
                                             alt={campaign.campaign_name}
                                             className="w-full h-full object-cover transition-opacity duration-300"
                                         />
 
                                         {/* Image Controls */}
-                                        {campaign.media && campaign.media.length > 1 && (
+                                        {allMedia.length > 1 && (
                                             <>
                                                 {/* Left Arrow */}
                                                 <button
-                                                    onClick={() => setSelectedImage(prev => prev === 0 ? campaign.media.length - 1 : prev - 1)}
+                                                    onClick={() => setSelectedImage(prev => prev === 0 ? allMedia.length - 1 : prev - 1)}
                                                     className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                                                 >
                                                     <ChevronLeft className="w-6 h-6" />
@@ -147,7 +166,7 @@ export default function CampaignDetails() {
 
                                                 {/* Right Arrow */}
                                                 <button
-                                                    onClick={() => setSelectedImage(prev => prev === campaign.media.length - 1 ? 0 : prev + 1)}
+                                                    onClick={() => setSelectedImage(prev => prev === allMedia.length - 1 ? 0 : prev + 1)}
                                                     className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                                                 >
                                                     <ChevronRight className="w-6 h-6" />
@@ -155,19 +174,19 @@ export default function CampaignDetails() {
 
                                                 {/* Image Counter */}
                                                 <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                                    {selectedImage + 1} / {campaign.media.length}
+                                                    {selectedImage + 1} / {allMedia.length}
                                                 </div>
                                             </>
                                         )}
                                     </div>
 
                                     {/* Thumbnail Gallery */}
-                                    {campaign.media && campaign.media.length > 1 && (
+                                    {allMedia.length > 1 && (
                                         <div className="p-4 bg-gray-50 border-t border-gray-200">
                                             <div className="flex gap-3 overflow-x-auto pb-2">
-                                                {campaign.media.map((media, index) => (
+                                                {allMedia.map((media, index) => (
                                                     <button
-                                                        key={media.media_id}
+                                                        key={media.media_id || index}
                                                         onClick={() => setSelectedImage(index)}
                                                         className={`flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === index
                                                             ? 'border-[#63A6B2] shadow-lg scale-105'
@@ -357,6 +376,8 @@ export default function CampaignDetails() {
                                     </p>
                                 </div>
                             </div>
+
+
 
                             {/* Donate Button */}
                             <button

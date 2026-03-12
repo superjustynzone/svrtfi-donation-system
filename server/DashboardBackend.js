@@ -35,7 +35,7 @@ router.get("/", verifyAdmin, async (req, res) => {
         const statsQuery = `
             SELECT 
                 COALESCE(SUM(d.amount), 0) as total_donations,
-                COUNT(DISTINCT d.user_id) as active_donors,
+                COUNT(DISTINCT d.donor_id) as active_donors,
                 (SELECT COUNT(*) FROM campaigns WHERE status = 'publish') as active_campaigns,
                 COALESCE(AVG(d.amount), 0) as avg_donation
             FROM donations d
@@ -86,19 +86,18 @@ router.get("/", verifyAdmin, async (req, res) => {
         const recentDonationsQuery = `
             SELECT 
                 d.donation_id as id,
-                COALESCE(u.first_name || ' ' || u.last_name, 'Anonymous') as donor_name,
-                a.email as donor_email,
+                COALESCE(NULLIF(TRIM(dn.first_name || ' ' || dn.last_name), ''), 'Anonymous') as donor_name,
+                dn.email as donor_email,
                 c.campaign_name as campaign,
                 d.amount,
                 d.payment_method as method,
                 pt.payment_status as status,
                 TO_CHAR(d.initiated_at, 'Mon DD, YYYY') as date,
-                UPPER(LEFT(COALESCE(u.first_name, 'A'), 1) || LEFT(COALESCE(u.last_name, 'N'), 1)) as initials
+                UPPER(LEFT(COALESCE(dn.first_name, 'A'), 1) || LEFT(COALESCE(dn.last_name, 'N'), 1)) as initials
             FROM donations d
             LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
-            LEFT JOIN users u ON d.user_id = u.user_id
-            LEFT JOIN auth_users a ON u.user_id = a.user_id
+            LEFT JOIN donors dn ON d.donor_id = dn.donor_id
             ORDER BY d.initiated_at DESC
             LIMIT 5
         `;

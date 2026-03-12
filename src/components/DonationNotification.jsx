@@ -80,12 +80,12 @@ export default function DonationNotification() {
                 isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0 pointer-events-none'
             }`}
         >
-            <div className="bg-white px-4 py-3 rounded-2xl shadow-xl border border-gray-100 flex items-center gap-4 pr-10 hover:shadow-2xl transition-shadow cursor-default group max-w-sm">
+            <div className="bg-white px-4 py-3 rounded-2xl shadow-xl border border-gray-100 flex items-center gap-4 pr-10 hover:shadow-2xl transition-shadow cursor-default group max-w-sm overflow-hidden">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-400 to-rose-500 flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform">
                     <Heart className="w-5 h-5 text-white fill-white animate-pulse" />
                 </div>
-                <div>
-                    <p className="text-sm text-gray-800">
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-800 truncate">
                         <span className="font-bold text-gray-900">{donorName}</span> just donated
                     </p>
                     <p className="text-xs text-[#63A6B2] font-semibold truncate mt-0.5">

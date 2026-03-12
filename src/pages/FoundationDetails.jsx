@@ -25,7 +25,20 @@ export default function FoundationDetails() {
         fetchFoundationDetails();
         fetchOtherFoundations();
         fetchFeaturedCampaign();
+        setSelectedCover(0); // Reset to first image on foundation change
     }, [id]);
+
+    // Auto-scroll hero banner
+    useEffect(() => {
+        const mediaCount = foundation?.media?.length || 0;
+        if (mediaCount <= 1 || isLoading) return;
+
+        const interval = setInterval(() => {
+            setSelectedCover(prev => (prev + 1) % mediaCount);
+        }, 5000); // Change image every 5 seconds
+
+        return () => clearInterval(interval);
+    }, [foundation, isLoading]);
 
     const fetchFoundationDetails = async () => {
         try {
@@ -66,17 +79,20 @@ export default function FoundationDetails() {
 
     const fetchFeaturedCampaign = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/campaigns/all');
+            const response = await fetch('http://localhost:5000/api/campaigns/published');
             if (response.ok) {
                 const data = await response.json();
-                // Find a featured campaign linked to this foundation
-                const featured = data.find(c => c.foundation_id === parseInt(id) && c.is_featured);
-                // Fallback: first campaign linked to this foundation
-                const fallback = data.find(c => c.foundation_id === parseInt(id));
-                setFeaturedCampaign(featured || fallback || null);
+                if (Array.isArray(data)) {
+                    // Find a featured published campaign linked to this foundation
+                    const featured = data.find(c => c.foundation_id === parseInt(id) && c.is_featured);
+                    setFeaturedCampaign(featured || null);
+                } else {
+                    setFeaturedCampaign(null);
+                }
             }
         } catch (error) {
             console.error('Error fetching featured campaign:', error);
+            setFeaturedCampaign(null);
         }
     };
 
@@ -161,22 +177,6 @@ export default function FoundationDetails() {
                     {/* Image Controls */}
                     {hasMedia && foundation.media.length > 1 && (
                         <>
-                            {/* Left Arrow */}
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setSelectedCover(prev => prev === 0 ? foundation.media.length - 1 : prev - 1); }}
-                                className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-3 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all z-10"
-                            >
-                                <ChevronLeft className="w-8 h-8" />
-                            </button>
-
-                            {/* Right Arrow */}
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setSelectedCover(prev => prev === foundation.media.length - 1 ? 0 : prev + 1); }}
-                                className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-3 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all z-10"
-                            >
-                                <ChevronRight className="w-8 h-8" />
-                            </button>
-
                             {/* Image Counter */}
                             <div className="absolute top-6 right-6 bg-black/50 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-sm font-bold border border-white/20 z-10">
                                 {selectedCover + 1} / {foundation.media.length}

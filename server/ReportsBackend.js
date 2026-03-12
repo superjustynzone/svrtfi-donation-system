@@ -57,11 +57,11 @@ router.get("/summary", verifyAdmin, async (req, res) => {
             SELECT 
                 d.*, 
                 c.campaign_name,
-                COALESCE(u.first_name || ' ' || u.last_name, 'Anonymous') as donor_name
+                COALESCE(NULLIF(TRIM(dn.first_name || ' ' || dn.last_name), ''), 'Anonymous') as donor_name
             FROM donations d
             JOIN campaigns c ON d.campaign_id = c.campaign_id
             JOIN payment_transactions pt ON d.donation_id = pt.donation_id
-            LEFT JOIN users u ON d.user_id = u.user_id
+            LEFT JOIN donors dn ON d.donor_id = dn.donor_id
             WHERE pt.payment_status = 'completed'
             ORDER BY d.initiated_at DESC
             LIMIT 5
