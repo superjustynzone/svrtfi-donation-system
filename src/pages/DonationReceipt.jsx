@@ -153,18 +153,18 @@ export default function DonationReceipt() {
                 <div ref={printRef} className="bg-white rounded-2xl shadow-2xl print:shadow-none print:rounded-none">
                     {/* Header */}
                     <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white p-8 rounded-t-2xl print:rounded-none">
-                        <div className="flex justify-between items-start">
+                        <div className="flex justify-between items-center">
                             {/* Logos */}
-                            <div className="flex items-center gap-4 mb-4">
-                                {/* SVRTV Logo */}
-                                <div className="bg-white rounded-xl p-2 shadow-md flex items-center justify-center" style={{width: '120px', height: '80px'}}>
-                                    <img src="/images/logo.png" alt="SVRTV Logo" className="w-full h-full object-contain" />
+                            <div className="flex items-center gap-6">
+                                {/* SVRTV Logo - Circle */}
+                                <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{width: '110px', height: '110px', borderRadius: '50%', padding: '8px'}}>
+                                    <img src="/images/logo.png" alt="SVRTV Logo" className="w-full h-full object-contain" style={{borderRadius: '50%'}} />
                                 </div>
                                 {/* Divider */}
-                                <div className="w-px h-10 bg-white/30"></div>
-                                {/* Foundation Logo */}
+                                <div className="w-px h-16 bg-white/30"></div>
+                                {/* Foundation Logo - Circle */}
                                 {campaign.foundation_logo ? (
-                                    <div className="bg-white rounded-xl p-2 shadow-md flex items-center justify-center" style={{width: '80px', height: '80px'}}>
+                                    <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{width: '110px', height: '110px', borderRadius: '50%', padding: '8px'}}>
                                         <img
                                             src={`http://localhost:5000${campaign.foundation_logo}`}
                                             alt={`${campaign.foundation_name} Logo`}
@@ -172,8 +172,8 @@ export default function DonationReceipt() {
                                         />
                                     </div>
                                 ) : (
-                                    <div className="bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center" style={{width: '80px', height: '80px'}}>
-                                        <span className="text-white font-bold text-2xl">
+                                    <div className="bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0" style={{width: '110px', height: '110px', borderRadius: '50%'}}>
+                                        <span className="text-white font-bold text-3xl">
                                             {campaign.foundation_name ? campaign.foundation_name.charAt(0) : 'F'}
                                         </span>
                                     </div>
@@ -217,10 +217,16 @@ export default function DonationReceipt() {
                                         </span>
                                     </div>
                                 ) : (
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-semibold mb-1">Full Name</p>
-                                        <p className="text-gray-900 font-bold">{donation.donor_name}</p>
-                                    </div>
+                                    <>
+                                        <div>
+                                            <p className="text-xs text-gray-500 font-semibold mb-1">Full Name</p>
+                                            <p className="text-gray-900 font-bold">{donation.donor_name}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 font-semibold mb-1">Email Address</p>
+                                            <p className="text-gray-900 font-bold">{donation.donor_email || '—'}</p>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </div>

@@ -67,6 +67,15 @@
   }
 }
 
+@layer utilities {
+  .custom-scrollbar {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+}
+
 /* Your custom styles */
 input[type="checkbox"]:checked {
   background-color: #63A6B2;

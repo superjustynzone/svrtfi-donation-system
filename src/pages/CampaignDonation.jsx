@@ -15,6 +15,8 @@ export default function CampaignDonation() {
     const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
     const [showPrivacyModal, setShowPrivacyModal] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
+    const [isPrivacyScrolledToBottom, setIsPrivacyScrolledToBottom] = useState(false);
+    const [isTermsScrolledToBottom, setIsTermsScrolledToBottom] = useState(false);
 
     // Detect logged-in user
     const loggedInUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
@@ -89,29 +91,24 @@ export default function CampaignDonation() {
             toast.error('Please enter a valid donation amount');
             return false;
         }
-        // Only validate personal info for guests (not logged-in users)
-        if (!isLoggedIn && !donationData.isAnonymous) {
-            if (!donationData.fullName.trim()) {
-                toast.error('Please enter your full name');
-                return false;
-            }
+
+        // For guests or anonymous donations, only validate Email
+        if (!isLoggedIn || donationData.isAnonymous) {
             if (!donationData.email.trim()) {
-                toast.error('Please enter your email address');
+                toast.error('Please enter your email address for receipt purposes');
                 return false;
             }
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(donationData.email)) {
                 toast.error('Please enter a valid email address');
                 return false;
             }
-            if (!donationData.phone.trim()) {
-                toast.error('Please enter your phone number');
-                return false;
-            }
         }
+
         if (!agreedToPrivacy) {
             toast.error('Please agree to the Data Privacy Policy and Terms & Conditions to proceed');
             return false;
         }
+
         return true;
     };
 
@@ -176,6 +173,20 @@ export default function CampaignDonation() {
             toast.error('An error occurred while submitting your donation');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handlePrivacyScroll = (e) => {
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        if (scrollTop + clientHeight >= scrollHeight - 30) {
+            setIsPrivacyScrolledToBottom(true);
+        }
+    };
+
+    const handleTermsScroll = (e) => {
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        if (scrollTop + clientHeight >= scrollHeight - 30) {
+            setIsTermsScrolledToBottom(true);
         }
     };
 
@@ -320,36 +331,24 @@ export default function CampaignDonation() {
                                 </div>
                             </div>
 
-                            {/* Anonymous Checkbox — guests only */}
-                            {!isLoggedIn && (
-                                <div className="flex items-center gap-3 p-5 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200">
-                                    <input
-                                        type="checkbox"
-                                        id="anonymous"
-                                        checked={donationData.isAnonymous}
-                                        onChange={(e) => handleInputChange('isAnonymous', e.target.checked)}
-                                        className="w-5 h-5 text-[#63A6B2] rounded focus:ring-[#63A6B2] cursor-pointer"
-                                    />
-                                    <label htmlFor="anonymous" className="text-sm font-semibold text-gray-700 cursor-pointer flex-1">
-                                        Make this donation anonymous (your name will not be shown publicly)
-                                    </label>
-                                </div>
-                            )}
+                            {/* Anonymous Checkbox — visible for everyone */}
+                            <div className="flex items-center gap-3 p-5 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200">
+                                <input
+                                    type="checkbox"
+                                    id="anonymous"
+                                    checked={donationData.isAnonymous}
+                                    onChange={(e) => handleInputChange('isAnonymous', e.target.checked)}
+                                    className="w-5 h-5 text-[#63A6B2] rounded focus:ring-[#63A6B2] cursor-pointer"
+                                />
+                                <label htmlFor="anonymous" className="text-sm font-semibold text-gray-700 cursor-pointer flex-1">
+                                    Make this donation anonymous (your name will not be shown publicly)
+                                </label>
+                            </div>
 
-                            {/* Donor Details — guests only, and not anonymous */}
-                            {!isLoggedIn && !donationData.isAnonymous && (
-                                <div className="space-y-4 pt-6 border-t-2 border-gray-200">
+                            {/* Required Email Address — for guests or if anonymous */}
+                            {(!isLoggedIn || donationData.isAnonymous) && (
+                                <div className={`pt-6 ${isLoggedIn ? 'border-t-2 border-gray-200' : 'mt-2'}`}>
                                     <h3 className="text-lg font-bold text-gray-900 mb-4">Your Information</h3>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Full Name *</label>
-                                        <input
-                                            type="text"
-                                            value={donationData.fullName}
-                                            onChange={(e) => handleInputChange('fullName', e.target.value)}
-                                            placeholder="Enter your full name"
-                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all"
-                                        />
-                                    </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">Email Address *</label>
                                         <input
@@ -357,16 +356,6 @@ export default function CampaignDonation() {
                                             value={donationData.email}
                                             onChange={(e) => handleInputChange('email', e.target.value)}
                                             placeholder="your.email@example.com"
-                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Phone Number *</label>
-                                        <input
-                                            type="tel"
-                                            value={donationData.phone}
-                                            onChange={(e) => handleInputChange('phone', e.target.value)}
-                                            placeholder="+63 XXX XXX XXXX"
                                             className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all"
                                         />
                                     </div>
@@ -403,16 +392,22 @@ export default function CampaignDonation() {
                             </div>
 
                             {/* Data Privacy Checkbox */}
-                            <div className={`flex items-start gap-3 p-5 rounded-xl border-2 transition-all ${agreedToPrivacy
-                                ? 'bg-teal-50 border-[#63A6B2]'
-                                : 'bg-gray-50 border-gray-200'
+                            <div className={`flex items-start gap-3 p-5 rounded-xl border-2 transition-all ${
+                                agreedToPrivacy
+                                    ? 'bg-teal-50 border-[#63A6B2]'
+                                    : 'bg-gray-50 border-gray-200'
                                 }`}>
                                 <input
                                     type="checkbox"
                                     id="privacy"
                                     checked={agreedToPrivacy}
+                                    disabled={!isPrivacyScrolledToBottom || !isTermsScrolledToBottom}
                                     onChange={(e) => setAgreedToPrivacy(e.target.checked)}
-                                    className="w-5 h-5 mt-0.5 text-[#63A6B2] rounded focus:ring-[#63A6B2] cursor-pointer flex-shrink-0"
+                                    className={`w-5 h-5 mt-0.5 text-[#63A6B2] rounded focus:ring-[#63A6B2] flex-shrink-0 ${
+                                        isPrivacyScrolledToBottom && isTermsScrolledToBottom
+                                            ? 'cursor-pointer'
+                                            : 'cursor-not-allowed opacity-50'
+                                    }`}
                                 />
                                 <label htmlFor="privacy" className="text-sm text-gray-700 cursor-pointer leading-relaxed">
                                     I agree to the{' '}
@@ -434,9 +429,10 @@ export default function CampaignDonation() {
                             <button
                                 onClick={handleNext}
                                 disabled={!agreedToPrivacy}
-                                className={`w-full py-4 rounded-xl font-bold text-lg transition-all mt-2 ${agreedToPrivacy
-                                    ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white hover:shadow-2xl transform hover:scale-105 cursor-pointer'
-                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                className={`w-full py-4 rounded-xl font-bold text-lg transition-all mt-2 ${
+                                    agreedToPrivacy
+                                        ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white hover:shadow-2xl transform hover:scale-105 cursor-pointer'
+                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     }`}
                             >
                                 Continue to Payment →
@@ -731,8 +727,9 @@ export default function CampaignDonation() {
             {/* Data Privacy Policy Modal */}
             {showPrivacyModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full flex flex-col" style={{maxHeight: '85vh'}}>
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-full flex items-center justify-center flex-shrink-0">
                                     <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
@@ -743,13 +740,18 @@ export default function CampaignDonation() {
                                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                             </button>
                         </div>
-                        <div className="overflow-y-auto p-6 space-y-4 text-sm text-gray-700 leading-relaxed">
+                        {/* Scrollable Content */}
+                        <div
+                            onScroll={handlePrivacyScroll}
+                            className="overflow-y-auto overscroll-contain p-6 space-y-4 text-sm text-gray-700 leading-relaxed"
+                            style={{flex: '1 1 auto', minHeight: 0}}
+                        >
                             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Effective Date: January 1, 2025</p>
                             <h4 className="font-bold text-gray-900 text-base">1. Information We Collect</h4>
                             <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
                             <h4 className="font-bold text-gray-900 text-base">2. How We Use Your Information</h4>
                             <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
-                            <h4 className="font-bold text-gray-900 text-base">3. Data Sharing & Disclosure</h4>
+                            <h4 className="font-bold text-gray-900 text-base">3. Data Sharing &amp; Disclosure</h4>
                             <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.</p>
                             <h4 className="font-bold text-gray-900 text-base">4. Data Security</h4>
                             <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi.</p>
@@ -758,10 +760,19 @@ export default function CampaignDonation() {
                             <h4 className="font-bold text-gray-900 text-base">6. Contact Us</h4>
                             <p>Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat. For privacy concerns, contact us at privacy@svrtv.org.</p>
                         </div>
-                        <div className="p-6 border-t border-gray-200">
+                        {/* Footer */}
+                        <div className="p-6 border-t border-gray-200 flex-shrink-0">
+                            {!isPrivacyScrolledToBottom && (
+                                <p className="text-xs text-center text-gray-500 mb-3 font-semibold animate-pulse">
+                                    Please scroll to the bottom to accept the Privacy Policy
+                                </p>
+                            )}
                             <button
-                                onClick={() => setShowPrivacyModal(false)}
-                                className="w-full py-3 bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white rounded-xl font-bold hover:shadow-lg transition-all"
+                                onClick={() => { setShowPrivacyModal(false); setAgreedToPrivacy(true); }}
+                                disabled={!isPrivacyScrolledToBottom}
+                                className={`w-full py-3 text-white rounded-xl font-bold hover:shadow-lg transition-all ${isPrivacyScrolledToBottom
+                                    ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95]'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                             >
                                 I Understand
                             </button>
@@ -773,19 +784,25 @@ export default function CampaignDonation() {
             {/* Terms and Conditions Modal */}
             {showTermsModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full flex flex-col" style={{maxHeight: '85vh'}}>
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-full flex items-center justify-center flex-shrink-0">
                                     <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900">Terms & Conditions for Donation</h3>
+                                <h3 className="text-xl font-bold text-gray-900">Terms &amp; Conditions for Donation</h3>
                             </div>
                             <button onClick={() => setShowTermsModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                             </button>
                         </div>
-                        <div className="overflow-y-auto p-6 space-y-4 text-sm text-gray-700 leading-relaxed">
+                        {/* Scrollable Content */}
+                        <div
+                            onScroll={handleTermsScroll}
+                            className="overflow-y-auto overscroll-contain p-6 space-y-4 text-sm text-gray-700 leading-relaxed"
+                            style={{flex: '1 1 auto', minHeight: 0}}
+                        >
                             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Last Updated: January 1, 2025</p>
                             <h4 className="font-bold text-gray-900 text-base">1. Acceptance of Terms</h4>
                             <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. By making a donation to SVRTV, you agree to be bound by these Terms and Conditions. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
@@ -800,10 +817,19 @@ export default function CampaignDonation() {
                             <h4 className="font-bold text-gray-900 text-base">6. Amendments</h4>
                             <p>Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur. SVRTV reserves the right to amend these terms at any time. Continued use of our donation platform constitutes acceptance of the updated terms. Contact us at terms@svrtv.org for questions.</p>
                         </div>
-                        <div className="p-6 border-t border-gray-200">
+                        {/* Footer */}
+                        <div className="p-6 border-t border-gray-200 flex-shrink-0">
+                            {!isTermsScrolledToBottom && (
+                                <p className="text-xs text-center text-gray-500 mb-3 font-semibold animate-pulse">
+                                    Please scroll to the bottom to accept the Terms of Service
+                                </p>
+                            )}
                             <button
                                 onClick={() => setShowTermsModal(false)}
-                                className="w-full py-3 bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white rounded-xl font-bold hover:shadow-lg transition-all"
+                                disabled={!isTermsScrolledToBottom}
+                                className={`w-full py-3 text-white rounded-xl font-bold hover:shadow-lg transition-all ${isTermsScrolledToBottom
+                                    ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95]'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                             >
                                 I Understand
                             </button>

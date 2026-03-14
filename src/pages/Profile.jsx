@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Mail, Phone, MapPin, Heart, Users, Edit2, Eye, Download, LogOut, ChevronDown, FileText, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { provinces, citiesByProvince } from '../data/philippineLocations';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function Profile() {
     const navigate = useNavigate();
@@ -230,7 +232,54 @@ export default function Profile() {
 
 
     const handleExportAll = () => {
-        toast.success('Exporting donation history...');
+        if (!donationHistory || donationHistory.length === 0) {
+            toast.error('No donations to export.');
+            return;
+        }
+
+        try {
+            toast.info('Generating PDF report...');
+            const doc = new jsPDF({ orientation: 'portrait' });
+
+            // Header
+            doc.setFontSize(18);
+            doc.setTextColor(99, 166, 178); // #63A6B2
+            doc.text("Shepherd's Voice - My Donation History", 14, 18);
+
+            const safeFormatCurrency = (amount) => `PHP ${parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            // Details
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Generated: ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}`, 14, 26);
+            doc.text(`Donor: ${userData.firstName} ${userData.lastName}`, 14, 32);
+            doc.text(`Total Donations: ${userData.totalDonations}   |   Total Amount: ${safeFormatCurrency(userData.totalAmount)}`, 14, 38);
+
+            // Prepare table data
+            const tableData = donationHistory.map((d, i) => [
+                i + 1,
+                new Date(d.initiated_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }),
+                d.campaign_name || 'N/A',
+                safeFormatCurrency(d.amount),
+                d.frequency === 'monthly' ? 'Monthly' : 'One-time',
+                (d.payment_status || 'pending').toUpperCase()
+            ]);
+
+            autoTable(doc, {
+                head: [["#", "Date", "Campaign", "Amount", "Frequency", "Status"]],
+                body: tableData,
+                startY: 45,
+                headStyles: { fillColor: [99, 166, 178], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+                bodyStyles: { fontSize: 8 },
+                alternateRowStyles: { fillColor: [245, 250, 251] },
+            });
+
+            doc.save(`my-donations-${new Date().toISOString().split('T')[0]}.pdf`);
+            toast.success('Donation history exported successfully!');
+        } catch (error) {
+            console.error('Export error:', error);
+            toast.error('Failed to generate PDF. Please try again.');
+        }
     };
 
     const fetchReceiptDetails = async (id) => {
@@ -396,28 +445,33 @@ export default function Profile() {
             {/* Main Content */}
             <div className="pt-24 pb-16 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-6xl mx-auto">
-                    {/* Teal Background Section for Profile Header */}
-                    <div className="bg-gradient-to-br from-[#63A6B2] to-[#7bb5c0] rounded-3xl p-8 md:p-10 mb-8">
-                        {/* Profile Header Card */}
-                        <div className="bg-white rounded-2xl shadow-lg p-8">
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                                <div className="flex items-center gap-6">
-                                    {/* Avatar with Upload */}
+                    {/* Modern Profile Header */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+                        {/* Cover Banner */}
+                        <div className="h-48 md:h-56 bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] relative w-full"></div>
+
+                        <div className="px-6 md:px-10 pb-8 relative z-10">
+                            <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+
+                                {/* Avatar column (Overlaps the banner) */}
+                                <div className="flex justify-center md:justify-start -mt-16 md:-mt-20 flex-shrink-0">
                                     <div className="relative">
-                                        <div className="w-24 h-24 bg-[#63A6B2] rounded-2xl flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 overflow-hidden shadow-inner">
-                                            {isUploading ? (
-                                                <div className="flex flex-col items-center justify-center bg-[#63A6B2] w-full h-full">
-                                                    <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                                                </div>
-                                            ) : imagePreview || userData.profileImage ? (
-                                                <img
-                                                    src={imagePreview || userData.profileImage}
-                                                    alt="Profile"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <span>{userData.firstName?.charAt(0)}{userData.lastName?.charAt(0)}</span>
-                                            )}
+                                        <div className="w-32 h-32 md:w-40 md:h-40 bg-white rounded-full p-1.5 shadow-md">
+                                            <div className="w-full h-full bg-[#63A6B2] rounded-full flex items-center justify-center text-white text-4xl md:text-5xl font-bold flex-shrink-0 overflow-hidden shadow-inner">
+                                                {isUploading ? (
+                                                    <div className="flex flex-col items-center justify-center bg-[#63A6B2] w-full h-full">
+                                                        <div className="w-8 h-8 md:w-10 md:h-10 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    </div>
+                                                ) : imagePreview || userData.profileImage ? (
+                                                    <img
+                                                        src={imagePreview || userData.profileImage}
+                                                        alt="Profile"
+                                                        className="w-full h-full object-cover rounded-full"
+                                                    />
+                                                ) : (
+                                                    <span>{userData.firstName?.charAt(0)}{userData.lastName?.charAt(0)}</span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Edit Icon Button (only visible in Edit Mode) */}
@@ -425,10 +479,10 @@ export default function Profile() {
                                             <>
                                                 <label
                                                     htmlFor="profile-image-upload"
-                                                    className="absolute -bottom-2 -right-2 bg-white p-1.5 rounded-lg shadow-md border border-gray-100 cursor-pointer hover:bg-gray-50 transition transform hover:scale-110 active:scale-95 flex items-center justify-center"
+                                                    className="absolute bottom-2 right-2 bg-white p-2.5 rounded-full shadow-lg border border-gray-100 cursor-pointer hover:bg-gray-50 transition transform hover:scale-110 active:scale-95 flex items-center justify-center"
                                                     title="Change profile picture"
                                                 >
-                                                    <Edit2 className="w-4 h-4 text-[#63A6B2]" />
+                                                    <Edit2 className="w-5 h-5 text-[#63A6B2]" />
                                                 </label>
                                                 <input
                                                     id="profile-image-upload"
@@ -440,59 +494,66 @@ export default function Profile() {
                                             </>
                                         )}
                                     </div>
-
-
-                                    {/* User Info */}
-                                    <div>
-                                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
-                                            {userData.firstName} {userData.lastName}
-                                        </h1>
-                                        <p className="text-gray-600 text-sm mb-2">{userData.email}</p>
-                                        <p className="text-gray-500 text-xs flex items-center gap-1">
-                                            <User className="w-3 h-3" />
-                                            Member since {userData.memberSince}
-                                        </p>
-                                    </div>
                                 </div>
 
 
-                                {/* Logout Button - Always visible */}
-                                <button onClick={handleLogout} className="flex items-center gap-2 px-6 py-2.5 border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-lg font-medium transition">
-                                    <LogOut className="w-4 h-4" />
-                                    Logout
-                                </button>
+                                {/* Info and Actions Column (Normal layout, below banner) */}
+                                <div className="flex flex-col md:flex-row items-center md:items-center justify-between flex-1 gap-6 md:pt-4">
+
+                                    {/* User Info */}
+                                    <div className="text-center md:text-left flex-1">
+                                        <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-gray-900 mb-2">
+                                            {userData.firstName} {userData.lastName}
+                                        </h1>
+                                        <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-4 text-gray-500 text-sm font-medium">
+                                            <span className="flex items-center gap-1.5"><Mail className="w-4 h-4" /> {userData.email}</span>
+                                            <span className="hidden md:block text-gray-300">•</span>
+                                            <span className="flex items-center gap-1.5"><User className="w-4 h-4" /> Member since {userData.memberSince}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Logout Button */}
+                                    <div className="w-full md:w-auto flex justify-center mt-2 md:mt-0">
+                                        <button onClick={handleLogout} className="flex items-center justify-center gap-2 px-6 py-3 border border-red-200 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-full font-bold transition w-full md:w-auto shadow-sm">
+                                            <LogOut className="w-4 h-4" />
+                                            Logout
+                                        </button>
+                                    </div>
+
+                                </div>
+
                             </div>
 
 
                             {/* Stats Row */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-gray-200">
-                                <div className="bg-gray-50 rounded-xl p-4">
-                                    <p className="text-gray-600 text-xs mb-1">Total Donations</p>
-                                    <p className="text-2xl font-bold text-[#63A6B2]">{userData.totalDonations}</p>
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8 pt-6 border-t border-gray-100">
+                                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100/50 hover:shadow-sm transition">
+                                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-2"><FileText className="w-4 h-4 text-gray-400" /> Donations</p>
+                                    <p className="text-3xl font-black text-gray-800">{userData.totalDonations}</p>
                                 </div>
-                                <div className="bg-pink-50 rounded-xl p-4">
-                                    <p className="text-gray-600 text-xs mb-1">Total Amount</p>
-                                    <p className="text-2xl font-bold text-pink-600">{formatCurrency(userData.totalAmount)}</p>
+                                <div className="bg-teal-50/50 rounded-2xl p-5 border border-teal-100/50 hover:shadow-sm transition">
+                                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-2"><Heart className="w-4 h-4 text-teal-400" /> Total Impact</p>
+                                    <p className="text-3xl font-black text-[#63A6B2]">{formatCurrency(userData.totalAmount)}</p>
                                 </div>
-                                <div className="bg-gray-50 rounded-xl p-4">
-                                    <p className="text-gray-600 text-xs mb-1">Last Donation</p>
-                                    <p className="text-sm font-semibold text-gray-900">{userData.lastDonation}</p>
+                                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100/50 hover:shadow-sm transition">
+                                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-2"><Users className="w-4 h-4 text-gray-400" /> Last Activity</p>
+                                    <p className="text-lg font-bold text-gray-800">{userData.lastDonation}</p>
                                 </div>
-                                <div className="bg-green-50 rounded-xl p-4">
-                                    <p className="text-gray-600 text-xs mb-1 flex items-center gap-1">
-                                        <Heart className="w-3 h-3" />
-                                        Status
+                                <div className="bg-green-50/50 rounded-2xl p-5 border border-green-100/50 hover:shadow-sm transition">
+                                    <p className="text-green-600 text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        Donor Status
                                     </p>
-                                    <p className="text-sm font-semibold text-green-600">Active Donor</p>
+                                    <p className="text-lg font-bold text-green-700">Active</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
 
-                    {/* Tabs */}
-                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                        <div className="border-b border-gray-200">
+                    {/* Tabs area wrapper - subtle layout update */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="border-b border-gray-100 bg-gray-50/50">
                             <div className="flex">
                                 <button
                                     onClick={() => setActiveTab('profile')}
@@ -769,18 +830,16 @@ export default function Profile() {
                                                             <td className="py-4 px-4 text-sm text-gray-900">{donation.campaign_name || 'N/A'}</td>
                                                             <td className="py-4 px-4 text-sm font-semibold text-[#63A6B2]">{formatCurrency(donation.amount)}</td>
                                                             <td className="py-4 px-4">
-                                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                                                                    donation.frequency === 'monthly' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                                                                }`}>
+                                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${donation.frequency === 'monthly' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                                                    }`}>
                                                                     {donation.frequency === 'monthly' ? 'Monthly' : 'One-time'}
                                                                 </span>
                                                             </td>
                                                             <td className="py-4 px-4">
-                                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                                    donation.payment_status === 'completed' ? 'bg-green-100 text-green-700' :
-                                                                    donation.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                                    'bg-gray-100 text-gray-600'
-                                                                }`}>
+                                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${donation.payment_status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                                        donation.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                                            'bg-gray-100 text-gray-600'
+                                                                    }`}>
                                                                     {donation.payment_status ? donation.payment_status.charAt(0).toUpperCase() + donation.payment_status.slice(1) : 'Pending'}
                                                                 </span>
                                                             </td>
@@ -885,14 +944,36 @@ function ProfileReceiptModal({ data: d, handleClose }) {
                     <div ref={printRef} className="bg-white mx-auto shadow-xl rounded-2xl overflow-hidden max-w-3xl text-left border border-gray-200">
                         {/* Header */}
                         <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white p-6 md:p-8">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 text-2xl font-bold">SV</div>
-                                    <h1 className="text-3xl font-bold mb-2">Official Receipt</h1>
-                                    <p className="text-teal-100">Tax Deductible Donation</p>
+                            <div className="flex justify-between items-center">
+                                {/* Logos */}
+                                <div className="flex items-center gap-6">
+                                    {/* SVRTV Logo - Circle */}
+                                    <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{ width: '110px', height: '110px', borderRadius: '50%', padding: '8px' }}>
+                                        <img src="/images/logo.png" alt="SVRTV Logo" className="w-full h-full object-contain" style={{ borderRadius: '50%' }} />
+                                    </div>
+                                    {/* Divider */}
+                                    <div className="w-px h-16 bg-white/30"></div>
+                                    {/* Foundation Logo - Circle */}
+                                    {d.foundation_logo ? (
+                                        <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{ width: '110px', height: '110px', borderRadius: '50%', padding: '8px' }}>
+                                            <img
+                                                src={`http://localhost:5000${d.foundation_logo}`}
+                                                alt={`${d.foundation_name} Logo`}
+                                                className="w-full h-full object-contain"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0" style={{ width: '110px', height: '110px', borderRadius: '50%' }}>
+                                            <span className="text-white font-bold text-3xl">
+                                                {d.foundation_name ? d.foundation_name.charAt(0) : 'F'}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="text-right">
-                                    <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 mb-2">
+                                    <h1 className="text-3xl font-bold mb-1">Official Receipt</h1>
+                                    <p className="text-teal-100 text-sm mb-3">Tax Deductible Donation</p>
+                                    <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
                                         <p className="text-xs text-teal-100">Receipt No.</p>
                                         <p className="text-xl font-bold">RCP-2026-{String(d.donation_id).padStart(6, '0')}</p>
                                     </div>

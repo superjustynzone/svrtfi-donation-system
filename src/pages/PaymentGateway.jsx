@@ -223,22 +223,13 @@ export default function PaymentGateway() {
                             {isProcessing ? 'Processing...' : 'Authorize Payment (Success)'}
                         </button>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => handleCancel(false)}
-                                disabled={isProcessing}
-                                className="w-full py-3 rounded-xl font-bold text-gray-700 bg-white border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleTimeout}
-                                disabled={isProcessing}
-                                className="w-full py-3 rounded-xl font-bold text-orange-700 bg-orange-50 border-2 border-orange-200 hover:bg-orange-100 hover:border-orange-300 transition-all disabled:opacity-50"
-                            >
-                                Force Timeout
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => handleCancel(false)}
+                            disabled={isProcessing}
+                            className="w-full py-3 rounded-xl font-bold text-red-700 bg-red-50 border-2 border-red-200 hover:bg-red-100 hover:border-red-300 transition-all disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
                     </div>
                 </div>
             </div>

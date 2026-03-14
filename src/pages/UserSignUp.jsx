@@ -88,8 +88,8 @@ const UserSignUp = () => {
   const strengthInfo = getStrengthInfo(passwordStrength);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#63A6B2] p-4">
-      <div className="w-full max-w-4xl bg-white rounded-lg shadow-2xl overflow-hidden flex min-h-[650px]">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#63A6B2] p-4 py-8">
+      <div className="w-full max-w-4xl bg-white rounded-lg shadow-2xl overflow-y-auto overflow-x-hidden flex min-h-[650px] relative">
 
         {/* Left Side - Image */}
         <div className="hidden md:block md:w-1/2 relative">

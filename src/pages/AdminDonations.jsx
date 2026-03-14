@@ -605,14 +605,36 @@ function ReceiptModal({ data: d, handleClose }) {
                     <div ref={printRef} className="bg-white mx-auto shadow-xl rounded-2xl overflow-hidden max-w-3xl text-left border border-gray-200">
                         {/* Receipt Inner Header */}
                         <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white p-6 md:p-8">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 text-2xl font-bold">SV</div>
-                                    <h1 className="text-3xl font-bold mb-2">Official Receipt</h1>
-                                    <p className="text-teal-100">Tax Deductible Donation</p>
+                            <div className="flex justify-between items-center">
+                                {/* Logos */}
+                                <div className="flex items-center gap-6">
+                                    {/* SVRTV Logo - Circle */}
+                                    <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{width: '110px', height: '110px', borderRadius: '50%', padding: '8px'}}>
+                                        <img src="/images/logo.png" alt="SVRTV Logo" className="w-full h-full object-contain" style={{borderRadius: '50%'}} />
+                                    </div>
+                                    {/* Divider */}
+                                    <div className="w-px h-16 bg-white/30"></div>
+                                    {/* Foundation Logo - Circle */}
+                                    {d.foundation_logo ? (
+                                        <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{width: '110px', height: '110px', borderRadius: '50%', padding: '8px'}}>
+                                            <img
+                                                src={`http://localhost:5000${d.foundation_logo}`}
+                                                alt={`${d.foundation_name} Logo`}
+                                                className="w-full h-full object-contain"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0" style={{width: '110px', height: '110px', borderRadius: '50%'}}>
+                                            <span className="text-white font-bold text-3xl">
+                                                {d.foundation_name ? d.foundation_name.charAt(0) : 'F'}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="text-right">
-                                    <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 mb-2">
+                                    <h1 className="text-3xl font-bold mb-1">Official Receipt</h1>
+                                    <p className="text-teal-100 text-sm mb-3">Tax Deductible Donation</p>
+                                    <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
                                         <p className="text-xs text-teal-100">Receipt No.</p>
                                         <p className="text-xl font-bold">RCP-2026-{String(d.donation_id).padStart(6, '0')}</p>
                                     </div>
