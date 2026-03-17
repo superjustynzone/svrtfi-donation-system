@@ -16,7 +16,9 @@ import {
     Menu,
     LayoutTemplate,
     Mail,
-    CreditCard
+    CreditCard,
+    BookOpen,
+    User
 } from 'lucide-react';
 
 
@@ -26,10 +28,10 @@ const getAppSettings = () => {
 
 // Role-based permissions configuration
 const rolePermissions = {
-    admin: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'reports', 'users', 'settings', 'audit', 'mailing'],
-    finance: ['dashboard', 'donors', 'donations', 'transactions', 'reports'],
-    encoder: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'reports'],
-    auditor: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'reports', 'audit'],
+    admin: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'stories', 'reports', 'users', 'settings', 'audit', 'mailing', 'profile'],
+    finance: ['dashboard', 'donors', 'donations', 'transactions', 'reports', 'profile'],
+    encoder: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'stories', 'reports', 'profile'],
+    auditor: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'stories', 'reports', 'audit', 'profile'],
     viewer: [] // Blocked from admin pages
 };
 
@@ -41,14 +43,16 @@ const navigationItems = [
     { id: 'transactions', icon: CreditCard, label: 'Transactions', path: '/admin_transactions' },
     { id: 'campaigns', icon: PieChart, label: 'Campaigns', path: '/admin_campaigns' },
     { id: 'foundations', icon: FileText, label: 'Foundations', path: '/admin_foundations' },
+    { id: 'stories', icon: BookOpen, label: 'Stories', path: '/admin_stories' },
     { id: 'reports', icon: BarChart3, label: 'Reports', path: '/admin_reports' },
-    { id: 'users', icon: UserCog, label: 'User Management', path: '/admin_users' }
+    { id: 'users', icon: UserCog, label: 'User Management', path: '/admin_users' },
+    { id: 'mailing', icon: Mail, label: 'Mailing', path: '/admin_mailing' }
 ];
 
 const systemItems = [
-    { id: 'settings', icon: Settings, label: 'Settings', path: '/admin_settings' },
-    { id: 'audit', icon: AlertTriangle, label: 'Logs', path: '/admin_audit' },
-    { id: 'mailing', icon: Mail, label: 'Mailing', path: '/admin_mailing' }
+    { id: 'profile', icon: User, label: 'Account Profile', path: '/admin_profile' },
+    { id: 'settings', icon: Settings, label: 'System Settings', path: '/admin_settings' },
+    { id: 'audit', icon: AlertTriangle, label: 'Activity Logs', path: '/admin_audit' }
 ];
 
 // NavItem Component

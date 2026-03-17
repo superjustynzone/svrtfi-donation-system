@@ -1,0 +1,173 @@
+CREATE TABLE users (
+    user_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    contact_number VARCHAR(20),
+    address TEXT,
+    profile_image TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    last_login TIMESTAMP
+);
+
+CREATE TABLE auth_users (
+    auth_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    user_id BIGINT REFERENCES users(user_id) ON DELETE CASCADE,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    hash_password TEXT NOT NULL,
+    token TEXT,
+    reset_password_token TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE roles (
+    role_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    role_name VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE user_roles (
+    id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    user_id BIGINT REFERENCES users(user_id) ON DELETE CASCADE,
+    role_id BIGINT REFERENCES roles(role_id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE foundations (
+    foundation_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    
+    foundation_name VARCHAR(200) NOT NULL,
+    foundation_address TEXT,
+    foundation_contact VARCHAR(50),
+    foundation_email VARCHAR(150),
+
+    bank_name TEXT,
+    bank_information TEXT,
+
+    image_logo TEXT,
+    image_cover TEXT,
+    focus_areas TEXT,
+    about_foundation TEXT,
+    mission TEXT,
+    vision TEXT,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE foundation_campaigns (
+    id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    foundation_id BIGINT REFERENCES foundations(foundation_id) ON DELETE CASCADE,
+    campaign_id BIGINT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
+    UNIQUE (foundation_id, campaign_id)
+);
+
+CREATE TABLE campaigns (
+    campaign_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    campaign_name VARCHAR(200) NOT NULL,
+    campaign_type VARCHAR(100),
+    campaign_description TEXT,
+    goal_amount NUMERIC(12,2),
+    current_amount NUMERIC(12,2),
+    start_date DATE,
+    end_date DATE,
+    file_url TEXT,          
+    media_type VARCHAR(50),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    uploaded_at TIMESTAMP DEFAULT NOW(),
+    is_featured BOOLEAN DEFAULT FALSE,
+    status VARCHAR(20) DEFAULT 'draft'
+);
+
+CREATE TABLE donors (
+    donor_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    email VARCHAR(255),
+    contact_number VARCHAR(50),
+    address TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE donations (
+    donation_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+
+    user_id BIGINT REFERENCES users(user_id),
+    campaign_id BIGINT REFERENCES campaigns(campaign_id),
+    donor_id BIGINT REFERENCES donors(donor_id),
+
+    amount NUMERIC(12,2) NOT NULL,
+    payment_method VARCHAR(100),
+    donation_source VARCHAR(100),
+    currency VARCHAR(10) DEFAULT 'PHP',
+
+    frequency VARCHAR(20) DEFAULT 'one_time',
+    next_due_date DATE,
+
+    Status VARCHAR(20) DEFAULT ‘active’,
+    initiated_at TIMESTAMP DEFAULT NOW(),
+    completed_at TIMESTAMP,
+    message TEXT
+);
+
+CREATE TABLE payment_transactions (
+    payment_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    donation_id BIGINT REFERENCES donations(donation_id) ON DELETE CASCADE,
+    campaign_id BIGINT REFERENCES campaigns(campaign_id),
+    payment_reference VARCHAR(255),
+    amount NUMERIC(12,2) NOT NULL,
+    payment_status VARCHAR(50),
+    receipt_upload TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE receipts (
+    receipt_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    donation_id BIGINT REFERENCES donations(donation_id) ON DELETE CASCADE,
+    file_url TEXT,
+    uploaded_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE audit_logs (
+    audit_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+    user_id BIGINT REFERENCES users(user_id),
+    action VARCHAR(255) NOT NULL,
+    details TEXT,
+    timestamp TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE email_campaigns (
+    campaign_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    category VARCHAR(100),
+
+    status VARCHAR(50) DEFAULT 'draft',
+    scheduled_at TIMESTAMP,
+
+    created_by BIGINT REFERENCES users(user_id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE stories (
+    story_id BIGINT PRIMARY KEY DEFAULT generate_12digit_id(),
+
+    foundation_id BIGINT REFERENCES foundations(foundation_id) ON DELETE CASCADE,
+
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    image_file TEXT,
+
+    is_published BOOLEAN DEFAULT FALSE,
+    published_at TIMESTAMP,
+
+    author VARCHAR(150),
+    tags TEXT,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+

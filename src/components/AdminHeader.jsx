@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 
 /**
@@ -8,6 +9,7 @@ import { Menu } from 'lucide-react';
  * (dispatched by AdminSettings when the user saves their profile).
  */
 export default function AdminHeader({ title, subtitle, onMobileMenuClick, children }) {
+    const navigate = useNavigate();
     const [admin, setAdmin] = useState(() => {
         try { return JSON.parse(localStorage.getItem('user')) || {}; } catch { return {}; }
     });
@@ -68,18 +70,21 @@ export default function AdminHeader({ title, subtitle, onMobileMenuClick, childr
                     {children}
 
                     {/* Admin profile chip */}
-                    <div className="hidden sm:flex items-center gap-2.5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl">
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    <button 
+                        onClick={() => navigate('/admin_profile')}
+                        className="hidden sm:flex items-center gap-2.5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 hover:border-[#63A6B2]/30 transition-all text-left"
+                    >
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
                             {admin.avatarImage
                                 ? <img src={admin.avatarImage} alt="avatar" className="w-full h-full object-cover" />
                                 : getInitials()
                             }
                         </div>
-                        <div>
-                            <p className="text-sm font-semibold text-gray-800 leading-tight">{displayName}</p>
-                            <p className="text-xs text-gray-400">{getRoleDisplay()}</p>
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 leading-tight truncate">{displayName}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{getRoleDisplay()}</p>
                         </div>
-                    </div>
+                    </button>
                 </div>
             </div>
         </header>

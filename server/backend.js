@@ -210,6 +210,28 @@ const initDB = async () => {
       console.error("❌ Error in Campaigns table or related tables:", e.message);
     }
 
+    // 7. Stories table
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS stories (
+            story_id SERIAL PRIMARY KEY,
+            foundation_id INT REFERENCES foundations(foundation_id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL,
+            content TEXT,
+            image_file TEXT,
+            is_published BOOLEAN DEFAULT FALSE,
+            published_at TIMESTAMP,
+            author VARCHAR(150),
+            tags TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
+      console.log("✅ Stories table verified");
+    } catch (e) {
+      console.error("❌ Error in Stories table:", e.message);
+    }
+
     // 8. Donations table (Comprehensive with missing columns check)
     try {
       await pool.query(`
@@ -399,6 +421,14 @@ try {
   console.log("✅ Foundation routes loaded successfully");
 } catch (error) {
   console.error("❌ Error loading Foundation routes:", error.message);
+}
+
+try {
+  const storyRoutes = require("./StoryBackend");
+  app.use("/api/stories", storyRoutes);
+  console.log("✅ Story routes loaded successfully");
+} catch (error) {
+  console.error("❌ Error loading Story routes:", error.message);
 }
 
 try {

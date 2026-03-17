@@ -127,8 +127,8 @@ router.post("/", async (req, res) => {
             `INSERT INTO donations (
                 user_id, campaign_id, donor_id, amount, payment_method,
                 donation_source, currency, frequency, next_due_date,
-                initiated_at, message
-            ) VALUES ($1, $2, $3, $4, $5, $6, 'PHP', $7, $8, NOW(), $9)
+                initiated_at, message, status
+            ) VALUES ($1, $2, $3, $4, $5, $6, 'PHP', $7, $8, NOW(), $9, 'active')
             RETURNING donation_id, initiated_at`,
             [
                 user_id || null,
@@ -366,7 +366,7 @@ router.get("/:id", async (req, res) => {
               d.*,
               c.campaign_name, c.campaign_type, c.goal_amount, c.current_amount,
               f.foundation_name,
-              pt.payment_reference, pt.payment_status,
+              pt.payment_reference, pt.payment_status, pt.receipt_upload,
               dn.first_name AS donor_first_name, dn.last_name AS donor_last_name,
               dn.email AS donor_email, dn.contact_number AS donor_phone
              FROM donations d
@@ -571,6 +571,33 @@ router.put("/:id", async (req, res) => {
         if (client) client.release();
     }
 });
+
+// ─────────────────────────────────────────────
+// PATCH /api/donations/:id/cancel-recurring — Cancel monthly donation
+// ─────────────────────────────────────────────
+router.patch("/:id/cancel-recurring", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            `UPDATE donations 
+             SET status = 'cancelled', 
+                 next_due_date = NULL
+             WHERE donation_id = $1 AND frequency = 'monthly' 
+             RETURNING *`,
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Donation plan not found or not recurring." });
+        }
+
+        res.json({ message: "Recurring donation cancelled.", donation: result.rows[0] });
+    } catch (err) {
+        console.error("CANCEL RECURRING ERROR:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
 
 // DELETE /api/donations/:id
 router.delete("/:id", async (req, res) => {

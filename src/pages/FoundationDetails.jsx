@@ -18,6 +18,7 @@ export default function FoundationDetails() {
     const [foundation, setFoundation] = useState(null);
     const [otherFoundations, setOtherFoundations] = useState([]);
     const [featuredCampaign, setFeaturedCampaign] = useState(null);
+    const [stories, setStories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedCover, setSelectedCover] = useState(0);
 
@@ -25,8 +26,22 @@ export default function FoundationDetails() {
         fetchFoundationDetails();
         fetchOtherFoundations();
         fetchFeaturedCampaign();
+        fetchStories();
         setSelectedCover(0); // Reset to first image on foundation change
     }, [id]);
+
+    const fetchStories = async () => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/stories/foundation/${id}`);
+            if (response.ok) {
+                const data = await response.json();
+                setStories(data.filter(story => story.is_published));
+            }
+        } catch (error) {
+            console.error('Error fetching stories:', error);
+            setStories([]);
+        }
+    };
 
     // Auto-scroll hero banner
     useEffect(() => {
@@ -276,11 +291,7 @@ export default function FoundationDetails() {
                                     </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-300 flex items-center justify-center h-32">
-                                <p className="text-gray-400 text-sm">No featured campaign at the moment</p>
-                            </div>
-                        )}
+                        ) : null}
 
                         {/* About Section */}
                         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
@@ -511,6 +522,58 @@ export default function FoundationDetails() {
                         </div>
                     </div>
                 </div>
+
+                {/* Foundation Stories Section */}
+                {stories.length > 0 && (
+                    <div className="mt-16">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-3xl font-extrabold text-gray-900">Success Stories</h2>
+                            <div className="h-1 flex-1 bg-gradient-to-r from-[#63A6B2]/20 to-transparent ml-6 rounded-full"></div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {stories.map(story => (
+                                <div key={story.story_id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-shadow group">
+                                    <div className="relative h-48 bg-gray-100 overflow-hidden">
+                                        <img 
+                                            src={story.image_file ? `http://localhost:5000${story.image_file}` : 'https://via.placeholder.com/600x400/63A6B2/FFFFFF?text=Story'} 
+                                            alt={story.title} 
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        />
+                                        <div className="absolute top-4 left-4">
+                                            <span className="bg-white/90 backdrop-blur-sm text-[#63A6B2] text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+                                                Story
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="p-6">
+                                        <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 leading-tight group-hover:text-[#63A6B2] transition-[color]">{story.title}</h3>
+                                        <div 
+                                            className="prose prose-sm text-gray-600 line-clamp-3 mb-6 ql-editor" 
+                                            style={{ padding: 0 }} 
+                                            dangerouslySetInnerHTML={{ __html: story.content }} 
+                                        />
+                                        <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
+                                            {story.author ? (
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs text-gray-500">Author</span>
+                                                    <span className="text-sm font-semibold text-gray-900">{story.author}</span>
+                                                </div>
+                                            ) : (
+                                                <div></div>
+                                            )}
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-xs text-gray-500">Date</span>
+                                                <span className="text-sm font-semibold text-gray-900">
+                                                    {new Date(story.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             <Footer />

@@ -20,7 +20,9 @@ import AdminDonors from './pages/AdminDonors';
 import AdminUserManagement from './pages/AdminUserManagement';
 import AdminCampaignCreation from './pages/AdminCampaignCreation';
 import AdminFoundationCreation from './pages/AdminFoundationCreation';
+import AdminStories from './pages/AdminStories';
 import AdminSettings from './pages/AdminSettings';
+import AdminProfile from './pages/AdminProfile';
 import AdminAuditLogs from './pages/AdminAuditLogs';
 import AdminDonations from './pages/AdminDonations';
 import AdminTransactions from './pages/AdminTransactions';
@@ -84,7 +86,9 @@ function App() {
         <Route path="/admin_users" element={<AdminRoute><AdminUserManagement /></AdminRoute>} />
         <Route path="/admin_campaigns" element={<AdminRoute><AdminCampaignCreation /></AdminRoute>} />
         <Route path="/admin_foundations" element={<AdminRoute><AdminFoundationCreation /></AdminRoute>} />
+        <Route path="/admin_stories" element={<AdminRoute><AdminStories /></AdminRoute>} />
         <Route path="/admin_settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+        <Route path="/admin_profile" element={<AdminRoute><AdminProfile /></AdminRoute>} />
         <Route path="/admin_audit" element={<AdminRoute><AdminAuditLogs /></AdminRoute>} />
         <Route path="/admin_donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />
         <Route path="/admin_transactions" element={<AdminRoute><AdminTransactions /></AdminRoute>} />

@@ -3,11 +3,27 @@ const express = require("express");
 const router = express.Router();
 const { Pool } = require("pg");
 const path = require("path");
+const multer = require("multer");
+const fs = require("fs");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+// Setup multer for receipt uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, 'uploads', 'receipts');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `receipt-${Date.now()}${path.extname(file.originalname)}`);
+  }
+});
+
+const upload = multer({ storage });
 
 // GET /api/transactions
 router.get("/", async (req, res) => {
@@ -61,7 +77,8 @@ router.get("/", async (req, res) => {
         d.frequency,
         d.initiated_at,
         d.completed_at,
-        d.message
+        d.message,
+        pt.receipt_upload
       FROM payment_transactions pt
       LEFT JOIN donations d ON pt.donation_id = d.donation_id
       LEFT JOIN donors dn ON d.donor_id = dn.donor_id
@@ -103,7 +120,7 @@ router.get("/", async (req, res) => {
 });
 
 // PATCH /api/transactions/:id/status
-router.patch("/:id/status", async (req, res) => {
+router.patch("/:id/status", upload.single('receipt_image'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
@@ -126,11 +143,21 @@ router.patch("/:id/status", async (req, res) => {
     const { amount, campaign_id, payment_status: oldStatus } = existing.rows[0];
     const txnAmount = parseFloat(amount || 0);
 
-    // 2. Update status in payment_transactions
-    const result = await client.query(
-      `UPDATE payment_transactions SET payment_status = $1 WHERE payment_id = $2 RETURNING *`,
-      [newStatus, id]
-    );
+    // 2. Update status in payment_transactions 
+    // And if there's a file uploaded, set receipt_upload column
+    let result;
+    if (req.file) {
+      const receiptPath = `/uploads/receipts/${req.file.filename}`;
+      result = await client.query(
+        `UPDATE payment_transactions SET payment_status = $1, receipt_upload = $3 WHERE payment_id = $2 RETURNING *`,
+        [newStatus, id, receiptPath]
+      );
+    } else {
+      result = await client.query(
+        `UPDATE payment_transactions SET payment_status = $1 WHERE payment_id = $2 RETURNING *`,
+        [newStatus, id]
+      );
+    }
 
     // 3. Update status in donations table as well (if needed, though status is usually kept in pt)
     // Actually, looking at the schema, 'donations' doesn't have a status column, 
