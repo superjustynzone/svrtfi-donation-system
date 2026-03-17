@@ -66,6 +66,7 @@ export default function AdminDonors() {
     const [filteredDonors, setFilteredDonors] = useState([]);
     const [stats, setStats] = useState({
         totalDonors: 0,
+        anonymousDonors: 0,
         activeDonors: 0,
         recurringDonors: 0,
         totalLifetimeDonations: 0
@@ -77,13 +78,13 @@ export default function AdminDonors() {
     useEffect(() => {
         let filtered = [...donors];
 
-        // Exclude anonymous donors (those without first_name and last_name)
-        filtered = filtered.filter(d => d.first_name || d.last_name);
-
         if (searchTerm) {
             const q = searchTerm.toLowerCase();
             filtered = filtered.filter(d =>
-                `${d.first_name || ''} ${d.last_name || ''}`.toLowerCase().includes(q) ||
+                (d.is_anonymous
+                    ? 'anonymous'
+                    : `${d.first_name || ''} ${d.last_name || ''}`.toLowerCase()
+                ).includes(q) ||
                 (d.email || '').toLowerCase().includes(q)
             );
         }
@@ -91,14 +92,22 @@ export default function AdminDonors() {
         if (filterType !== 'All') {
             if (filterType === 'Recurring') {
                 filtered = filtered.filter(d => d.is_recurring === true);
-            } else {
+            } else if (filterType === 'One-time') {
                 filtered = filtered.filter(d => !d.is_recurring);
+            } else if (filterType === 'Anonymous') {
+                filtered = filtered.filter(d => d.is_anonymous === true);
+            } else if (filterType === 'Named') {
+                filtered = filtered.filter(d => !d.is_anonymous);
             }
         }
 
         filtered.sort((a, b) => {
             if (sortBy === 'newest') return new Date(b.last_donation_at) - new Date(a.last_donation_at);
-            if (sortBy === 'name') return (a.first_name || '').localeCompare(b.first_name || '');
+            if (sortBy === 'name') {
+                const nameA = a.is_anonymous ? 'Anonymous' : (a.first_name || '');
+                const nameB = b.is_anonymous ? 'Anonymous' : (b.first_name || '');
+                return nameA.localeCompare(nameB);
+            }
             if (sortBy === 'donations') return (b.total_donated || 0) - (a.total_donated || 0);
             return 0;
         });
@@ -227,10 +236,11 @@ export default function AdminDonors() {
 
                 <div className="p-4 lg:p-8">
                     {/* Stats */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                         <StatCard icon={<Users className="w-6 h-6 text-white" />} iconBg="from-[#63A6B2] to-[#4d8b96]" title="Total Donors" value={stats.totalDonors || 0} />
                         <StatCard icon={<UserCheck className="w-6 h-6 text-white" />} iconBg="from-green-500 to-green-400" title="Active (Last 12 mo)" value={stats.activeDonors || 0} />
                         <StatCard icon={<RefreshCw className="w-6 h-6 text-white" />} iconBg="from-blue-500 to-blue-400" title="Recurring" value={stats.recurringDonors || 0} />
+                        <StatCard icon={<span className="text-white text-lg font-bold">🕶️</span>} iconBg="from-gray-500 to-gray-600" title="Anonymous" value={stats.anonymousDonors || 0} />
                         <StatCard icon={<DollarSign className="w-6 h-6 text-white" />} iconBg="from-purple-500 to-purple-400" title="Lifetime Value" value={formatCurrency(stats.totalLifetimeDonations)} />
                     </div>
 
@@ -252,7 +262,9 @@ export default function AdminDonors() {
                                 value={filterType}
                                 onChange={(e) => setFilterType(e.target.value)}
                             >
-                                <option value="All">All Types</option>
+                                <option value="All">All Donors</option>
+                                <option value="Named">Named Donors</option>
+                                <option value="Anonymous">Anonymous</option>
                                 <option value="Recurring">Recurring</option>
                                 <option value="One-time">One-time</option>
                             </select>
@@ -293,19 +305,30 @@ export default function AdminDonors() {
                                         </tr>
                                     ) : (
                                         paginatedDonors.map((donor, idx) => {
-                                            const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-                                            const initials = getInitials(donor.first_name, donor.last_name);
+                                            const isAnon = donor.is_anonymous === true;
+                                            const color = isAnon
+                                                ? 'from-gray-400 to-gray-600'
+                                                : AVATAR_COLORS[idx % AVATAR_COLORS.length];
+                                            const initials = isAnon ? '👤' : getInitials(donor.first_name, donor.last_name);
                                             const isRecurring = donor.is_recurring === true;
+                                            const displayName = isAnon
+                                                ? 'Anonymous'
+                                                : `${donor.first_name || ''} ${donor.last_name || ''}`.trim() || 'Anonymous';
                                             return (
                                                 <tr key={donor.donor_id} className="hover:bg-gray-50 transition">
                                                     <td className="py-4 px-6">
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-sm`}>
-                                                                {initials || '?'}
+                                                                {isAnon ? <span className="text-base">🕶️</span> : (initials || '?')}
                                                             </div>
                                                             <div>
-                                                                <p className="font-semibold text-gray-900">{donor.first_name || donor.last_name ? `${donor.first_name || ''} ${donor.last_name || ''}`.trim() : 'Anonymous'}</p>
-                                                                <p className="text-xs text-gray-500">{donor.email || 'No email'}</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-semibold text-gray-900">{displayName}</p>
+                                                                    {isAnon && (
+                                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200">Anonymous</span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-xs text-gray-500">{donor.email || (isAnon ? 'No email provided' : 'No email')}</p>
                                                             </div>
                                                         </div>
                                                     </td>
@@ -410,30 +433,39 @@ function StatCard({ icon, iconBg, title, value }) {
 
 // ─── View Donor Modal ────────────────────────
 function ViewDonorModal({ donor, history, historyLoading, handleClose, formatCurrency, fmtDate, activeTab, setActiveTab }) {
-    const initials = `${donor.first_name?.[0] || ''}${donor.last_name?.[0] || ''}`.toUpperCase();
+    const isAnon = donor.is_anonymous === true;
+    const initials = isAnon ? '🕶️' : `${donor.first_name?.[0] || ''}${donor.last_name?.[0] || ''}`.toUpperCase();
     const isRecurring = donor.is_recurring === true;
+    const displayName = isAnon
+        ? 'Anonymous Donor'
+        : `${donor.first_name || ''} ${donor.last_name || ''}`.trim() || 'Anonymous';
 
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-[#63A6B2] to-[#4d8b96] p-6 text-white relative">
+                <div className={`bg-gradient-to-r ${isAnon ? 'from-gray-500 to-gray-700' : 'from-[#63A6B2] to-[#4d8b96]'} p-6 text-white relative`}>
                     <button onClick={handleClose} className="absolute right-6 top-6 text-white/80 hover:text-white">
                         <X className="w-6 h-6" />
                     </button>
                     <div className="flex flex-col md:flex-row items-center gap-6 mt-4">
-                        <div className="w-24 h-24 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center text-4xl font-bold shadow-lg">
-                            {initials}
+                        <div className={`w-24 h-24 rounded-2xl ${isAnon ? 'bg-gray-400/30' : 'bg-white/20'} border-2 border-white/30 flex items-center justify-center text-4xl font-bold shadow-lg`}>
+                            {isAnon ? '🕶️' : initials}
                         </div>
                         <div className="text-center md:text-left flex-1">
-                            <h3 className="text-3xl font-bold mb-2">{donor.first_name || donor.last_name ? `${donor.first_name || ''} ${donor.last_name || ''}`.trim() : 'Anonymous'}</h3>
+                            <div className="flex items-center gap-3 justify-center md:justify-start mb-2">
+                                <h3 className="text-3xl font-bold">{displayName}</h3>
+                                {isAnon && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/20 border border-white/30">Anonymous</span>
+                                )}
+                            </div>
                             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-white/90">
                                 {donor.email && (
                                     <span className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-sm">
                                         <Mail className="w-4 h-4" />{donor.email}
                                     </span>
                                 )}
-                                {donor.phone && (
+                                {!isAnon && donor.phone && (
                                     <span className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-sm">
                                         <Phone className="w-4 h-4" />{donor.phone}
                                     </span>
@@ -485,22 +517,36 @@ function ViewDonorModal({ donor, history, historyLoading, handleClose, formatCur
                                 <h5 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Contact Details</h5>
                                 <div className="space-y-4">
                                     <InfoRow icon={<Mail className="w-5 h-5 text-[#63A6B2]" />} label="Email" value={donor.email || 'N/A'} />
-                                    <InfoRow icon={<Phone className="w-5 h-5 text-[#63A6B2]" />} label="Phone" value={donor.phone || 'N/A'} />
+                                    {!isAnon && (
+                                        <InfoRow icon={<Phone className="w-5 h-5 text-[#63A6B2]" />} label="Phone" value={donor.phone || 'N/A'} />
+                                    )}
                                     <InfoRow icon={<FileText className="w-5 h-5 text-[#63A6B2]" />} label="Donor Type" value={isRecurring ? 'Recurring (Monthly)' : 'One-time'} />
                                 </div>
                             </section>
                             <section>
-                                <h5 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Address</h5>
-                                <div className="flex items-start gap-4 bg-gray-50 p-5 rounded-xl border border-gray-100">
-                                    <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm mt-1">
-                                        <MapPin className="w-5 h-5 text-[#63A6B2]" />
+                                {isAnon ? (
+                                    <div className="flex items-start gap-4 bg-gray-50 p-5 rounded-xl border border-gray-200">
+                                        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm mt-1 text-xl">🕶️</div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Privacy Status</p>
+                                            <p className="text-gray-700 font-semibold">This donor chose to remain anonymous.</p>
+                                            <p className="text-xs text-gray-400 mt-1">Name and address details are hidden to respect their privacy.</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Address on File</p>
-                                        <p className="text-gray-900 font-semibold">{donor.address || 'No address provided'}</p>
-                                    </div>
-                                </div>
-
+                                ) : (
+                                    <>
+                                        <h5 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Address</h5>
+                                        <div className="flex items-start gap-4 bg-gray-50 p-5 rounded-xl border border-gray-100">
+                                            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm mt-1">
+                                                <MapPin className="w-5 h-5 text-[#63A6B2]" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Address on File</p>
+                                                <p className="text-gray-900 font-semibold">{donor.address || 'No address provided'}</p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </section>
                         </div>
                     ) : (

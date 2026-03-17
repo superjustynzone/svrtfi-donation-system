@@ -36,6 +36,7 @@ router.post("/", async (req, res) => {
             donor_name,       // guest full name
             donor_email,
             donor_phone,
+            donor_address,    // guest address
             message,
         } = req.body;
 
@@ -75,6 +76,7 @@ router.post("/", async (req, res) => {
                 lastName = parts.slice(1).join(" ") || null;
                 email = donor_email || null;
                 phone = donor_phone || null;
+                address = donor_address || null;
             }
 
             // For registered users: reuse existing donors row if email matches
@@ -104,11 +106,11 @@ router.post("/", async (req, res) => {
             }
 
         } else {
-            // Truly anonymous: create a blank donors row so admin can still count it
+            // Anonymous: store email for receipt purposes (name stays NULL)
             const donorResult = await client.query(
                 `INSERT INTO donors (first_name, last_name, email, contact_number, address)
-                 VALUES (NULL, NULL, NULL, NULL, NULL) RETURNING donor_id`,
-                []
+                 VALUES (NULL, NULL, $1, NULL, NULL) RETURNING donor_id`,
+                [donor_email || null]
             );
             donorId = donorResult.rows[0].donor_id;
         }
@@ -193,6 +195,7 @@ router.get("/donors", async (req, res) => {
               dn.contact_number                                                          AS phone,
               dn.address,
               dn.email,
+              (dn.first_name IS NULL AND dn.last_name IS NULL)                           AS is_anonymous,
               COUNT(d.donation_id)::int                                                  AS donation_count,
               COALESCE(SUM(d.amount), 0)::float                                          AS total_donated,
               MAX(d.initiated_at)                                                        AS last_donation_at,
@@ -211,6 +214,7 @@ router.get("/donors", async (req, res) => {
 
         const stats = {
             totalDonors: donors.length,
+            anonymousDonors: donors.filter(d => d.is_anonymous === true).length,
             activeDonors: donors.filter(d => {
                 if (!d.last_donation_at) return false;
                 const daysSince = (Date.now() - new Date(d.last_donation_at)) / (1000 * 60 * 60 * 24);

@@ -27,6 +27,7 @@ export default function CampaignDonation() {
         donationType: 'one-time',
         amount: '',
         fullName: '',
+        address: '',
         email: '',
         phone: '',
         isAnonymous: false,
@@ -67,7 +68,7 @@ export default function CampaignDonation() {
                 ...prev,
                 fullName: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
                 email: user.email || '',
-                phone: user.phone || '',
+                phone: user.contact_number || user.phone || '',
             }));
         }
     };
@@ -92,8 +93,28 @@ export default function CampaignDonation() {
             return false;
         }
 
-        // For guests or anonymous donations, only validate Email
-        if (!isLoggedIn || donationData.isAnonymous) {
+        // Guest-specific validation
+        if (!isLoggedIn) {
+            if (!donationData.isAnonymous) {
+                // Non-anonymous guest: require Full Name
+                if (!donationData.fullName.trim()) {
+                    toast.error('Please enter your full name');
+                    return false;
+                }
+            }
+            // Always require email for guests
+            if (!donationData.email.trim()) {
+                toast.error('Please enter your email address for receipt purposes');
+                return false;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(donationData.email)) {
+                toast.error('Please enter a valid email address');
+                return false;
+            }
+        }
+
+        // Logged-in + anonymous: only require email
+        if (isLoggedIn && donationData.isAnonymous) {
             if (!donationData.email.trim()) {
                 toast.error('Please enter your email address for receipt purposes');
                 return false;
@@ -145,6 +166,7 @@ export default function CampaignDonation() {
                 donor_name: donationData.isAnonymous ? 'Anonymous' : donationData.fullName,
                 donor_email: donationData.email,
                 donor_phone: donationData.phone,
+                donor_address: donationData.address || null,
                 message: donationData.message || null,
                 status: 'pending',
             };
@@ -345,19 +367,80 @@ export default function CampaignDonation() {
                                 </label>
                             </div>
 
-                            {/* Required Email Address — for guests or if anonymous */}
-                            {(!isLoggedIn || donationData.isAnonymous) && (
-                                <div className={`pt-6 ${isLoggedIn ? 'border-t-2 border-gray-200' : 'mt-2'}`}>
+                            {/* Guest: Your Information section */}
+                            {!isLoggedIn && (
+                                <div className="pt-6 border-t-2 border-gray-200">
                                     <h3 className="text-lg font-bold text-gray-900 mb-4">Your Information</h3>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Email Address *</label>
-                                        <input
-                                            type="email"
-                                            value={donationData.email}
-                                            onChange={(e) => handleInputChange('email', e.target.value)}
-                                            placeholder="your.email@example.com"
-                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all"
-                                        />
+                                    <div className="space-y-4">
+
+                                        {/* Full Name — hidden when anonymous */}
+                                        {!donationData.isAnonymous && (
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">Full Name *</label>
+                                                <input
+                                                    type="text"
+                                                    value={donationData.fullName}
+                                                    onChange={(e) => handleInputChange('fullName', e.target.value)}
+                                                    placeholder="Juan Dela Cruz"
+                                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Address — hidden when anonymous */}
+                                        {!donationData.isAnonymous && (
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">Address</label>
+                                                <input
+                                                    type="text"
+                                                    value={donationData.address}
+                                                    onChange={(e) => handleInputChange('address', e.target.value)}
+                                                    placeholder="123 Rizal St., Brgy. Poblacion, City"
+                                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Contact Number — hidden when anonymous */}
+                                        {!donationData.isAnonymous && (
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">Contact Number</label>
+                                                <input
+                                                    type="tel"
+                                                    value={donationData.phone}
+                                                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                                                    placeholder="09123456789"
+                                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Email Address — always visible for guests */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Email Address *</label>
+                                            <input
+                                                type="email"
+                                                value={donationData.email}
+                                                onChange={(e) => handleInputChange('email', e.target.value)}
+                                                placeholder="your.email@example.com"
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Your receipt will be sent to this email.</p>
+                                        </div>
+
+                                        {/* Message — always visible for guests */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Message (Optional)</label>
+                                            <textarea
+                                                value={donationData.message}
+                                                onChange={(e) => handleInputChange('message', e.target.value)}
+                                                placeholder="Share why you're supporting this campaign or leave a message of encouragement..."
+                                                rows={4}
+                                                maxLength={500}
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all resize-none"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1 text-right">{donationData.message.length}/500 characters</p>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -377,19 +460,53 @@ export default function CampaignDonation() {
                                 </div>
                             )}
 
-                            {/* Optional Message */}
-                            <div className="pt-6 border-t-2 border-gray-200">
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Message (Optional)</label>
-                                <textarea
-                                    value={donationData.message}
-                                    onChange={(e) => handleInputChange('message', e.target.value)}
-                                    placeholder="Share why you're supporting this campaign or leave a message of encouragement..."
-                                    rows={4}
-                                    maxLength={500}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all resize-none"
-                                />
-                                <p className="text-xs text-gray-500 mt-1 text-right">{donationData.message.length}/500 characters</p>
-                            </div>
+                            {/* Logged-in + anonymous: show email & message fields */}
+                            {isLoggedIn && donationData.isAnonymous && (
+                                <div className="pt-6 border-t-2 border-gray-200">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Your Information</h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Email Address *</label>
+                                            <input
+                                                type="email"
+                                                value={donationData.email}
+                                                onChange={(e) => handleInputChange('email', e.target.value)}
+                                                placeholder="your.email@example.com"
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Your receipt will be sent to this email.</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Message (Optional)</label>
+                                            <textarea
+                                                value={donationData.message}
+                                                onChange={(e) => handleInputChange('message', e.target.value)}
+                                                placeholder="Share why you're supporting this campaign or leave a message of encouragement..."
+                                                rows={4}
+                                                maxLength={500}
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all resize-none"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1 text-right">{donationData.message.length}/500 characters</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Logged-in + NOT anonymous: just the message field */}
+                            {isLoggedIn && !donationData.isAnonymous && (
+                                <div className="pt-6 border-t-2 border-gray-200">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Message (Optional)</label>
+                                    <textarea
+                                        value={donationData.message}
+                                        onChange={(e) => handleInputChange('message', e.target.value)}
+                                        placeholder="Share why you're supporting this campaign or leave a message of encouragement..."
+                                        rows={4}
+                                        maxLength={500}
+                                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#63A6B2] focus:border-[#63A6B2] outline-none transition-all resize-none"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1 text-right">{donationData.message.length}/500 characters</p>
+                                </div>
+                            )}
 
                             {/* Data Privacy Checkbox */}
                             <div className={`flex items-start gap-3 p-5 rounded-xl border-2 transition-all ${

@@ -27,23 +27,36 @@ function StatusPill({ status }) {
 }
 
 function StatusSwitcher({ current, onUpdate }) {
-    const options = ['completed', 'pending', 'failed', 'cancelled'];
+    const [selected, setSelected] = useState(current?.toLowerCase() || 'pending');
+
+    useEffect(() => {
+        setSelected(current?.toLowerCase() || 'pending');
+    }, [current]);
+
+    const isChanged = selected !== (current?.toLowerCase() || 'pending');
+
     return (
-        <div className="flex items-center gap-1 flex-wrap">
-            {options
-                .filter(s => s !== current?.toLowerCase())
-                .map(s => {
-                    const cfg = STATUS_CONFIG[s];
-                    return (
-                        <button
-                            key={s}
-                            onClick={() => onUpdate(s)}
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold ring-1 transition-all hover:scale-105 active:scale-95 ${cfg.bg} ${cfg.text} ${cfg.ring} opacity-60 hover:opacity-100`}
-                        >
-                            {cfg.label}
-                        </button>
-                    );
-                })}
+        <div className="flex items-center gap-2">
+            <select
+                value={selected}
+                onChange={(e) => setSelected(e.target.value)}
+                className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg font-semibold focus:outline-none focus:border-[#63A6B2] focus:ring-1 focus:ring-[#63A6B2] bg-gray-50 text-gray-700 cursor-pointer"
+            >
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+            {isChanged && (
+                <button
+                    onClick={() => onUpdate(selected)}
+                    className="px-2 py-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all shadow-sm flex items-center gap-1 active:scale-95"
+                    title="Update Status"
+                >
+                    <CheckCircle className="w-3 h-3" />
+                    <span className="text-[10px] font-bold uppercase tracking-wide">Update</span>
+                </button>
+            )}
         </div>
     );
 }
@@ -59,6 +72,7 @@ export default function AdminTransactions() {
     const [startDate, setStartDate] = useState('');
     const [isExporting, setIsExporting] = useState(false);
     const [viewDonation, setViewDonation] = useState(null);
+    const [cancelModalTransaction, setCancelModalTransaction] = useState(null);
     const [summaryStats, setSummaryStats] = useState({
         completed: 0,
         pending: 0,
@@ -89,7 +103,7 @@ export default function AdminTransactions() {
         }
     };
 
-    const updateStatus = async (txnId, newStatus) => {
+    const executeStatusUpdate = async (txnId, newStatus) => {
         try {
             const token = localStorage.getItem('token');
             const res = await fetch(`/api/transactions/${txnId}/status`, {
@@ -100,8 +114,21 @@ export default function AdminTransactions() {
             if (!res.ok) throw new Error();
             toast.success(`Marked as ${newStatus}`);
             setTransactions(prev => prev.map(t => t.transaction_id === txnId ? { ...t, status: newStatus } : t));
+            
+            if (newStatus === 'cancelled') {
+                setCancelModalTransaction(null);
+            }
         } catch {
             toast.error('Failed to update status');
+        }
+    };
+
+    const updateStatus = (txnId, newStatus) => {
+        if (newStatus === 'cancelled') {
+            const txn = transactions.find(t => t.transaction_id === txnId);
+            setCancelModalTransaction(txn);
+        } else {
+            executeStatusUpdate(txnId, newStatus);
         }
     };
 
@@ -339,6 +366,34 @@ export default function AdminTransactions() {
                     donation={viewDonation} 
                     handleClose={() => setViewDonation(null)} 
                 />
+            )}
+
+            {cancelModalTransaction && (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 text-center transform transition-all duration-300 scale-100 opacity-100">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <XCircle className="w-8 h-8 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-900 mb-2">Cancel Transaction?</h2>
+                        <p className="text-sm text-gray-500 mb-6">
+                            Are you sure you want to cancel the transaction <span className="font-semibold text-gray-700">{cancelModalTransaction.reference_number || `#${cancelModalTransaction.transaction_id}`}</span> from <span className="font-semibold text-gray-700">{cancelModalTransaction.donor_name || 'Anonymous'}</span>? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3 justify-center">
+                            <button
+                                onClick={() => setCancelModalTransaction(null)}
+                                className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition active:scale-95"
+                            >
+                                No, Keep it
+                            </button>
+                            <button
+                                onClick={() => executeStatusUpdate(cancelModalTransaction.transaction_id, 'cancelled')}
+                                className="px-5 py-2.5 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition active:scale-95 shadow-sm shadow-red-500/30"
+                            >
+                                Yes, Cancel it
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
