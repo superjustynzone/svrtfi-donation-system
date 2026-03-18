@@ -106,7 +106,7 @@ export default function AdminSettings() {
                 />
 
                 {/* ── Page content ── */}
-                <div className="px-6 lg:px-10 py-8 max-w-4xl mx-auto space-y-8">
+                <div className="px-6 lg:px-10 py-8 max-w-5xl mx-auto space-y-8">
 
                     {/* ① WEBSITE BRANDING ──────────────────────────── */}
                     <section className="bg-white rounded-2xl border border-gray-100 shadow-sm">

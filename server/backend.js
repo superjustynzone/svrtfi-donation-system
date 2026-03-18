@@ -157,8 +157,8 @@ const initDB = async () => {
       // 2b. Foundation Media Table
       await pool.query(`
         CREATE TABLE IF NOT EXISTS foundation_media (
-          media_id SERIAL PRIMARY KEY,
-          foundation_id INT REFERENCES foundations(foundation_id) ON DELETE CASCADE,
+          media_id BIGSERIAL PRIMARY KEY,
+          foundation_id BIGINT REFERENCES foundations(foundation_id) ON DELETE CASCADE,
           file_url TEXT NOT NULL,
           media_type VARCHAR(50) DEFAULT 'image',
           uploaded_at TIMESTAMP DEFAULT NOW()
@@ -173,7 +173,7 @@ const initDB = async () => {
     try {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS campaigns (
-          campaign_id SERIAL PRIMARY KEY,
+          campaign_id BIGSERIAL PRIMARY KEY,
           campaign_name VARCHAR(200) NOT NULL,
           campaign_type VARCHAR(100),
           campaign_description TEXT,
@@ -208,8 +208,8 @@ const initDB = async () => {
       // 4. Campaign Media Table
       await pool.query(`
         CREATE TABLE IF NOT EXISTS campaign_media (
-          media_id SERIAL PRIMARY KEY,
-          campaign_id INT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
+          media_id BIGSERIAL PRIMARY KEY,
+          campaign_id BIGINT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
           file_url TEXT NOT NULL,
           media_type VARCHAR(50) DEFAULT 'image',
           uploaded_at TIMESTAMP DEFAULT NOW()
@@ -220,13 +220,46 @@ const initDB = async () => {
       // 5. Foundation Campaigns (Many-to-Many)
       await pool.query(`
         CREATE TABLE IF NOT EXISTS foundation_campaigns (
-          id SERIAL PRIMARY KEY,
-          foundation_id INT REFERENCES foundations(foundation_id) ON DELETE CASCADE,
-          campaign_id INT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
+          id BIGSERIAL PRIMARY KEY,
+          foundation_id BIGINT REFERENCES foundations(foundation_id) ON DELETE CASCADE,
+          campaign_id BIGINT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
           UNIQUE (foundation_id, campaign_id)
         );
       `);
       console.log("✅ Foundation Campaigns table verified");
+
+      // 6. Migration: Harmonize IDs to BIGINT
+      await pool.query(`
+        DO $$ 
+        BEGIN 
+            -- foundations.foundation_id is usually already BIGINT if using BIGSERIAL, but ensure others are too
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='foundation_media' AND column_name='foundation_id' AND data_type='integer') THEN
+                ALTER TABLE foundation_media ALTER COLUMN foundation_id TYPE BIGINT;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='foundation_media' AND column_name='media_id' AND data_type='integer') THEN
+                ALTER TABLE foundation_media ALTER COLUMN media_id TYPE BIGINT;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='campaign_media' AND column_name='campaign_id' AND data_type='integer') THEN
+                ALTER TABLE campaign_media ALTER COLUMN campaign_id TYPE BIGINT;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='campaign_media' AND column_name='media_id' AND data_type='integer') THEN
+                ALTER TABLE campaign_media ALTER COLUMN media_id TYPE BIGINT;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='email_campaigns' AND column_name='associated_campaign_id' AND data_type='integer') THEN
+                ALTER TABLE email_campaigns ALTER COLUMN associated_campaign_id TYPE BIGINT;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='email_templates' AND column_name='template_id' AND data_type='integer') THEN
+                ALTER TABLE email_templates ALTER COLUMN template_id TYPE BIGINT;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='user_id' AND data_type='integer') THEN
+                ALTER TABLE audit_logs ALTER COLUMN user_id TYPE BIGINT;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='audit_id' AND data_type='integer') THEN
+                ALTER TABLE audit_logs ALTER COLUMN audit_id TYPE BIGINT;
+            END IF;
+        END $$;
+      `);
+      console.log("✅ ID Harmonization (BigInt) completed");
     } catch (e) {
       console.error("❌ Error in Campaigns table or related tables:", e.message);
     }
@@ -280,6 +313,7 @@ const initDB = async () => {
         { name: 'completed_at', type: 'TIMESTAMP' },
         { name: 'next_due_date', type: 'DATE' },
         { name: 'message', type: 'TEXT' },
+        { name: 'cancellation_reason', type: 'TEXT' },
         { name: 'campaign_id_cascade', type: 'CAMPAIGN_ID_CASCADE' }
       ];
 
@@ -340,8 +374,8 @@ const initDB = async () => {
     try {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS audit_logs (
-          audit_id SERIAL PRIMARY KEY,
-          user_id INT,
+          audit_id BIGSERIAL PRIMARY KEY,
+          user_id BIGINT,
           action VARCHAR(255) NOT NULL,
           details TEXT,
           timestamp TIMESTAMP DEFAULT NOW()
@@ -356,7 +390,8 @@ const initDB = async () => {
     try {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS email_campaigns (
-            campaign_id SERIAL PRIMARY KEY,
+            campaign_id BIGSERIAL PRIMARY KEY,
+            associated_campaign_id BIGINT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
             title VARCHAR(255) NOT NULL,
             message TEXT NOT NULL,
             category VARCHAR(100),
@@ -366,6 +401,16 @@ const initDB = async () => {
         );
       `);
       
+      // Dynamic column addition
+      await pool.query(`
+        DO $$ 
+        BEGIN 
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='email_campaigns' AND column_name='associated_campaign_id') THEN
+                ALTER TABLE email_campaigns ADD COLUMN associated_campaign_id BIGINT REFERENCES campaigns(campaign_id) ON DELETE CASCADE;
+            END IF;
+        END $$;
+      `);
+
       // Seed default receipt template if missing
       const checkTemplate = await pool.query("SELECT * FROM email_campaigns WHERE category = 'receipt_template'");
       if (checkTemplate.rows.length === 0) {
@@ -593,6 +638,93 @@ app.put("/api/admin/receipt-template", async (req, res) => {
         );
         res.json({ message: "Global receipt template updated successfully!" });
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────
+// Thank You Letters CRUD
+// ─────────────────────────────────────────────
+
+// Get all Thank You Letters
+app.get("/api/admin/thank-you-letters", async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT e.*, c.campaign_name 
+            FROM email_campaigns e 
+            LEFT JOIN campaigns c ON e.associated_campaign_id = c.campaign_id 
+            WHERE e.category = 'thank_you_letter' 
+            ORDER BY e.updated_at DESC
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create Thank You Letter
+app.post("/api/admin/thank-you-letters", async (req, res) => {
+    const { title, message, status, associated_campaign_id } = req.body;
+    try {
+        const campaignId = (!associated_campaign_id || associated_campaign_id === 'global') ? null : associated_campaign_id;
+        const result = await pool.query(
+            "INSERT INTO email_campaigns (title, message, category, status, associated_campaign_id) VALUES ($1, $2, 'thank_you_letter', $3, $4) RETURNING *",
+            [title, message, status || 'draft', campaignId]
+        );
+        res.json({ message: "Thank You Letter created successfully!", letter: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update Thank You Letter
+app.put("/api/admin/thank-you-letters/:id", async (req, res) => {
+    const { id } = req.params;
+    const { title, message, status, associated_campaign_id } = req.body;
+    try {
+        const campaignId = (!associated_campaign_id || associated_campaign_id === 'global') ? null : associated_campaign_id;
+        const result = await pool.query(
+            "UPDATE email_campaigns SET title = $1, message = $2, status = $3, associated_campaign_id = $4, updated_at = NOW() WHERE campaign_id = $5 RETURNING *",
+            [title, message, status, campaignId, id]
+        );
+        res.json({ message: "Thank You Letter updated successfully!", letter: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete Thank You Letter
+app.delete("/api/admin/thank-you-letters/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query("DELETE FROM email_campaigns WHERE campaign_id = $1", [id]);
+        res.json({ message: "Thank You Letter deleted successfully!" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get Donors for Manual Sending
+app.get("/api/admin/mailing-donors", async (req, res) => {
+    const { campaign_id } = req.query;
+    try {
+        let query = `
+            SELECT DISTINCT dn.donor_id, dn.first_name, dn.last_name, dn.email
+            FROM donors dn
+            INNER JOIN donations d ON dn.donor_id = d.donor_id
+            WHERE dn.email IS NOT NULL AND dn.email != ''
+        `;
+        const params = [];
+        if (campaign_id && campaign_id !== 'global' && campaign_id !== 'null') {
+            query += ` AND d.campaign_id = $1`;
+            params.push(campaign_id);
+        }
+        query += ` ORDER BY dn.first_name`;
+        
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Mailing donors error:", err);
         res.status(500).json({ error: err.message });
     }
 });

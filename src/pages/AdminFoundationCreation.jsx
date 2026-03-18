@@ -199,7 +199,10 @@ export default function AdminFoundationCreation() {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const response = await fetch(`http://localhost:5000/api/foundations/${foundationToDelete.foundation_id}`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 body: JSON.stringify({ userId: user.user_id || null })
             });
 

@@ -23,6 +23,7 @@ export default function Profile() {
     const [receiptData, setReceiptData] = useState(null);
     const [isReceiptLoading, setIsReceiptLoading] = useState(false);
     const [cancelRequestModalId, setCancelRequestModalId] = useState(null);
+    const [cancellationReason, setCancellationReason] = useState("");
 
 
     const formatCurrency = (amount) => {
@@ -311,14 +312,24 @@ export default function Profile() {
         const donationId = cancelRequestModalId;
         if (!donationId) return;
         
+        if (!cancellationReason.trim()) {
+            toast.error("Please provide a reason for cancellation.");
+            return;
+        }
+        
         try {
             const res = await fetch(`http://localhost:5000/api/donations/${donationId}/cancel-recurring`, {
                 method: 'PATCH',
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('token')}` 
+                },
+                body: JSON.stringify({ reason: cancellationReason.trim() })
             });
             if (!res.ok) throw new Error();
             toast.success('Wait for admin approval of cancellation request.');
             setCancelRequestModalId(null);
+            setCancellationReason("");
             // Refresh history
             const storedUser = JSON.parse(localStorage.getItem("user"));
             if (storedUser && storedUser.user_id) {
@@ -978,7 +989,7 @@ export default function Profile() {
                                                                          ? 'bg-green-500' 
                                                                          : 'bg-yellow-500'
                                                                      } ${donation.status !== 'cancelled' ? 'animate-pulse' : ''}`}></div>
-                                                                     {donation.status === 'cancelled' ? 'Stopped' : 
+                                                                     {donation.status === 'cancelled' ? 'CANCELLED' : 
                                                                       donation.status === 'pending_cancellation' ? 'Cancellation Pending' : 
                                                                       (donation.payment_status === 'completed' ? 'Active' : 'Processing')}
                                                                  </span>
@@ -986,9 +997,12 @@ export default function Profile() {
                                                             <td className="py-4 px-4">
                                                                 <div className="text-sm text-gray-700 font-medium">
                                                                     {donation.status === 'cancelled' ? (
-                                                                        <span className="text-red-400 font-bold uppercase text-[10px] tracking-widest bg-red-50 px-2 py-0.5 rounded">Stopped</span>
+                                                                        <span className="text-gray-400 font-bold">None</span>
                                                                     ) : (
                                                                         (() => {
+                                                                            if (donation.next_due_date) {
+                                                                                return new Date(donation.next_due_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+                                                                            }
                                                                             const nextDate = new Date(donation.initiated_at);
                                                                             nextDate.setMonth(nextDate.getMonth() + 1);
                                                                             return nextDate.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1073,12 +1087,21 @@ export default function Profile() {
                             <XCircle className="w-8 h-8 text-red-500" />
                         </div>
                         <h3 className="text-xl font-bold text-gray-900 mb-2">Cancel Recurring Plan?</h3>
-                        <p className="text-sm text-gray-500 mb-6">
+                        <p className="text-sm text-gray-500 mb-4">
                             Are you sure you want to request a cancellation for this recurring donation? This request will be processed by our admin team.
                         </p>
+                        <div className="mb-6 text-left">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Reason for Cancellation <span className="text-red-500">*</span></label>
+                            <textarea
+                                value={cancellationReason}
+                                onChange={(e) => setCancellationReason(e.target.value)}
+                                placeholder="Please let us know why you are cancelling..."
+                                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] focus:ring-1 focus:ring-[#63A6B2] transition resize-none h-24"
+                            ></textarea>
+                        </div>
                         <div className="flex gap-3">
                             <button 
-                                onClick={() => setCancelRequestModalId(null)}
+                                onClick={() => { setCancelRequestModalId(null); setCancellationReason(""); }}
                                 className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition active:scale-95"
                             >
                                 No, Keep it

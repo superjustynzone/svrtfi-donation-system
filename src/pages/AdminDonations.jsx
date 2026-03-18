@@ -186,7 +186,10 @@ export default function AdminDonations() {
         try {
             const res = await fetch(`/api/donations/${donationId}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                 }
             });
             if (!res.ok) throw new Error();
             toast.success('Donation deleted.');
@@ -512,9 +515,15 @@ export default function AdminDonations() {
                             <CheckCircle className="w-10 h-10 text-emerald-500" />
                         </div>
                         <h3 className="text-2xl font-black text-gray-900 mb-2">Approve Cancellation?</h3>
-                        <p className="text-gray-500 mb-8 leading-relaxed">
+                        <p className="text-gray-500 mb-6 leading-relaxed">
                             You are about to approve the cancellation request for <span className="font-bold text-gray-700">{approveCancelConfirm.first_name} {approveCancelConfirm.last_name}</span>'s monthly donation of <span className="font-bold text-[#63A6B2]">{formatCurrency(approveCancelConfirm.amount)}</span>. This will stop all future billing.
                         </p>
+                        {approveCancelConfirm.cancellation_reason && (
+                            <div className="mb-8 text-left bg-orange-50 p-4 rounded-xl border border-orange-100 shadow-inner">
+                                <p className="text-xs font-bold text-orange-800 uppercase tracking-widest mb-1">Donor's Reason:</p>
+                                <p className="text-sm text-gray-800 italic">"{approveCancelConfirm.cancellation_reason}"</p>
+                            </div>
+                        )}
                         <div className="flex gap-4">
                             <button onClick={() => setApproveCancelConfirm(null)}
                                 className="flex-1 px-6 py-3 border-2 border-gray-100 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-50 transition active:scale-95">

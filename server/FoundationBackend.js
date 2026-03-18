@@ -323,7 +323,7 @@ router.delete("/:id", verifyAdmin, async (req, res) => {
         });
 
         // Delete from foundations
-        await pool.query("DELETE FROM foundations WHERE foundation_id = $1", [id]);
+        const deleteRes = await pool.query("DELETE FROM foundations WHERE foundation_id = $1", [id]);
 
         if (deleteRes.rowCount === 0) {
             return res.status(404).json({ message: "Foundation not found" });

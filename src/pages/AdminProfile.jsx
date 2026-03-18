@@ -249,7 +249,7 @@ export default function AdminProfile() {
                 />
 
                 {/* ── Page content ── */}
-                <div className="px-6 lg:px-10 py-8 max-w-3xl mx-auto space-y-6">
+                <div className="px-6 lg:px-10 py-8 max-w-5xl mx-auto space-y-6">
 
                     {/* ① ADMIN PROFILE ─────────────────────────────── */}
                     <section className="bg-white rounded-2xl border border-gray-100 shadow-sm">

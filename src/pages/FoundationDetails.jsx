@@ -473,12 +473,12 @@ export default function FoundationDetails() {
                             </div>
                         </div>
 
-                        {/* Donate Button */}
+                        {/* Donate Button text and action based on featuredCampaign */}
                         <button
-                            onClick={() => featuredCampaign ? navigate(`/campaigns/${featuredCampaign.campaign_id}`) : toast.info('No active campaign at the moment.')}
+                            onClick={() => featuredCampaign ? navigate(`/campaigns/${featuredCampaign.campaign_id}`) : navigate('/campaigns')}
                             className="w-full bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all"
                         >
-                            Donate Now
+                            {featuredCampaign ? 'Donate Now' : 'Go To Campaigns'}
                         </button>
 
                         {/* Explore Other Foundations */}

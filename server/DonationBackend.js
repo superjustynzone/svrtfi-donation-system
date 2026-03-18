@@ -609,12 +609,15 @@ router.put("/:id", async (req, res) => {
 router.patch("/:id/cancel-recurring", async (req, res) => {
     try {
         const { id } = req.params;
+        const { reason } = req.body;
+        
         const result = await pool.query(
             `UPDATE donations 
-             SET status = 'pending_cancellation'
+             SET status = 'pending_cancellation',
+                 cancellation_reason = $2
              WHERE donation_id = $1 AND frequency = 'monthly' 
              RETURNING *`,
-            [id]
+            [id, reason || null]
         );
 
         if (result.rows.length === 0) {
