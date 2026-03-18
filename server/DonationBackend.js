@@ -206,6 +206,7 @@ router.get("/donors", async (req, res) => {
              INNER JOIN donations d ON dn.donor_id = d.donor_id
              INNER JOIN payment_transactions pt ON d.donation_id = pt.donation_id
              WHERE pt.payment_status IN ('completed', 'pending')
+             AND dn.email IS NOT NULL AND dn.email != ''
              GROUP BY dn.donor_id, dn.first_name, dn.last_name,
                       dn.contact_number, dn.address, dn.email
              ORDER BY total_donated DESC`

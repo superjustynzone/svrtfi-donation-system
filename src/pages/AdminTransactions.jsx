@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     CreditCard, Search, Calendar, Download,
     ChevronLeft, ChevronRight, RefreshCw,
-    CheckCircle, XCircle, Clock, TrendingUp,
+    CheckCircle, XCircle, Clock, TrendingUp, AlertCircle,
     Eye, X, FileText, MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -199,7 +199,7 @@ export default function AdminTransactions() {
     const [isExporting, setIsExporting] = useState(false);
     const [viewDonation, setViewDonation] = useState(null);
     const [editingRowId, setEditingRowId] = useState(null);
-    const [cancelModalTransaction, setCancelModalTransaction] = useState(null);
+    const [statusConfirmModal, setStatusConfirmModal] = useState(null); // { txn, status }
     const [completeModalTransaction, setCompleteModalTransaction] = useState(null);
     const [summaryStats, setSummaryStats] = useState({
         pending: 0,
@@ -263,7 +263,7 @@ export default function AdminTransactions() {
             // Force refetch to ensure new receipt/status is updated locally
             fetchTransactions();
 
-            setCancelModalTransaction(null);
+            setStatusConfirmModal(null);
             setCompleteModalTransaction(null);
         } catch {
             toast.error('Failed to update status');
@@ -289,11 +289,10 @@ export default function AdminTransactions() {
     };
 
     const updateStatus = (txnId, newStatus) => {
-        if (newStatus === 'cancelled') {
-            const txn = transactions.find(t => t.transaction_id === txnId);
-            setCancelModalTransaction(txn);
+        const txn = transactions.find(t => t.transaction_id === txnId);
+        if (['pending', 'failed', 'cancelled'].includes(newStatus)) {
+            setStatusConfirmModal({ txn, status: newStatus });
         } else if (newStatus === 'completed') {
-            const txn = transactions.find(t => t.transaction_id === txnId);
             setCompleteModalTransaction(txn);
         } else {
             executeStatusUpdate(txnId, newStatus);
@@ -546,28 +545,40 @@ export default function AdminTransactions() {
                 />
             )}
 
-            {cancelModalTransaction && (
+            {statusConfirmModal && (
                 <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 text-center transform transition-all duration-300 scale-100 opacity-100">
-                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <XCircle className="w-8 h-8 text-red-500" />
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                            statusConfirmModal.status === 'cancelled' ? 'bg-gray-100' :
+                            statusConfirmModal.status === 'failed' ? 'bg-red-100' : 'bg-amber-100'
+                        }`}>
+                            {statusConfirmModal.status === 'cancelled' && <XCircle className="w-8 h-8 text-gray-500" />}
+                            {statusConfirmModal.status === 'failed' && <AlertCircle className="w-8 h-8 text-red-500" />}
+                            {statusConfirmModal.status === 'pending' && <Clock className="w-8 h-8 text-amber-500" />}
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900 mb-2">Cancel Transaction?</h2>
+                        <h2 className="text-xl font-bold text-gray-900 mb-2">
+                            {statusConfirmModal.status === 'cancelled' ? 'Cancel Transaction?' : 
+                             statusConfirmModal.status === 'failed' ? 'Mark as Failed?' : 'Mark as Pending?'}
+                        </h2>
                         <p className="text-sm text-gray-500 mb-6">
-                            Are you sure you want to cancel the transaction <span className="font-semibold text-gray-700">{cancelModalTransaction.reference_number || `#${cancelModalTransaction.transaction_id}`}</span> from <span className="font-semibold text-gray-700">{cancelModalTransaction.donor_name || 'Anonymous'}</span>? This action cannot be undone.
+                            Are you sure you want to change the status of transaction <span className="font-semibold text-gray-700">{statusConfirmModal.txn.reference_number || `#${statusConfirmModal.txn.transaction_id}`}</span> to <span className="font-bold capitalize">{statusConfirmModal.status}</span>?
                         </p>
                         <div className="flex gap-3 justify-center">
                             <button
-                                onClick={() => setCancelModalTransaction(null)}
+                                onClick={() => setStatusConfirmModal(null)}
                                 className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition active:scale-95"
                             >
                                 No, Keep it
                             </button>
                             <button
-                                onClick={() => executeStatusUpdate(cancelModalTransaction.transaction_id, 'cancelled')}
-                                className="px-5 py-2.5 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition active:scale-95 shadow-sm shadow-red-500/30"
+                                onClick={() => executeStatusUpdate(statusConfirmModal.txn.transaction_id, statusConfirmModal.status)}
+                                className={`px-5 py-2.5 rounded-xl text-white font-bold text-sm transition active:scale-95 shadow-sm ${
+                                    statusConfirmModal.status === 'cancelled' ? 'bg-gray-600 hover:bg-gray-700' :
+                                    statusConfirmModal.status === 'failed' ? 'bg-red-500 hover:bg-red-600 shadow-red-500/30' : 
+                                    'bg-amber-500 hover:bg-amber-600 shadow-amber-500/30'
+                                }`}
                             >
-                                Yes, Cancel it
+                                Yes, Update it
                             </button>
                         </div>
                     </div>
