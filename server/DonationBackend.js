@@ -2,6 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { Pool } = require("pg");
+const { sendDonationReceipt } = require("./EmailService");
 require("dotenv").config();
 
 const pool = new Pool({
@@ -427,8 +428,37 @@ router.patch("/:id/complete", async (req, res) => {
 
         await client.query("COMMIT");
 
+        // Send email receipt
+        try {
+            const details = await pool.query(
+                `SELECT d.*, c.campaign_name, dn.email, dn.first_name, dn.last_name
+                 FROM donations d
+                 JOIN campaigns c ON d.campaign_id = c.campaign_id
+                 LEFT JOIN donors dn ON d.donor_id = dn.donor_id
+                 WHERE d.donation_id = $1`,
+                [req.params.id]
+            );
+
+            if (details.rows.length > 0) {
+                const data = details.rows[0];
+                await sendDonationReceipt({
+                    donor_name: `${data.first_name || 'Donor'} ${data.last_name || ""}`.trim(),
+                    donor_email: data.email,
+                    amount: data.amount,
+                    campaign_name: data.campaign_name,
+                    donation_id: data.donation_id,
+                    payment_method: data.payment_method || 'N/A',
+                    date: new Date(),
+                    frequency: data.frequency,
+                    message: data.message
+                });
+            }
+        } catch (emailErr) {
+            console.error("FAILED TO SEND RECEIPT EMAIL:", emailErr);
+        }
+
         return res.json({
-            message: "Donation marked as completed!",
+            message: "Donation marked as completed and receipt sent!",
             donation: donationResult.rows[0],
         });
     } catch (err) {
@@ -573,15 +603,14 @@ router.put("/:id", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// PATCH /api/donations/:id/cancel-recurring — Cancel monthly donation
+// PATCH /api/donations/:id/cancel-recurring — Request cancellation for monthly donation
 // ─────────────────────────────────────────────
 router.patch("/:id/cancel-recurring", async (req, res) => {
     try {
         const { id } = req.params;
         const result = await pool.query(
             `UPDATE donations 
-             SET status = 'cancelled', 
-                 next_due_date = NULL
+             SET status = 'pending_cancellation'
              WHERE donation_id = $1 AND frequency = 'monthly' 
              RETURNING *`,
             [id]
@@ -591,12 +620,39 @@ router.patch("/:id/cancel-recurring", async (req, res) => {
             return res.status(404).json({ message: "Donation plan not found or not recurring." });
         }
 
-        res.json({ message: "Recurring donation cancelled.", donation: result.rows[0] });
+        res.json({ message: "Cancellation request submitted to admin.", donation: result.rows[0] });
     } catch (err) {
-        console.error("CANCEL RECURRING ERROR:", err);
+        console.error("CANCEL RECURRING REQUEST ERROR:", err);
         res.status(500).json({ message: "Server error" });
     }
 });
+
+// ─────────────────────────────────────────────
+// PATCH /api/donations/:id/approve-cancellation — Admin approves cancellation
+// ─────────────────────────────────────────────
+router.patch("/:id/approve-cancellation", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            `UPDATE donations 
+             SET status = 'cancelled', 
+                 next_due_date = NULL
+             WHERE donation_id = $1 AND (status = 'pending_cancellation' OR status = 'active' OR status IS NULL)
+             RETURNING *`,
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Donation plan not found or already cancelled." });
+        }
+
+        res.json({ message: "Recurring donation cancelled by admin.", donation: result.rows[0] });
+    } catch (err) {
+        console.error("APPROVE CANCELLATION ERROR:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
 
 
 // DELETE /api/donations/:id

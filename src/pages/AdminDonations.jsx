@@ -31,6 +31,7 @@ const STATUS_STYLES = {
     pending: 'bg-yellow-100 text-yellow-700',
     failed: 'bg-red-100 text-red-700',
     cancelled: 'bg-gray-100 text-gray-600',
+    pending_cancellation: 'bg-orange-100 text-orange-700',
 };
 
 export default function AdminDonations() {
@@ -65,6 +66,10 @@ export default function AdminDonations() {
     // delete confirm
     const [deleteConfirm, setDeleteConfirm] = useState(null); // holds donation object
 
+    // approve cancel confirm
+    const [approveCancelConfirm, setApproveCancelConfirm] = useState(null); // holds donation object
+
+
     useEffect(() => { fetchAll(); }, []);
 
     useEffect(() => {
@@ -78,7 +83,11 @@ export default function AdminDonations() {
             );
         }
         if (filterStatus !== 'All') {
-            data = data.filter(d => (d.payment_status || 'pending') === filterStatus);
+            data = data.filter(d => 
+                filterStatus === 'pending_cancellation' 
+                ? d.status === 'pending_cancellation' 
+                : (d.payment_status || 'pending') === filterStatus
+            );
         }
         if (filterFreq !== 'All') {
             data = data.filter(d => d.frequency === (filterFreq === 'Monthly' ? 'monthly' : 'one_time'));
@@ -127,6 +136,27 @@ export default function AdminDonations() {
 
         } catch {
             toast.error('Failed to update donation.');
+        }
+    };
+
+    const handleApproveCancellation = async (donationId) => {
+        setApproveCancelConfirm(donations.find(d => d.donation_id === donationId));
+    };
+
+    const confirmApproveCancellation = async () => {
+        const donationId = approveCancelConfirm?.donation_id;
+        if (!donationId) return;
+        try {
+            const res = await fetch(`/api/donations/${donationId}/approve-cancellation`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+            });
+            if (!res.ok) throw new Error();
+            toast.success('Cancellation approved.');
+            setApproveCancelConfirm(null);
+            await fetchAll();
+        } catch {
+            toast.error('Failed to approve cancellation.');
         }
     };
 
@@ -312,6 +342,7 @@ export default function AdminDonations() {
                                 <option value="completed">Completed</option>
                                 <option value="failed">Failed</option>
                                 <option value="cancelled">Cancelled</option>
+                                <option value="pending_cancellation">Pending Cancellation</option>
                             </select>
                             <select className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:border-[#63A6B2]" value={filterFreq} onChange={e => setFilterFreq(e.target.value)}>
                                 <option value="All">All Frequency</option>
@@ -371,13 +402,22 @@ export default function AdminDonations() {
                                                         </span>
                                                     </td>
                                                     <td className="py-4 px-6">
-                                                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${STATUS_STYLES[status] || 'bg-gray-100 text-gray-700'}`}>
-                                                            {status}
+                                                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${d.status === 'pending_cancellation' ? STATUS_STYLES.pending_cancellation : STATUS_STYLES[status] || 'bg-gray-100 text-gray-700'}`}>
+                                                            {d.status === 'pending_cancellation' ? 'Pending Cancellation' : (d.status === 'cancelled' ? 'Cancelled' : status)}
                                                         </span>
                                                     </td>
                                                     <td className="py-4 px-6 text-sm text-gray-500 whitespace-nowrap">{fmtShortDate(d.initiated_at)}</td>
                                                     <td className="py-4 px-6">
                                                         <div className="flex items-center justify-end gap-1">
+                                                            {d.status === 'pending_cancellation' && (
+                                                                <button
+                                                                    onClick={() => handleApproveCancellation(d.donation_id)}
+                                                                    className="p-2 hover:bg-green-50 rounded-lg transition text-green-600"
+                                                                    title="Approve Cancellation"
+                                                                >
+                                                                    <CheckCircle className="w-4 h-4" />
+                                                                </button>
+                                                            )}
 
                                                             <button
                                                                 onClick={() => setEditDonation(d)}
@@ -469,6 +509,31 @@ export default function AdminDonations() {
                             <button onClick={() => handleDelete(deleteConfirm.donation_id)}
                                 className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 transition">
                                 Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Approve Cancellation Confirmation */}
+            {approveCancelConfirm && (
+                <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-200">
+                        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <CheckCircle className="w-10 h-10 text-emerald-500" />
+                        </div>
+                        <h3 className="text-2xl font-black text-gray-900 mb-2">Approve Cancellation?</h3>
+                        <p className="text-gray-500 mb-8 leading-relaxed">
+                            You are about to approve the cancellation request for <span className="font-bold text-gray-700">{approveCancelConfirm.first_name} {approveCancelConfirm.last_name}</span>'s monthly donation of <span className="font-bold text-[#63A6B2]">{formatCurrency(approveCancelConfirm.amount)}</span>. This will stop all future billing.
+                        </p>
+                        <div className="flex gap-4">
+                            <button onClick={() => setApproveCancelConfirm(null)}
+                                className="flex-1 px-6 py-3 border-2 border-gray-100 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-50 transition active:scale-95">
+                                Keep Active
+                            </button>
+                            <button onClick={confirmApproveCancellation}
+                                className="flex-1 px-6 py-3 bg-emerald-500 text-white rounded-2xl text-sm font-bold hover:bg-emerald-600 transition shadow-lg shadow-emerald-200 active:scale-95">
+                                Approve Now
                             </button>
                         </div>
                     </div>

@@ -15,18 +15,31 @@ export default function AdminMailing() {
     });
     const [isSending, setIsSending] = useState(false);
 
-    const handleSendTestEmail = () => {
-        if (!testEmailForm.to) {
-            toast.error('Please provide a recipient email.');
+    const handleSendTestEmail = async () => {
+        if (!testEmailForm.to || !testEmailForm.subject || !testEmailForm.message) {
+            toast.error('Please fill in all fields.');
             return;
         }
         setIsSending(true);
-        // Simulate sending an email
-        setTimeout(() => {
+        try {
+            const response = await fetch('http://localhost:5000/api/admin/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(testEmailForm)
+            });
+            const data = await response.json();
+            if (response.ok) {
+                toast.success('Email sent successfully!');
+                setTestEmailForm({ to: '', subject: '', message: '' });
+            } else {
+                toast.error(data.message || 'Failed to send email.');
+            }
+        } catch (error) {
+            console.error('Email send error:', error);
+            toast.error('Failed to connect to mailing service.');
+        } finally {
             setIsSending(false);
-            toast.success('Test email sent successfully! (Simulated)');
-            setTestEmailForm({ to: '', subject: '', message: '' });
-        }, 1500);
+        }
     };
 
     return (

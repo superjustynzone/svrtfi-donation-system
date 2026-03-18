@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Heart, Users, Edit2, Eye, Download, LogOut, ChevronDown, FileText, X, CheckCircle, CreditCard, RefreshCw } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Heart, Users, Edit2, Eye, Download, LogOut, ChevronDown, FileText, X, CheckCircle, CreditCard, RefreshCw, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { provinces, citiesByProvince } from '../data/philippineLocations';
 import Navbar from '../components/Navbar';
@@ -22,6 +22,8 @@ export default function Profile() {
     const [viewReceiptId, setViewReceiptId] = useState(null);
     const [receiptData, setReceiptData] = useState(null);
     const [isReceiptLoading, setIsReceiptLoading] = useState(false);
+    const [cancelRequestModalId, setCancelRequestModalId] = useState(null);
+
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-PH', {
@@ -302,7 +304,12 @@ export default function Profile() {
 
 
     const handleCancelRecurring = async (donationId) => {
-        if (!window.confirm("Are you sure you want to cancel this recurring donation?")) return;
+        setCancelRequestModalId(donationId);
+    };
+
+    const confirmCancelRecurring = async () => {
+        const donationId = cancelRequestModalId;
+        if (!donationId) return;
         
         try {
             const res = await fetch(`http://localhost:5000/api/donations/${donationId}/cancel-recurring`, {
@@ -310,7 +317,8 @@ export default function Profile() {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             if (!res.ok) throw new Error();
-            toast.success('Subscription cancelled successfully.');
+            toast.success('Wait for admin approval of cancellation request.');
+            setCancelRequestModalId(null);
             // Refresh history
             const storedUser = JSON.parse(localStorage.getItem("user"));
             if (storedUser && storedUser.user_id) {
@@ -952,23 +960,29 @@ export default function Profile() {
                                                                 <div className="text-[10px] text-gray-400 uppercase tracking-tight">Per Month</div>
                                                             </td>
                                                             <td className="py-4 px-4">
-                                                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                                                                    donation.status === 'cancelled'
-                                                                    ? 'bg-red-100 text-red-700 border border-red-200'
-                                                                    : donation.payment_status === 'completed' 
-                                                                    ? 'bg-green-100 text-green-700 border border-green-200' 
-                                                                    : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                                                                }`}>
-                                                                    <div className={`w-1.5 h-1.5 rounded-full ${
-                                                                        donation.status === 'cancelled' 
-                                                                        ? 'bg-red-500' 
-                                                                        : donation.payment_status === 'completed' 
-                                                                        ? 'bg-green-500' 
-                                                                        : 'bg-yellow-500'
-                                                                    } ${donation.status !== 'cancelled' ? 'animate-pulse' : ''}`}></div>
-                                                                    {donation.status === 'cancelled' ? 'Stopped' : (donation.payment_status === 'completed' ? 'Active' : 'Processing')}
-                                                                </span>
-                                                            </td>
+                                                                 <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                                                                     donation.status === 'cancelled'
+                                                                     ? 'bg-red-100 text-red-700 border border-red-200'
+                                                                     : donation.status === 'pending_cancellation'
+                                                                     ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                                                                     : donation.payment_status === 'completed' 
+                                                                     ? 'bg-green-100 text-green-700 border border-green-200' 
+                                                                     : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                                                 }`}>
+                                                                     <div className={`w-1.5 h-1.5 rounded-full ${
+                                                                         donation.status === 'cancelled' 
+                                                                         ? 'bg-red-500' 
+                                                                         : donation.status === 'pending_cancellation' 
+                                                                         ? 'bg-orange-500' 
+                                                                         : donation.payment_status === 'completed' 
+                                                                         ? 'bg-green-500' 
+                                                                         : 'bg-yellow-500'
+                                                                     } ${donation.status !== 'cancelled' ? 'animate-pulse' : ''}`}></div>
+                                                                     {donation.status === 'cancelled' ? 'Stopped' : 
+                                                                      donation.status === 'pending_cancellation' ? 'Cancellation Pending' : 
+                                                                      (donation.payment_status === 'completed' ? 'Active' : 'Processing')}
+                                                                 </span>
+                                                             </td>
                                                             <td className="py-4 px-4">
                                                                 <div className="text-sm text-gray-700 font-medium">
                                                                     {donation.status === 'cancelled' ? (
@@ -1001,8 +1015,13 @@ export default function Profile() {
                                                                         onClick={() => handleCancelRecurring(donation.donation_id)}
                                                                         className="px-4 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-bold uppercase hover:bg-red-600 hover:text-white transition shadow-sm"
                                                                     >
-                                                                        Cancel Plan
+                                                                        Request Cancellation
                                                                     </button>
+                                                                )}
+                                                                {donation.status === 'pending_cancellation' && (
+                                                                    <span className="px-4 py-1.5 bg-gray-100 text-gray-500 border border-gray-200 rounded-lg text-[10px] font-bold uppercase cursor-not-allowed">
+                                                                        Request Pending
+                                                                    </span>
                                                                 )}
                                                             </td>
                                                         </tr>
@@ -1044,6 +1063,35 @@ export default function Profile() {
                     data={receiptData}
                     handleClose={() => { setViewReceiptId(null); setReceiptData(null); }}
                 />
+            )}
+
+            {/* Cancel Request Modal */}
+            {cancelRequestModalId && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center animate-in fade-in zoom-in duration-200">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <XCircle className="w-8 h-8 text-red-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Cancel Recurring Plan?</h3>
+                        <p className="text-sm text-gray-500 mb-6">
+                            Are you sure you want to request a cancellation for this recurring donation? This request will be processed by our admin team.
+                        </p>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setCancelRequestModalId(null)}
+                                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition active:scale-95"
+                            >
+                                No, Keep it
+                            </button>
+                            <button 
+                                onClick={confirmCancelRecurring}
+                                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 transition shadow-md active:scale-95"
+                            >
+                                Yes, Request
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

@@ -480,6 +480,33 @@ try {
   console.error("❌ Error loading Transaction routes:", error.message);
 }
 
+// ─────────────────────────────────────────────
+// Mailing Routes
+// ─────────────────────────────────────────────
+const { sendEmail } = require("./EmailService");
+
+app.post("/api/admin/send-email", async (req, res) => {
+    const { to, subject, message } = req.body;
+    if (!to || !subject || !message) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const result = await sendEmail(
+        to, 
+        subject, 
+        `<div style="font-family: sans-serif; line-height: 1.6; color: #333; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            ${message.replace(/\n/g, '<br>')}
+        </div>`
+    );
+
+    if (result.success) {
+        res.json({ message: "Email sent successfully!" });
+    } else {
+        res.status(500).json({ message: "Failed to send email", error: result.error });
+    }
+});
+
+
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", time: new Date() });
