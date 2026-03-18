@@ -106,29 +106,22 @@ export default function AdminAuditLogs() {
             <AdminSidebar activePage="audit" />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                <AdminHeader />
+                <AdminHeader 
+                    title="Audit Logs" 
+                    subtitle="Track system activities and user actions"
+                >
+                    <button
+                        onClick={handleExport}
+                        disabled={isExporting || logs.length === 0}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#63A6B2] text-white rounded-xl font-semibold text-sm hover:bg-[#4a8a95] transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                    >
+                        <Download className="w-4 h-4" />
+                        {isExporting ? 'Exporting...' : 'Export CSV'}
+                    </button>
+                </AdminHeader>
 
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
                     <div className="max-w-7xl mx-auto space-y-6">
-
-                        {/* Header Section */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                    <AlertTriangle className="w-6 h-6 text-[#63A6B2]" />
-                                    Audit Logs
-                                </h1>
-                                <p className="text-sm text-gray-500 mt-1">Track system activities and user actions</p>
-                            </div>
-                            <button
-                                onClick={handleExport}
-                                disabled={isExporting || logs.length === 0}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-[#63A6B2] text-white rounded-xl font-semibold text-sm hover:bg-[#4a8a95] transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-                            >
-                                <Download className="w-4 h-4" />
-                                {isExporting ? 'Exporting...' : 'Export CSV'}
-                            </button>
-                        </div>
 
                         {/* Filters Bar */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">

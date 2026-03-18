@@ -48,7 +48,7 @@ export default function AdminHeader({ title, subtitle, onMobileMenuClick, childr
 
     return (
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-            <div className="px-4 lg:px-8 py-4 flex items-center justify-between">
+            <div className="px-4 lg:px-8 py-6 flex items-center justify-between">
                 {/* Left: mobile menu + page title */}
                 <div className="flex items-center gap-4">
                     {onMobileMenuClick && (
@@ -60,7 +60,7 @@ export default function AdminHeader({ title, subtitle, onMobileMenuClick, childr
                         </button>
                     )}
                     <div>
-                        {title && <h1 className="text-xl font-bold text-gray-900">{title}</h1>}
+                        {title && <h1 className="text-lg font-bold text-gray-900 leading-tight">{title}</h1>}
                         {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
                     </div>
                 </div>
