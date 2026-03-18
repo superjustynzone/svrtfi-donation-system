@@ -6,15 +6,48 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 // Load environment variables
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+const axios = require("axios");
+
+// ReCAPTCHA Verification Helper
+const verifyCaptcha = async (token) => {
+    if (!token) return false;
+    try {
+        const secret = process.env.RECAPTCHA_SECRET_KEY;
+        const response = await axios.post(
+            `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`
+        );
+        return response.data.success;
+    } catch (error) {
+        console.error("reCAPTCHA Verification Error:", error);
+        return false;
+    }
+};
+
 // LOGIN ROUTE
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, captchaToken, csrfToken } = req.body;
+
+  // 1. Verify CSRF
+  if (!csrfToken) return res.status(403).json({ message: "Missing CSRF token." });
+  try {
+      const decoded = jwt.verify(csrfToken, process.env.JWT_SECRET);
+      if (decoded.type !== "csrf_v1") throw new Error();
+  } catch (err) {
+      return res.status(403).json({ message: "Invalid or expired CSRF token." });
+  }
+
+  // 2. Verify CAPTCHA
+  const isCaptchaValid = await verifyCaptcha(captchaToken);
+  if (!isCaptchaValid) {
+    return res.status(400).json({ message: "Invalid CAPTCHA verification. Please try again." });
+  }
 
   try {
     // 1. Check if user exists in auth_users

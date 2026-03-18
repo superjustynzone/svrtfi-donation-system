@@ -1,14 +1,31 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import ReCAPTCHA from "react-google-recaptcha/lib/index.js";
 
 const UserLogin = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [csrfToken, setCsrfToken] = useState('');
+  const captchaRef = useRef(null);
+
+  useEffect(() => {
+    fetchCsrfToken();
+  }, []);
+
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/csrf-token');
+      setCsrfToken(response.data.csrfToken);
+    } catch (err) {
+      console.error("Failed to fetch CSRF token", err);
+    }
+  };
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     mode: 'onChange' // Validate on change for real-time feedback
@@ -16,11 +33,18 @@ const UserLogin = () => {
 
   const onSubmit = async (data) => {
     try {
+      if (!captchaToken) {
+        toast.error('Please complete the CAPTCHA verification');
+        return;
+      }
+      
       setIsLoading(true);
 
       const response = await axios.post('http://localhost:5000/api/auth/login', {
         email: data.email,
         password: data.password,
+        captchaToken: captchaToken,
+        csrfToken: csrfToken
       });
 
       // Save auth data
@@ -43,6 +67,8 @@ const UserLogin = () => {
 
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid email or password');
+      if (captchaRef.current) captchaRef.current.reset();
+      setCaptchaToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -147,6 +173,9 @@ const UserLogin = () => {
               )}
             </div>
 
+            {/* Hidden CSRF Token Field */}
+            <input type="hidden" name="csrfToken" value={csrfToken} />
+
             {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between">
               <label className="flex items-center">
@@ -164,6 +193,16 @@ const UserLogin = () => {
               >
                 Forgot Password?
               </Link>
+            </div>
+
+            {/* ReCAPTCHA */}
+            <div className="flex justify-center my-4 overflow-hidden rounded-lg">
+                <ReCAPTCHA
+                    ref={captchaRef}
+                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                    onChange={(token) => setCaptchaToken(token)}
+                    onExpired={() => setCaptchaToken(null)}
+                />
             </div>
 
             {/* Sign In Button */}

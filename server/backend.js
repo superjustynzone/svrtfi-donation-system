@@ -17,7 +17,15 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+const jwt = require("jsonwebtoken");
+
 app.get("/api/health", (req, res) => res.json({ status: "ok", time: new Date() }));
+
+// CSRF TOKEN ROUTE (Simple signed-token implementation)
+app.get("/api/csrf-token", (req, res) => {
+    const token = jwt.sign({ type: "csrf_v1" }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    res.json({ csrfToken: token });
+});
 
 
 
@@ -645,9 +653,40 @@ app.get("/api/user/profile/:id", async (req, res) => {
 });
 
 
+const axios = require("axios");
+
+// ReCAPTCHA Verification Helper
+const verifyCaptcha = async (token) => {
+    if (!token) return false;
+    try {
+        const response = await axios.post(
+            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`
+        );
+        return response.data.success;
+    } catch (error) {
+        console.error("reCAPTCHA Verification Error:", error);
+        return false;
+    }
+};
+
 // REGISTER USER
 app.post("/api/auth_users/register", async (req, res) => {
-  const { firstName, lastName, email, password } = req.body;
+  const { firstName, lastName, email, password, captchaToken, csrfToken } = req.body;
+
+  // 1. Verify CSRF
+  if (!csrfToken) return res.status(403).json({ message: "Missing CSRF token." });
+  try {
+      const decoded = jwt.verify(csrfToken, process.env.JWT_SECRET);
+      if (decoded.type !== "csrf_v1") throw new Error();
+  } catch (err) {
+      return res.status(403).json({ message: "Invalid or expired CSRF token." });
+  }
+
+  // 2. Verify CAPTCHA
+  const isCaptchaValid = await verifyCaptcha(captchaToken);
+  if (!isCaptchaValid) {
+    return res.status(400).json({ message: "Invalid CAPTCHA verification. Please try again." });
+  }
 
   try {
     // 1. Check if email already exists

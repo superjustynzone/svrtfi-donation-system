@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import ReCAPTCHA from "react-google-recaptcha/lib/index.js";
 import TermsModal from '@/components/ui/TermsModal';
 import PrivacyModal from '@/components/ui/PrivacyModal';
 
@@ -12,6 +13,22 @@ const UserSignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [csrfToken, setCsrfToken] = useState('');
+  const captchaRef = useRef(null);
+
+  useEffect(() => {
+    fetchCsrfToken();
+  }, []);
+
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/csrf-token');
+      setCsrfToken(response.data.csrfToken);
+    } catch (err) {
+      console.error("Failed to fetch CSRF token", err);
+    }
+  };
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [currentPassword, setCurrentPassword] = useState('');
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -61,6 +78,10 @@ const UserSignUp = () => {
 
   const onSubmit = async (data) => {
     try {
+      if (!captchaToken) {
+        toast.error('Please complete the CAPTCHA verification');
+        return;
+      }
       setIsLoading(true);
 
       const response = await axios.post('http://localhost:5000/api/auth_users/register', {
@@ -68,6 +89,8 @@ const UserSignUp = () => {
         lastName: data.lastName,
         email: data.email,
         password: data.password,
+        captchaToken: captchaToken,
+        csrfToken: csrfToken
       });
 
       toast.success('Account created successfully! Please verify your email.');
@@ -78,6 +101,8 @@ const UserSignUp = () => {
 
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
+      if (captchaRef.current) captchaRef.current.reset();
+      setCaptchaToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -315,6 +340,9 @@ const UserSignUp = () => {
               )}
             </div>
 
+            {/* Hidden CSRF Token Field */}
+            <input type="hidden" name="csrfToken" value={csrfToken} />
+
             {/* Terms and Conditions */}
             <div>
               <div className="flex items-start">
@@ -348,6 +376,16 @@ const UserSignUp = () => {
               {errors.terms && (
                 <p className="mt-1 text-sm text-red-500">{errors.terms.message}</p>
               )}
+            </div>
+
+            {/* ReCAPTCHA */}
+            <div className="flex justify-center my-3 overflow-hidden rounded-lg">
+                <ReCAPTCHA
+                    ref={captchaRef}
+                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                    onChange={(token) => setCaptchaToken(token)}
+                    onExpired={() => setCaptchaToken(null)}
+                />
             </div>
 
             {/* Create Account Button */}
