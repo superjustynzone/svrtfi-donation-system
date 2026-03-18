@@ -179,8 +179,21 @@ const initDB = async () => {
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           is_featured BOOLEAN DEFAULT FALSE,
-          status VARCHAR(20) DEFAULT 'draft'
+          status VARCHAR(20) DEFAULT 'draft',
+          receipt_email_subject VARCHAR(255),
+          receipt_email_message TEXT
         );
+
+        -- Migration Check for existing table
+        DO $$ 
+        BEGIN 
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='campaigns' AND column_name='receipt_email_subject') THEN
+                ALTER TABLE campaigns ADD COLUMN receipt_email_subject VARCHAR(255);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='campaigns' AND column_name='receipt_email_message') THEN
+                ALTER TABLE campaigns ADD COLUMN receipt_email_message TEXT;
+            END IF;
+        END $$;
       `);
       console.log("✅ Campaigns table verified");
 
@@ -329,6 +342,38 @@ const initDB = async () => {
       console.log("✅ Audit Logs table verified");
     } catch (e) {
       console.error("❌ Error in Audit Logs table:", e.message);
+    }
+
+    // 11. Email Campaigns Configuration table
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS email_campaigns (
+            campaign_id SERIAL PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            category VARCHAR(100),
+            status VARCHAR(50) DEFAULT 'draft',
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
+      
+      // Seed default receipt template if missing
+      const checkTemplate = await pool.query("SELECT * FROM email_campaigns WHERE category = 'receipt_template'");
+      if (checkTemplate.rows.length === 0) {
+        await pool.query(`
+          INSERT INTO email_campaigns (title, message, category, status)
+          VALUES (
+            'Donation Receipt Template',
+            'Thank you for your generous support! Your donation helps us make a difference.',
+            'receipt_template',
+            'active'
+          )
+        `);
+      }
+      console.log("✅ Email Campaigns table verified");
+    } catch (e) {
+      console.error("❌ Error in Email Campaigns table:", e.message);
     }
 
     console.log("🌟 Database Initialization Complete!");
@@ -503,6 +548,44 @@ app.post("/api/admin/send-email", async (req, res) => {
         res.json({ message: "Email sent successfully!" });
     } else {
         res.status(500).json({ message: "Failed to send email", error: result.error });
+    }
+});
+
+// Get Receipt Template (Global or Campaign-specific)
+app.get("/api/admin/receipt-template", async (req, res) => {
+    const { campaign_id } = req.query;
+    try {
+        if (campaign_id && campaign_id !== 'global') {
+            const result = await pool.query("SELECT receipt_email_subject as title, receipt_email_message as message FROM campaigns WHERE campaign_id = $1", [campaign_id]);
+            if (result.rows.length > 0 && result.rows[0].title) {
+                return res.json(result.rows[0]);
+            }
+        }
+        const result = await pool.query("SELECT * FROM email_campaigns WHERE category = 'receipt_template' LIMIT 1");
+        res.json(result.rows[0] || {});
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update Receipt Template (Global or Campaign-specific)
+app.put("/api/admin/receipt-template", async (req, res) => {
+    const { title, message, campaign_id } = req.body;
+    try {
+        if (campaign_id && campaign_id !== 'global') {
+            await pool.query(
+                "UPDATE campaigns SET receipt_email_subject = $1, receipt_email_message = $2 WHERE campaign_id = $3",
+                [title, message, campaign_id]
+            );
+            return res.json({ message: "Campaign-specific receipt template updated successfully!" });
+        }
+        await pool.query(
+            "UPDATE email_campaigns SET title = $1, message = $2, updated_at = NOW() WHERE category = 'receipt_template'",
+            [title, message]
+        );
+        res.json({ message: "Global receipt template updated successfully!" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

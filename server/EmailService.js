@@ -1,6 +1,11 @@
 const nodemailer = require("nodemailer");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+const { Pool } = require("pg");
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+});
 
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -29,7 +34,40 @@ const sendEmail = async (to, subject, html) => {
 };
 
 const sendDonationReceipt = async (donationData) => {
+    if (!donationData) {
+        console.error("❌ No donation data provided to sendDonationReceipt");
+        return { success: false, error: "Missing donation data" };
+    }
     const { donor_name, donor_email, amount, campaign_name, donation_id, payment_method, date, frequency, donor_phone, message } = donationData;
+
+    // Fetch user-configured template from DB
+    let templateTitle = `Official Donation Receipt - RCP-${donation_id}`;
+    let thankYouMsg = "Thank you for your generous support! Your donation helps us make a difference.";
+
+    try {
+        const { campaign_id: campaignId } = donationData;
+        // 1. Check campaign-specific template
+        const campRes = await pool.query("SELECT receipt_email_subject as title, receipt_email_message as message FROM campaigns WHERE campaign_id = $1", [campaignId]);
+        
+        let config = null;
+        if (campRes.rows.length > 0 && campRes.rows[0].title) {
+            config = campRes.rows[0];
+        } else {
+            // 2. Fallback to global template
+            const globalRes = await pool.query("SELECT * FROM email_campaigns WHERE category = 'receipt_template' LIMIT 1");
+            if (globalRes.rows.length > 0) config = globalRes.rows[0];
+        }
+
+        if (config) {
+            templateTitle = (config.title || "")
+                .replace(/\${donation_id}/g, donation_id)
+                .replace(/\${campaign_name}/g, campaign_name)
+                .replace(/\${donor_name}/g, donor_name);
+            thankYouMsg = config.message;
+        }
+    } catch (err) {
+        console.error("Error fetching receipt template from DB:", err);
+    }
 
     const formatCurrency = (amount) => {
         return `₱${parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -188,14 +226,14 @@ const sendDonationReceipt = async (donationData) => {
 
             <!-- Bottom Footer -->
             <div style="background-color: #f8fafc; padding: 25px; text-align: center; border-top: 1px solid #e2e8f0;">
-                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #63A6B2;">Thank you for your generous support!</p>
+                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #63A6B2;">${thankYouMsg}</p>
                 <p style="margin: 0; font-size: 11px; color: #94a3b8;">This is a computer-generated receipt and is valid without signature.<br>
                 © 2026 Shepherd's Voice Radio and Television Foundation, Inc.</p>
             </div>
         </div>
     `;
 
-    return await sendEmail(donor_email, `Official Donation Receipt - RCP-${donation_id}`, receiptHtml);
+    return await sendEmail(donor_email, templateTitle, receiptHtml);
 };
 
 module.exports = { sendEmail, sendDonationReceipt };
