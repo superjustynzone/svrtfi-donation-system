@@ -44,10 +44,11 @@ const upload = multer({
 });
 
 // CREATE STORY
-router.post("/create", upload.single("image"), async (req, res) => {
+router.post("/create", upload.array("images", 10), async (req, res) => {
   const {
     foundation_id,
     title,
+    subtitle,
     content,
     tags,
     author,
@@ -59,25 +60,31 @@ router.post("/create", upload.single("image"), async (req, res) => {
       return res.status(400).json({ message: "Story title and foundation are required." });
     }
 
-    let image_file = null;
-    if (req.file) {
-      image_file = `/uploads/stories/${req.file.filename}`;
-    }
-
     const publishedDate = (is_published === 'true' || is_published === true) ? new Date() : null;
 
     const result = await pool.query(
       `INSERT INTO stories (
-        foundation_id, title, content, image_file, tags, author, is_published, published_at
+        foundation_id, title, subtitle, content, tags, author, is_published, published_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING story_id`,
       [
-        foundation_id, title, content, image_file, tags, author,
+        foundation_id, title, subtitle, content, tags, author,
         is_published === 'true' || is_published === true, publishedDate
       ]
     );
 
     const storyId = result.rows[0].story_id;
+
+    // Handle multiple images
+    if (req.files && req.files.length > 0) {
+      for (let i = 0; i < req.files.length; i++) {
+        const imagePath = `/uploads/stories/${req.files[i].filename}`;
+        await pool.query(
+          `INSERT INTO story_images (story_id, image_file, order_index) VALUES ($1, $2, $3)`,
+          [storyId, imagePath, i]
+        );
+      }
+    }
 
     if (req.app.locals.logAudit) {
       await req.app.locals.logAudit({
@@ -105,7 +112,12 @@ router.get("/all", async (req, res) => {
       `SELECT 
         s.*,
         f.foundation_name,
-        f.image_logo as foundation_logo
+        f.image_logo as foundation_logo,
+        COALESCE(
+          (SELECT json_agg(json_build_object('image_id', si.image_id, 'image_file', si.image_file, 'order_index', si.order_index) ORDER BY si.order_index)
+           FROM story_images si WHERE si.story_id = s.story_id),
+          '[]'
+        ) as images
        FROM stories s
        LEFT JOIN foundations f ON s.foundation_id = f.foundation_id
        ORDER BY s.created_at DESC`
@@ -125,7 +137,12 @@ router.get("/published", async (req, res) => {
       `SELECT 
         s.*,
         f.foundation_name,
-        f.image_logo as foundation_logo
+        f.image_logo as foundation_logo,
+        COALESCE(
+          (SELECT json_agg(json_build_object('image_id', si.image_id, 'image_file', si.image_file, 'order_index', si.order_index) ORDER BY si.order_index)
+           FROM story_images si WHERE si.story_id = s.story_id),
+          '[]'
+        ) as images
        FROM stories s
        LEFT JOIN foundations f ON s.foundation_id = f.foundation_id
        WHERE s.is_published = true
@@ -147,7 +164,12 @@ router.get("/foundation/:id", async (req, res) => {
       `SELECT 
         s.*,
         f.foundation_name,
-        f.image_logo as foundation_logo
+        f.image_logo as foundation_logo,
+        COALESCE(
+          (SELECT json_agg(json_build_object('image_id', si.image_id, 'image_file', si.image_file, 'order_index', si.order_index) ORDER BY si.order_index)
+           FROM story_images si WHERE si.story_id = s.story_id),
+          '[]'
+        ) as images
        FROM stories s
        LEFT JOIN foundations f ON s.foundation_id = f.foundation_id
        WHERE s.foundation_id = $1
@@ -170,7 +192,12 @@ router.get("/:id", async (req, res) => {
       `SELECT 
         s.*,
         f.foundation_name,
-        f.image_logo as foundation_logo
+        f.image_logo as foundation_logo,
+        COALESCE(
+          (SELECT json_agg(json_build_object('image_id', si.image_id, 'image_file', si.image_file, 'order_index', si.order_index) ORDER BY si.order_index)
+           FROM story_images si WHERE si.story_id = s.story_id),
+          '[]'
+        ) as images
        FROM stories s
        LEFT JOIN foundations f ON s.foundation_id = f.foundation_id
        WHERE s.story_id = $1`,
@@ -223,54 +250,73 @@ router.patch("/status/:id", async (req, res) => {
 });
 
 // UPDATE STORY
-router.put("/update/:id", upload.single("image"), async (req, res) => {
+router.put("/update/:id", upload.array("images", 10), async (req, res) => {
   const storyId = req.params.id;
   const {
     foundation_id,
     title,
+    subtitle,
     content,
     tags,
     author,
-    is_published
+    is_published,
+    keepExistingImages // Array of image_ids to keep
   } = req.body;
 
   try {
-    const checkResult = await pool.query(
-      "SELECT image_file FROM stories WHERE story_id = $1",
-      [storyId]
-    );
-
-    if (checkResult.rows.length === 0) {
-      return res.status(404).json({ message: "Story not found" });
-    }
-
-    let image_file = checkResult.rows[0].image_file;
-
-    if (req.file) {
-      if (image_file) {
-        const relativePath = image_file.startsWith('/') ? image_file.substring(1) : image_file;
-        const fullPath = path.join(__dirname, relativePath);
-        if (fs.existsSync(fullPath)) {
-          try { fs.unlinkSync(fullPath); } catch (e) { console.error("Failed to delete old image", e); }
-        }
-      }
-      image_file = `/uploads/stories/${req.file.filename}`;
-    }
-
     const publishedDate = (is_published === 'true' || is_published === true) ? new Date() : null;
 
     await pool.query(
       `UPDATE stories 
-       SET foundation_id = $1, title = $2, content = $3,
-           image_file = $4, tags = $5, author = $6, is_published = $7, published_at = $8,
+       SET foundation_id = $1, title = $2, subtitle = $3, content = $4,
+           tags = $5, author = $6, is_published = $7, published_at = $8,
            updated_at = NOW()
        WHERE story_id = $9`,
       [
-        foundation_id, title, content, image_file, tags, author,
+        foundation_id, title, subtitle, content, tags, author,
         is_published === 'true' || is_published === true, publishedDate,
         storyId
       ]
     );
+
+    // Handle image updates
+    let imagesToKeep = [];
+    if (keepExistingImages) {
+        imagesToKeep = Array.isArray(keepExistingImages) ? keepExistingImages : [keepExistingImages];
+    }
+
+    // Delete images not in keep list
+    const imagesToDelete = await pool.query(
+        `SELECT image_file FROM story_images WHERE story_id = $1 AND image_id != ALL($2::bigint[])`,
+        [storyId, imagesToKeep]
+    );
+
+    for (const img of imagesToDelete.rows) {
+        const relativePath = img.image_file.startsWith('/') ? img.image_file.substring(1) : img.image_file;
+        const fullPath = path.join(__dirname, relativePath);
+        if (fs.existsSync(fullPath)) {
+            try { fs.unlinkSync(fullPath); } catch (e) { console.error("Failed to delete removed image", e); }
+        }
+    }
+
+    await pool.query(
+        `DELETE FROM story_images WHERE story_id = $1 AND image_id != ALL($2::bigint[])`,
+        [storyId, imagesToKeep]
+    );
+
+    // Add new images
+    if (req.files && req.files.length > 0) {
+        const lastOrderResult = await pool.query(`SELECT MAX(order_index) FROM story_images WHERE story_id = $1`, [storyId]);
+        let nextOrder = (lastOrderResult.rows[0].max || 0) + 1;
+        
+        for (const file of req.files) {
+            const imagePath = `/uploads/stories/${file.filename}`;
+            await pool.query(
+                `INSERT INTO story_images (story_id, image_file, order_index) VALUES ($1, $2, $3)`,
+                [storyId, imagePath, nextOrder++]
+            );
+        }
+    }
 
     if (req.app.locals.logAudit) {
       await req.app.locals.logAudit({
@@ -293,21 +339,18 @@ router.delete("/delete/:id", async (req, res) => {
   const storyId = req.params.id;
 
   try {
-    const checkResult = await pool.query(
-      "SELECT image_file FROM stories WHERE story_id = $1",
+    const imagesResult = await pool.query(
+      "SELECT image_file FROM story_images WHERE story_id = $1",
       [storyId]
     );
 
-    if (checkResult.rows.length === 0) {
-      return res.status(404).json({ message: "Story not found" });
-    }
-
-    const fileUrl = checkResult.rows[0].image_file;
-    if (fileUrl) {
-      const relativePath = fileUrl.startsWith('/') ? fileUrl.substring(1) : fileUrl;
-      const fullPath = path.join(__dirname, relativePath);
-      if (fs.existsSync(fullPath)) {
-        try { fs.unlinkSync(fullPath); } catch (e) { console.error("Failed to delete file", e); }
+    if (imagesResult.rows.length > 0) {
+      for (const img of imagesResult.rows) {
+        const relativePath = img.image_file.startsWith('/') ? img.image_file.substring(1) : img.image_file;
+        const fullPath = path.join(__dirname, relativePath);
+        if (fs.existsSync(fullPath)) {
+          try { fs.unlinkSync(fullPath); } catch (e) { console.error("Failed to delete file", e); }
+        }
       }
     }
 

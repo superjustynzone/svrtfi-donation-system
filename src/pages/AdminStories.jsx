@@ -21,18 +21,22 @@ export default function AdminStories() {
     const [isLoading, setIsLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingStory, setEditingStory] = useState(null);
-    const [selectedImage, setSelectedImage] = useState(null);
-    const [imagePreviewUrl, setImagePreviewUrl] = useState('');
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [storyToDelete, setStoryToDelete] = useState(null);
+    const [selectedImages, setSelectedImages] = useState([]);
+    const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
+    const [existingImages, setExistingImages] = useState([]);
+    const [keepExistingImages, setKeepExistingImages] = useState([]);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [activeTab, setActiveTab] = useState('draft');
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState('draft'); // 'draft' or 'publish'
+    const [sortBy, setSortBy] = useState('newest');
     const [showViewModal, setShowViewModal] = useState(false);
     const [viewingStory, setViewingStory] = useState(null);
-    const [sortBy, setSortBy] = useState('newest');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [storyToDelete, setStoryToDelete] = useState(null);
 
     const [formData, setFormData] = useState({
         title: '',
+        subtitle: '',
         foundation_id: '',
         content: '',
         tags: '',
@@ -108,11 +112,21 @@ export default function AdminStories() {
     };
 
     const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setSelectedImage(file);
-            setImagePreviewUrl(URL.createObjectURL(file));
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            setSelectedImages(prev => [...prev, ...files]);
+            const newUrls = files.map(file => URL.createObjectURL(file));
+            setImagePreviewUrls(prev => [...prev, ...newUrls]);
         }
+    };
+
+    const removeNewImage = (index) => {
+        setSelectedImages(prev => prev.filter((_, i) => i !== index));
+        setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const removeExistingImage = (imageId) => {
+        setKeepExistingImages(prev => prev.filter(id => id !== imageId));
     };
 
     const handleSubmit = async (e) => {
@@ -140,9 +154,14 @@ export default function AdminStories() {
             Object.keys(formData).forEach(key => {
                 body.append(key, formData[key]);
             });
-            if (selectedImage) {
-                body.append('image', selectedImage);
-            }
+            
+            selectedImages.forEach(image => {
+                body.append('images', image);
+            });
+
+            keepExistingImages.forEach(id => {
+                body.append('keepExistingImages', id);
+            });
 
             // Add userId for audit logging
             const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -200,6 +219,7 @@ export default function AdminStories() {
         setEditingStory(story);
         setFormData({
             title: story.title,
+            subtitle: story.subtitle || '',
             foundation_id: story.foundation_id || '',
             content: story.content || '',
             tags: story.tags || '',
@@ -207,7 +227,11 @@ export default function AdminStories() {
             is_published: story.is_published || false
         });
 
-        setImagePreviewUrl(story.image_file ? `http://localhost:5000${story.image_file}` : '');
+        const images = story.images || [];
+        setExistingImages(images);
+        setKeepExistingImages(images.map(img => img.image_id));
+        setSelectedImages([]);
+        setImagePreviewUrls([]);
         setShowForm(true);
         setTimeout(() => {
             document.getElementById('story-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -250,14 +274,17 @@ export default function AdminStories() {
     const resetForm = () => {
         setFormData({
             title: '',
+            subtitle: '',
             foundation_id: '',
             content: '',
             tags: '',
             author: '',
             is_published: false
         });
-        setSelectedImage(null);
-        setImagePreviewUrl('');
+        setSelectedImages([]);
+        setImagePreviewUrls([]);
+        setExistingImages([]);
+        setKeepExistingImages([]);
         setEditingStory(null);
         setShowForm(false);
     };
@@ -343,6 +370,14 @@ export default function AdminStories() {
                                             placeholder="Enter story title"
                                         />
                                     </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Subtitle</label>
+                                        <input
+                                            type="text" name="subtitle" value={formData.subtitle} onChange={handleChange}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
+                                            placeholder="Enter a brief subtitle or summary"
+                                        />
+                                    </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Foundation *</label>
                                         <select
@@ -386,18 +421,44 @@ export default function AdminStories() {
 
                                 {/* Story Image */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Main Cover Image</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Story Images (Carousel)</label>
                                     <div className="flex flex-col gap-4">
                                         {/* Image Previews */}
                                         <div className="flex flex-wrap gap-4">
-                                            {imagePreviewUrl ? (
-                                                <div className="h-48 w-full max-w-sm rounded-lg border-2 border-gray-200 overflow-hidden relative shadow-sm">
-                                                    <img src={imagePreviewUrl} alt={`Preview`} className="h-full w-full object-cover" />
+                                            {/* Existing Images */}
+                                            {existingImages.filter(img => keepExistingImages.includes(img.image_id)).map((img) => (
+                                                <div key={img.image_id} className="h-40 w-40 rounded-lg border-2 border-gray-200 overflow-hidden relative shadow-sm group">
+                                                    <img src={`http://localhost:5000${img.image_file}`} alt="Existing" className="h-full w-full object-cover" />
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => removeExistingImage(img.image_id)}
+                                                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <div className="absolute bottom-0 inset-x-0 bg-black/40 text-white text-[10px] py-0.5 text-center">Existing</div>
                                                 </div>
-                                            ) : (
-                                                <div className="h-48 w-full max-w-sm rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-gray-50">
-                                                    <Upload className="w-10 h-10 text-gray-400 mb-2" />
-                                                    <p className="text-sm text-gray-400">No image</p>
+                                            ))}
+
+                                            {/* New Image Previews */}
+                                            {imagePreviewUrls.map((url, index) => (
+                                                <div key={index} className="h-40 w-40 rounded-lg border-2 border-[#63A6B2] overflow-hidden relative shadow-sm group">
+                                                    <img src={url} alt="New Preview" className="h-full w-full object-cover" />
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => removeNewImage(index)}
+                                                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <div className="absolute bottom-0 inset-x-0 bg-[#63A6B2]/80 text-white text-[10px] py-0.5 text-center">New</div>
+                                                </div>
+                                            ))}
+
+                                            {(keepExistingImages.length + selectedImages.length) === 0 && (
+                                                <div className="h-40 w-40 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-gray-50">
+                                                    <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
+                                                    <p className="text-[10px] text-gray-400 text-center px-2">No images selected</p>
                                                 </div>
                                             )}
                                         </div>
@@ -405,10 +466,10 @@ export default function AdminStories() {
                                         <label className="cursor-pointer max-w-sm w-full block">
                                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-[#63A6B2] transition text-center bg-gray-50/50">
                                                 <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                                                <p className="text-sm font-medium text-gray-700">Click to upload image</p>
-                                                <p className="text-xs text-gray-500 mt-1">PNG, JPG or WEBP up to 5MB</p>
+                                                <p className="text-sm font-medium text-gray-700">Click to add images</p>
+                                                <p className="text-xs text-gray-500 mt-1">Single or multiple files allowed</p>
                                             </div>
-                                            <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                            <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" multiple />
                                         </label>
                                     </div>
                                 </div>
@@ -535,7 +596,7 @@ export default function AdminStories() {
                                     story={story}
                                     onEdit={handleEdit}
                                     onDelete={handleDelete}
-                                    onView={(story) => { setViewingStory(story); setShowViewModal(true); }}
+                                    onView={(story) => { setViewingStory(story); setShowViewModal(true); setCurrentImageIndex(0); }}
                                     onToggleStatus={handleToggleStatus}
                                     formatDate={formatDate}
                                 />
@@ -548,14 +609,50 @@ export default function AdminStories() {
             {/* View Story Modal */}
             {showViewModal && viewingStory && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-                        {/* Story Image */}
-                        {viewingStory.image_file && (
-                            <div className="h-64 w-full overflow-hidden rounded-t-xl">
-                                <img src={`http://localhost:5000${viewingStory.image_file}`} alt={viewingStory.title} className="w-full h-full object-cover" />
-                            </div>
-                        )}
-                        <div className="p-6">
+                    <div className="bg-white rounded-xl max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+                        {/* Story Carousel */}
+                        <div className="relative h-72 w-full bg-gray-900 group">
+                            {viewingStory.images && viewingStory.images.length > 0 ? (
+                                <>
+                                    <img 
+                                        src={`http://localhost:5000${viewingStory.images[currentImageIndex].image_file}`} 
+                                        alt={viewingStory.title} 
+                                        className="w-full h-full object-contain" 
+                                    />
+                                    {viewingStory.images.length > 1 && (
+                                        <>
+                                            <button 
+                                                onClick={() => setCurrentImageIndex(prev => (prev - 1 + viewingStory.images.length) % viewingStory.images.length)}
+                                                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <ChevronDown className="w-6 h-6 rotate-90" />
+                                            </button>
+                                            <button 
+                                                onClick={() => setCurrentImageIndex(prev => (prev + 1) % viewingStory.images.length)}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <ChevronDown className="w-6 h-6 -rotate-90" />
+                                            </button>
+                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                                                {viewingStory.images.map((_, idx) => (
+                                                    <div 
+                                                        key={idx} 
+                                                        className={`h-1.5 rounded-full transition-all ${idx === currentImageIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`} 
+                                                    />
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center text-white/30">
+                                    <ImageIcon className="w-16 h-16 mb-2" />
+                                    <p className="text-sm">No images uploaded</p>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto flex-1">
                             {/* Header */}
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex-1 min-w-0">
@@ -567,20 +664,31 @@ export default function AdminStories() {
                                         )}
                                     </div>
                                     <h3 className="text-2xl font-bold text-gray-900">{viewingStory.title}</h3>
-                                    <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
-                                        <MapPin className="w-4 h-4 flex-shrink-0" />
-                                        <span className="font-semibold text-[#63A6B2]">{viewingStory.foundation_name || 'No foundation'}</span>
-                                        {viewingStory.author && (
-                                            <>
-                                                <span>•</span>
-                                                <span>By {viewingStory.author}</span>
-                                            </>
-                                        )}
-                                        <span>•</span>
-                                        <span>{formatDate(viewingStory.created_at)}</span>
+                                    {viewingStory.subtitle && (
+                                        <p className="text-lg text-[#63A6B2] font-semibold mt-1">{viewingStory.subtitle}</p>
+                                    )}
+                                    <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-gray-100">
+                                        <div className="flex items-center gap-2 text-sm text-[#63A6B2] font-semibold">
+                                            <MapPin className="w-4 h-4 flex-shrink-0" />
+                                            <span>{viewingStory.foundation_name || 'No foundation'}</span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                                            <div className="flex items-center gap-1.5">
+                                                <Calendar className="w-4 h-4" />
+                                                <span className="font-medium text-gray-400 uppercase text-[10px] tracking-wider mr-1">Published</span>
+                                                <span className="font-semibold text-gray-700">{formatDate(viewingStory.created_at)}</span>
+                                            </div>
+                                            {viewingStory.author && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <UserCog className="w-4 h-4 text-[#63A6B2]" />
+                                                    <span className="font-medium text-gray-400 uppercase text-[10px] tracking-wider mr-1">Author</span>
+                                                    <span className="font-semibold text-gray-700">{viewingStory.author}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                                <button onClick={() => { setShowViewModal(false); setViewingStory(null); }} className="text-gray-400 hover:text-gray-600 transition flex-shrink-0 ml-4 bg-gray-100 p-2 rounded-full">
+                                <button onClick={() => { setShowViewModal(false); setViewingStory(null); setCurrentImageIndex(0); }} className="text-gray-400 hover:text-gray-600 transition flex-shrink-0 ml-4 bg-gray-100 p-2 rounded-full">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
@@ -606,7 +714,7 @@ export default function AdminStories() {
                             {/* Close Button */}
                             <div className="flex justify-end border-t border-gray-100 pt-4">
                                 <button
-                                    onClick={() => { setShowViewModal(false); setViewingStory(null); }}
+                                    onClick={() => { setShowViewModal(false); setViewingStory(null); setCurrentImageIndex(0); }}
                                     className="px-6 py-2.5 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition"
                                 >
                                     Close Reading
@@ -679,9 +787,9 @@ function StoryCard({ story, onEdit, onDelete, onView, onToggleStatus, formatDate
         >
             {/* Image Section */}
             <div className="relative h-48 bg-gradient-to-br from-[#63A6B2] to-[#4d8b96] overflow-hidden">
-                {story.image_file ? (
+                {story.images && story.images.length > 0 ? (
                     <img
-                        src={`http://localhost:5000${story.image_file}`}
+                        src={`http://localhost:5000${story.images[0].image_file}`}
                         alt={story.title}
                         className={`w-full h-full object-cover ${isDraft ? 'opacity-80' : ''}`}
                     />
@@ -705,6 +813,14 @@ function StoryCard({ story, onEdit, onDelete, onView, onToggleStatus, formatDate
                         </span>
                     )}
                 </div>
+
+                {/* Multiple Images Indicator */}
+                {story.images && story.images.length > 1 && (
+                    <div className="absolute bottom-3 right-3 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-bold backdrop-blur-sm flex items-center gap-1">
+                        <ImageIcon className="w-3 h-3" />
+                        {story.images.length}
+                    </div>
+                )}
 
                 {/* More Menu */}
                 <div className="absolute top-3 right-3">
@@ -755,7 +871,10 @@ function StoryCard({ story, onEdit, onDelete, onView, onToggleStatus, formatDate
                     <span className="truncate max-w-[200px]">{story.foundation_name || 'No foundation'}</span>
                 </div>
                 
-                <h3 className="font-bold text-gray-900 text-lg mb-2 line-clamp-2 leading-tight">{story.title}</h3>
+                <h3 className="font-bold text-gray-900 text-lg mb-1 line-clamp-2 leading-tight">{story.title}</h3>
+                {story.subtitle && (
+                    <p className="text-sm font-semibold text-[#63A6B2] mb-2 line-clamp-1">{story.subtitle}</p>
+                )}
 
                 {story.content && (
                     <div className="prose prose-sm max-w-none text-gray-500 mb-4 line-clamp-2 overflow-hidden ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: story.content }} />
