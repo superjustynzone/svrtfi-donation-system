@@ -29,9 +29,9 @@ const getAppSettings = () => {
 // Role-based permissions configuration
 const rolePermissions = {
     admin: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'stories', 'reports', 'users', 'settings', 'audit', 'mailing', 'profile'],
-    finance: ['dashboard', 'donors', 'donations', 'transactions', 'reports', 'profile'],
-    encoder: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'stories', 'reports', 'profile'],
-    auditor: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'stories', 'reports', 'audit', 'profile'],
+    finance: ['dashboard', 'donors', 'donations', 'transactions', 'reports', 'mailing', 'profile'],
+    encoder: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'stories', 'reports', 'mailing', 'profile'],
+    auditor: ['dashboard', 'donors', 'donations', 'transactions', 'campaigns', 'foundations', 'stories', 'reports', 'audit', 'mailing', 'profile'],
     viewer: [] // Blocked from admin pages
 };
 

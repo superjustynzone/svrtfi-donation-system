@@ -47,7 +47,7 @@ const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp|csv/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const isCSV = path.extname(file.originalname).toLowerCase() === '.csv';
-  
+
   if (isCSV || extname) {
     return cb(null, true);
   } else {
@@ -115,7 +115,7 @@ app.get("/api/admin/subscribers", async (req, res) => {
 app.post("/api/admin/subscribers", async (req, res) => {
   console.log("📬 Mailing API Hit: POST /api/admin/subscribers", req.body);
   const { email, first_name, last_name, newsletter } = req.body;
-  
+
   if (!email) {
     return res.status(400).json({ message: "Email is required" });
   }
@@ -191,7 +191,7 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
     const filePath = req.file.path;
     const fileContent = fs.readFileSync(filePath, "utf8");
     const rows = fileContent.split(/\r?\n/).filter(row => row.trim() !== "");
-    
+
     if (rows.length < 2) {
       return res.status(400).json({ message: "CSV file is empty or missing headers" });
     }
@@ -699,7 +699,7 @@ const initDB = async () => {
           subscribed_at TIMESTAMP DEFAULT NOW()
         );
       `);
-      
+
       // Ensure existing tables see the new columns if necessary
       await pool.query(`ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS first_name VARCHAR(100)`);
       await pool.query(`ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS last_name VARCHAR(100)`);
@@ -956,7 +956,7 @@ app.delete("/api/admin/thank-you-letters/:id", async (req, res) => {
 // Bulk Send Emails
 app.post("/api/admin/bulk-send-emails", async (req, res) => {
   const { recipients, subject, html } = req.body;
-  
+
   if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
     return res.status(400).json({ message: "No recipients provided" });
   }
