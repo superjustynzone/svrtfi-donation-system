@@ -619,6 +619,20 @@ const initDB = async () => {
       console.error("❌ Error in Audit Logs table:", e.message);
     }
 
+    // 11. Story Categories table
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_categories (
+          category_id BIGSERIAL PRIMARY KEY,
+          name VARCHAR(100) UNIQUE NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
+      console.log("✅ Story Categories table verified");
+    } catch (e) {
+      console.error("❌ Error in Story Categories table:", e.message);
+    }
+
     // 11. Email Campaigns Configuration table
     try {
       await pool.query(`
@@ -792,6 +806,55 @@ try {
 } catch (error) {
   console.error("❌ Error loading Audit routes:", error.message);
 }
+
+// Story Categories CRUD
+app.get("/api/admin/story-categories", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM story_categories ORDER BY name ASC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/story-categories", async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ message: "Category name is required" });
+  try {
+    const result = await pool.query(
+      "INSERT INTO story_categories (name) VALUES ($1) RETURNING *",
+      [name]
+    );
+    res.status(201).json({ message: "Category created", category: result.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ message: "Category already exists" });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/story-categories/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+  try {
+    await pool.query(
+      "UPDATE story_categories SET name = $1 WHERE category_id = $2",
+      [name, id]
+    );
+    res.json({ message: "Category updated" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/admin/story-categories/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query("DELETE FROM story_categories WHERE category_id = $1", [id]);
+    res.json({ message: "Category deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 try {
   const donationRoutes = require("./DonationBackend");

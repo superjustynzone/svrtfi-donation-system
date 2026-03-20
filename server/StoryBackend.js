@@ -48,7 +48,6 @@ router.post("/create", upload.array("images", 10), async (req, res) => {
   const {
     foundation_id,
     title,
-    subtitle,
     content,
     tags,
     author,
@@ -64,11 +63,11 @@ router.post("/create", upload.array("images", 10), async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO stories (
-        foundation_id, title, subtitle, content, tags, author, is_published, published_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        foundation_id, title, content, tags, author, is_published, published_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING story_id`,
       [
-        foundation_id, title, subtitle, content, tags, author,
+        foundation_id, title, content, tags, author,
         is_published === 'true' || is_published === true, publishedDate
       ]
     );
@@ -255,7 +254,6 @@ router.put("/update/:id", upload.array("images", 10), async (req, res) => {
   const {
     foundation_id,
     title,
-    subtitle,
     content,
     tags,
     author,
@@ -268,12 +266,12 @@ router.put("/update/:id", upload.array("images", 10), async (req, res) => {
 
     await pool.query(
       `UPDATE stories 
-       SET foundation_id = $1, title = $2, subtitle = $3, content = $4,
-           tags = $5, author = $6, is_published = $7, published_at = $8,
+       SET foundation_id = $1, title = $2, content = $3,
+           tags = $4, author = $5, is_published = $6, published_at = $7,
            updated_at = NOW()
-       WHERE story_id = $9`,
+       WHERE story_id = $8`,
       [
-        foundation_id, title, subtitle, content, tags, author,
+        foundation_id, title, content, tags, author,
         is_published === 'true' || is_published === true, publishedDate,
         storyId
       ]
