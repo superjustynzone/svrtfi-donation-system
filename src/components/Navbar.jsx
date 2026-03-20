@@ -43,6 +43,7 @@ export default function Navbar({ userData = null }) {
         { href: '/about', label: 'About SVRTV' },
         { href: '/campaigns', label: 'Campaigns' },
         { href: '/foundations', label: 'Foundations' },
+        { href: '/stories', label: 'Stories' },
         { href: '/contact', label: 'Contact Us' },
     ];
 

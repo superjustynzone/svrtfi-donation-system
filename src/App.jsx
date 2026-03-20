@@ -14,6 +14,8 @@ import PaymentGateway from './pages/PaymentGateway';
 import DonationConfirmation from './pages/DonationConfirmation';
 import DonationReceipt from './pages/DonationReceipt';
 import FoundationDetails from './pages/FoundationDetails';
+import Stories from './pages/Stories';
+import StoryDetails from './pages/StoryDetails';
 import PasswordChanged from './pages/PasswordChanged'; // Add this import
 import AdminDashboard from './pages/AdminDashboard';
 import AdminDonors from './pages/AdminDonors';
@@ -77,6 +79,8 @@ function App() {
         <Route path="/donations/:donationId/confirmation" element={<DonationConfirmation />} />
         <Route path="/donations/:donationId/receipt" element={<DonationReceipt />} />
         <Route path="/foundations/:id" element={<FoundationDetails />} />
+        <Route path="/stories" element={<Stories />} />
+        <Route path="/stories/:id" element={<StoryDetails />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/test" element={<PasswordChanged />} />
 

@@ -196,3 +196,16 @@ input[type="checkbox"] {
   content: none !important;
   display: none !important;
 }
+
+/* Text alignment overrides for Tailwind Typography */
+.prose.ql-editor .ql-align-center {
+  text-align: center !important;
+}
+
+.prose.ql-editor .ql-align-right {
+  text-align: right !important;
+}
+
+.prose.ql-editor .ql-align-justify {
+  text-align: justify !important;
+}

@@ -1018,8 +1018,8 @@ export default function Profile() {
                                                                         className="w-4 h-4 rounded border-gray-300 text-[#63A6B2] focus:ring-[#63A6B2] cursor-pointer" 
                                                                         id={`remind-${donation.donation_id}`}
                                                                     />
-                                                                    <label htmlFor={`remind-${donation.donation_id}`} className="text-[10px] text-gray-500 font-medium leading-tight cursor-pointer">
-                                                                        Do you want to be reminded<br/>for donation deadline?
+                                                                    <label htmlFor={`remind-${donation.donation_id}`} className="text-sm text-gray-700 font-semibold leading-tight cursor-pointer">
+                                                                        Donation Deadline
                                                                     </label>
                                                                 </div>
                                                             </td>

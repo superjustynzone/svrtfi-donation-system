@@ -13,6 +13,28 @@ import AdminHeader from '../components/AdminHeader';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
+// Custom Quill Toolbar Modules
+const quillModules = {
+    toolbar: [
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'align': [] }], // alignment: left, center, right, justify
+        [{ 'color': [] }, { 'background': [] }],
+        ['link', 'image', 'video'],
+        ['clean']
+    ]
+};
+
+const quillFormats = [
+    'header',
+    'bold', 'italic', 'underline', 'strike',
+    'list', 'bullet',
+    'align',
+    'color', 'background',
+    'link', 'image', 'video'
+];
+
 export default function AdminStories() {
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -34,13 +56,23 @@ export default function AdminStories() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [storyToDelete, setStoryToDelete] = useState(null);
 
+    const getLoggedUserName = () => {
+        try {
+            const u = JSON.parse(localStorage.getItem('user') || '{}');
+            const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ');
+            return fullName || u.email || 'System User';
+        } catch {
+            return 'System User';
+        }
+    };
+    const defaultAuthor = getLoggedUserName();
+
     const [formData, setFormData] = useState({
         title: '',
-        subtitle: '',
         foundation_id: '',
         content: '',
         tags: '',
-        author: '',
+        author: defaultAuthor,
         is_published: false
     });
 
@@ -219,11 +251,10 @@ export default function AdminStories() {
         setEditingStory(story);
         setFormData({
             title: story.title,
-            subtitle: story.subtitle || '',
             foundation_id: story.foundation_id || '',
             content: story.content || '',
             tags: story.tags || '',
-            author: story.author || '',
+            author: story.author || defaultAuthor,
             is_published: story.is_published || false
         });
 
@@ -274,11 +305,10 @@ export default function AdminStories() {
     const resetForm = () => {
         setFormData({
             title: '',
-            subtitle: '',
             foundation_id: '',
             content: '',
             tags: '',
-            author: '',
+            author: defaultAuthor,
             is_published: false
         });
         setSelectedImages([]);
@@ -370,14 +400,6 @@ export default function AdminStories() {
                                             placeholder="Enter story title"
                                         />
                                     </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Subtitle</label>
-                                        <input
-                                            type="text" name="subtitle" value={formData.subtitle} onChange={handleChange}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                            placeholder="Enter a brief subtitle or summary"
-                                        />
-                                    </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Foundation *</label>
                                         <select
@@ -393,30 +415,46 @@ export default function AdminStories() {
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Author</label>
                                         <input
-                                            type="text" name="author" value={formData.author} onChange={handleChange}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                            placeholder="Leave blank for no author"
+                                            type="text" 
+                                            value={defaultAuthor} 
+                                            readOnly
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
                                         />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Tags (comma separated)</label>
-                                        <input
-                                            type="text" name="tags" value={formData.tags} onChange={handleChange}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20"
-                                            placeholder="e.g. outreach, education, scholarship"
-                                        />
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Tag Category</label>
+                                        <select
+                                            name="tags" value={formData.tags} onChange={handleChange}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 bg-white"
+                                        >
+                                            <option value="">Select a tag...</option>
+                                            <option value="Outreach">Outreach</option>
+                                            <option value="Education">Education</option>
+                                            <option value="Scholarship">Scholarship</option>
+                                            <option value="Health">Health</option>
+                                            <option value="Environment">Environment</option>
+                                            <option value="Community">Community</option>
+                                            <option value="Disaster Relief">Disaster Relief</option>
+                                            <option value="Livelihood">Livelihood</option>
+                                            <option value="Youth Development">Youth Development</option>
+                                            <option value="General">General</option>
+                                        </select>
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Content</label>
-                                    <ReactQuill
-                                        theme="snow"
-                                        value={formData.content}
-                                        onChange={(value) => setFormData({ ...formData, content: value })}
-                                        placeholder="Enter full story content"
-                                        style={{ borderRadius: '0.5rem', overflow: 'hidden' }}
-                                    />
+                                    <div className="bg-white rounded-lg border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:border-[#63A6B2] focus-within:ring-[#63A6B2]/20 transition-all">
+                                        <ReactQuill
+                                            theme="snow"
+                                            value={formData.content}
+                                            onChange={(value) => setFormData({ ...formData, content: value })}
+                                            modules={quillModules}
+                                            formats={quillFormats}
+                                            placeholder="Enter full story content"
+                                            className="h-64 mb-12 custom-quill" // Height requires custom-quill handling or padding
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Story Image */}
@@ -589,18 +627,110 @@ export default function AdminStories() {
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredStories.map((story) => (
-                                <StoryCard
-                                    key={story.story_id}
-                                    story={story}
-                                    onEdit={handleEdit}
-                                    onDelete={handleDelete}
-                                    onView={(story) => { setViewingStory(story); setShowViewModal(true); setCurrentImageIndex(0); }}
-                                    onToggleStatus={handleToggleStatus}
-                                    formatDate={formatDate}
-                                />
-                            ))}
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse min-w-[800px]">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                                            <th className="px-6 py-4">Story Title</th>
+                                            <th className="px-6 py-4">Foundation</th>
+                                            <th className="px-6 py-4">Author</th>
+                                            <th className="px-6 py-4">Images</th>
+                                            <th className="px-6 py-4">Date</th>
+                                            <th className="px-6 py-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {filteredStories.map((story) => {
+                                            const isDraft = !story.is_published;
+                                            return (
+                                                <tr key={story.story_id} className="hover:bg-gray-50/50 transition-colors group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-4">
+                                                            {/* Image Preview */}
+                                                            <div className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                                                                {story.images && story.images.length > 0 ? (
+                                                                    <img 
+                                                                        src={`http://localhost:5000${story.images[0].image_file}`} 
+                                                                        alt="Preview" 
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center">
+                                                                        <ImageIcon className="w-5 h-5 text-gray-400" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-sm font-bold text-gray-900 truncate max-w-[200px] xl:max-w-[300px]">{story.title}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#63A6B2]/10 text-[#63A6B2]">
+                                                            <MapPin className="w-3 h-3" />
+                                                            <span className="truncate max-w-[150px]">{story.foundation_name || 'None'}</span>
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-sm text-gray-600 font-medium">
+                                                            {story.author || <span className="text-gray-400 italic">Anonymous</span>}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                                                            <ImageIcon className="w-4 h-4 text-gray-400" />
+                                                            {story.images?.length || 0}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-sm text-gray-600">{formatDate(story.created_at)}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button 
+                                                                onClick={() => handleToggleStatus(story.story_id, story.is_published)}
+                                                                className={`px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1.5
+                                                                    ${isDraft 
+                                                                        ? 'bg-green-50 text-green-700 hover:bg-green-100' 
+                                                                        : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+                                                                title={isDraft ? "Publish" : "Move to Draft"}
+                                                            >
+                                                                {isDraft ? <Send className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                                                                <span className="hidden sm:inline">{isDraft ? 'Publish' : 'Draft'}</span>
+                                                            </button>
+                                                            
+                                                            <div className="w-px h-5 bg-gray-200 mx-1"></div>
+                                                            
+                                                            <button
+                                                                onClick={() => { setViewingStory(story); setShowViewModal(true); setCurrentImageIndex(0); }}
+                                                                className="p-1.5 text-gray-400 hover:text-[#63A6B2] transition tooltip"
+                                                                title="View"
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleEdit(story)}
+                                                                className="p-1.5 text-gray-400 hover:text-blue-500 transition tooltip"
+                                                                title="Edit"
+                                                            >
+                                                                <Edit className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDelete(story.story_id)}
+                                                                className="p-1.5 text-gray-400 hover:text-red-500 transition tooltip"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -664,9 +794,6 @@ export default function AdminStories() {
                                         )}
                                     </div>
                                     <h3 className="text-2xl font-bold text-gray-900">{viewingStory.title}</h3>
-                                    {viewingStory.subtitle && (
-                                        <p className="text-lg text-[#63A6B2] font-semibold mt-1">{viewingStory.subtitle}</p>
-                                    )}
                                     <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-gray-100">
                                         <div className="flex items-center gap-2 text-sm text-[#63A6B2] font-semibold">
                                             <MapPin className="w-4 h-4 flex-shrink-0" />
