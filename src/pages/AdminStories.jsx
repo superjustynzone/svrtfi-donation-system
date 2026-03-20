@@ -40,7 +40,11 @@ export default function AdminStories() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [stories, setStories] = useState([]);
     const [foundations, setFoundations] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isManagingCategories, setIsManagingCategories] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [editingCategory, setEditingCategory] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [editingStory, setEditingStory] = useState(null);
     const [selectedImages, setSelectedImages] = useState([]);
@@ -79,6 +83,7 @@ export default function AdminStories() {
     useEffect(() => {
         fetchStories();
         fetchFoundations();
+        fetchStoryCategories();
     }, []);
 
     // Separate stories by status
@@ -105,7 +110,7 @@ export default function AdminStories() {
 
     const fetchStories = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/stories/all');
+            const response = await fetch('http://127.0.0.1:5000/api/stories/all');
             const data = await response.json();
             if (Array.isArray(data)) {
                 setStories(data);
@@ -121,7 +126,7 @@ export default function AdminStories() {
 
     const fetchFoundations = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/foundations/all');
+            const response = await fetch('http://127.0.0.1:5000/api/foundations/all');
             const data = await response.json();
             if (Array.isArray(data)) {
                 setFoundations(data);
@@ -133,6 +138,67 @@ export default function AdminStories() {
             toast.error('Failed to load foundations');
             setFoundations([]);
         }
+    };
+
+    const fetchStoryCategories = async () => {
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/admin/story-categories');
+            const data = await response.json();
+            if (Array.isArray(data)) setCategories(data);
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+        }
+    };
+
+    const handleAddCategory = async () => {
+        if (!newCategoryName.trim()) return;
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/admin/story-categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newCategoryName })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                toast.success('Category added');
+                setNewCategoryName('');
+                fetchStoryCategories();
+            } else {
+                toast.error(data.message || 'Failed to add');
+            }
+        } catch (error) {
+            toast.error('Error adding category');
+        }
+    };
+
+    const handleUpdateCategory = async (id) => {
+        if (!newCategoryName.trim()) return;
+        try {
+            const response = await fetch(`http://127.0.0.1:5000/api/admin/story-categories/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newCategoryName })
+            });
+            if (response.ok) {
+                toast.success('Category updated');
+                setEditingCategory(null);
+                setNewCategoryName('');
+                fetchStoryCategories();
+            }
+        } catch (error) { toast.error('Error updating'); }
+    };
+
+    const handleDeleteCategory = async (id) => {
+        if (!confirm('Are you sure? This will remove the category option.')) return;
+        try {
+            const response = await fetch(`http://127.0.0.1:5000/api/admin/story-categories/${id}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                toast.success('Category deleted');
+                fetchStoryCategories();
+            }
+        } catch (error) { toast.error('Error deleting'); }
     };
 
     const handleChange = (e) => {
@@ -159,92 +225,6 @@ export default function AdminStories() {
 
     const removeExistingImage = (imageId) => {
         setKeepExistingImages(prev => prev.filter(id => id !== imageId));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        if (!formData.title.trim()) {
-            toast.error('Story title is required');
-            return;
-        }
-        if (!formData.foundation_id) {
-            toast.error('Please select a foundation');
-            return;
-        }
-
-        try {
-            setIsLoading(true);
-
-            const url = editingStory
-                ? `http://localhost:5000/api/stories/update/${editingStory.story_id}`
-                : 'http://localhost:5000/api/stories/create';
-
-            const method = editingStory ? 'PUT' : 'POST';
-
-            const body = new FormData();
-            Object.keys(formData).forEach(key => {
-                body.append(key, formData[key]);
-            });
-            
-            selectedImages.forEach(image => {
-                body.append('images', image);
-            });
-
-            keepExistingImages.forEach(id => {
-                body.append('keepExistingImages', id);
-            });
-
-            // Add userId for audit logging
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            if (user.user_id) {
-                body.append('userId', user.user_id);
-            }
-
-            const response = await fetch(url, { method, body });
-            const data = await response.json();
-
-            if (response.ok) {
-                toast.success(data.message);
-                fetchStories();
-                resetForm();
-                // Switch to draft tab when creating new
-                if (!editingStory) setActiveTab('draft');
-            } else {
-                toast.error(data.message || 'Operation failed');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            toast.error('Failed to save story');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleToggleStatus = async (storyId, currentStatus) => {
-        const newStatus = !currentStatus;
-        try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const response = await fetch(`http://localhost:5000/api/stories/status/${storyId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    is_published: newStatus,
-                    userId: user.user_id || null
-                })
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                toast.success(data.message);
-                fetchStories();
-            } else {
-                toast.error(data.message || 'Failed to update status');
-            }
-        } catch (error) {
-            console.error('Error toggling status:', error);
-            toast.error('Failed to update story status');
-        }
     };
 
     const handleEdit = (story) => {
@@ -274,11 +254,95 @@ export default function AdminStories() {
         setShowDeleteModal(true);
     };
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!formData.title.trim()) {
+            toast.error('Story title is required');
+            return;
+        }
+        if (!formData.foundation_id) {
+            toast.error('Please select a foundation');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+
+            const url = editingStory
+                ? `http://127.0.0.1:5000/api/stories/update/${editingStory.story_id}`
+                : 'http://127.0.0.1:5000/api/stories/create';
+
+            const method = editingStory ? 'PUT' : 'POST';
+
+            const body = new FormData();
+            Object.keys(formData).forEach(key => {
+                body.append(key, formData[key]);
+            });
+            
+            selectedImages.forEach(image => {
+                body.append('images', image);
+            });
+
+            keepExistingImages.forEach(id => {
+                body.append('keepExistingImages', id);
+            });
+
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user.user_id) {
+                body.append('userId', user.user_id);
+            }
+
+            const response = await fetch(url, { method, body });
+            const data = await response.json();
+
+            if (response.ok) {
+                toast.success(data.message);
+                fetchStories();
+                resetForm();
+                if (!editingStory) setActiveTab('draft');
+            } else {
+                toast.error(data.message || 'Operation failed');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            toast.error('Failed to save story');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleToggleStatus = async (storyId, currentStatus) => {
+        const newStatus = !currentStatus;
+        try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const response = await fetch(`http://127.0.0.1:5000/api/stories/status/${storyId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    is_published: newStatus,
+                    userId: user.user_id || null
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                toast.success(data.message);
+                fetchStories();
+            } else {
+                toast.error(data.message || 'Failed to update status');
+            }
+        } catch (error) {
+            console.error('Error toggling status:', error);
+            toast.error('Failed to update story status');
+        }
+    };
+
     const confirmDelete = async () => {
         if (!storyToDelete) return;
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const response = await fetch(`http://localhost:5000/api/stories/delete/${storyToDelete}`, {
+            const response = await fetch(`http://127.0.0.1:5000/api/stories/delete/${storyToDelete}`, {
                 method: 'DELETE',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -345,20 +409,29 @@ export default function AdminStories() {
                     subtitle="Manage foundation success stories"
                     onMobileMenuClick={() => setMobileMenuOpen(true)}
                 >
-                    <button
-                        onClick={() => {
-                            setShowForm(!showForm);
-                            if (!showForm) {
-                                setTimeout(() => {
-                                    document.getElementById('story-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                }, 100);
-                            }
-                        }}
-                        className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#4d8b96] transition flex items-center gap-2 shadow-md"
-                    >
-                        {showForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-                        <span className="hidden sm:inline">{showForm ? 'Cancel' : 'Create Story'}</span>
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setIsManagingCategories(true)}
+                            className="bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-lg font-semibold hover:bg-gray-50 transition flex items-center gap-2 shadow-sm"
+                        >
+                            <Settings className="w-5 h-5 text-gray-400" />
+                            <span className="hidden sm:inline">Categories</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                setShowForm(!showForm);
+                                if (!showForm) {
+                                    setTimeout(() => {
+                                        document.getElementById('story-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }, 100);
+                                }
+                            }}
+                            className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#4d8b96] transition flex items-center gap-2 shadow-md"
+                        >
+                            {showForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                            <span className="hidden sm:inline">{showForm ? 'Cancel' : 'Create Story'}</span>
+                        </button>
+                    </div>
                 </AdminHeader>
 
                 <div className="p-4 lg:p-8">
@@ -422,23 +495,26 @@ export default function AdminStories() {
                                         />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Tag Category</label>
-                                        <select
-                                            name="tags" value={formData.tags} onChange={handleChange}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 bg-white"
-                                        >
-                                            <option value="">Select a tag...</option>
-                                            <option value="Outreach">Outreach</option>
-                                            <option value="Education">Education</option>
-                                            <option value="Scholarship">Scholarship</option>
-                                            <option value="Health">Health</option>
-                                            <option value="Environment">Environment</option>
-                                            <option value="Community">Community</option>
-                                            <option value="Disaster Relief">Disaster Relief</option>
-                                            <option value="Livelihood">Livelihood</option>
-                                            <option value="Youth Development">Youth Development</option>
-                                            <option value="General">General</option>
-                                        </select>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Tag Category *</label>
+                                        <div className="flex gap-2">
+                                            <select
+                                                name="tags" value={formData.tags} onChange={handleChange}
+                                                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 bg-white"
+                                            >
+                                                <option value="">Select a category...</option>
+                                                {categories.map(cat => (
+                                                    <option key={cat.category_id} value={cat.name}>{cat.name}</option>
+                                                ))}
+                                            </select>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setIsManagingCategories(true)}
+                                                className="px-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-400"
+                                                title="Manage Categories"
+                                            >
+                                                <Settings className="w-5 h-5" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -735,6 +811,64 @@ export default function AdminStories() {
                     )}
                 </div>
             </main>
+
+            {/* Category Management Modal */}
+            {isManagingCategories && (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="text-xl font-bold text-gray-900">Manage Story Categories</h3>
+                            <button onClick={() => { setIsManagingCategories(false); setEditingCategory(null); setNewCategoryName(''); }} className="text-gray-400 hover:text-gray-600">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto">
+                            <div className="flex gap-2 mb-6">
+                                <input 
+                                    type="text" 
+                                    value={newCategoryName} 
+                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                    placeholder={editingCategory ? "Edit category name" : "New category name"}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2]"
+                                />
+                                <button 
+                                    onClick={() => editingCategory ? handleUpdateCategory(editingCategory.category_id) : handleAddCategory()}
+                                    className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg font-bold"
+                                >
+                                    {editingCategory ? 'Update' : 'Add'}
+                                </button>
+                            </div>
+
+                            <div className="space-y-2">
+                                {categories.length === 0 ? (
+                                    <p className="text-center text-gray-400 py-4">No categories created yet.</p>
+                                ) : (
+                                    categories.map(cat => (
+                                        <div key={cat.category_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg group">
+                                            <span className="font-medium text-gray-700">{cat.name}</span>
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={() => { setEditingCategory(cat); setNewCategoryName(cat.name); }}
+                                                    className="p-1.5 text-blue-500 hover:bg-white rounded shadow-sm"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDeleteCategory(cat.category_id)}
+                                                    className="p-1.5 text-red-500 hover:bg-white rounded shadow-sm"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* View Story Modal */}
             {showViewModal && viewingStory && (
