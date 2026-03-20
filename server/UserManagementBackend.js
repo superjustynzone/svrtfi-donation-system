@@ -137,12 +137,23 @@ router.post("/users", verifyAdmin, async (req, res) => {
             [userId, email, hashedPassword]
         );
 
-        // Assign role
         await pool.query(
-            `INSERT INTO user_roles(user_id, role_id)
-       VALUES($1, $2)`,
+            "INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)",
             [userId, roleId]
         );
+
+        // Add to subscribers list
+        try {
+            await pool.query(
+                `INSERT INTO subscribers (user_id, email, full_name, receipts_opt_in)
+                 VALUES ($1, $2, $3, TRUE)
+                 ON CONFLICT (email) DO NOTHING`,
+                [userId, email, `${firstName} ${lastName}`]
+            );
+        } catch (subErr) {
+            console.error("Mailing list add error:", subErr.message);
+        }
+
 
         // Log user creation
         await req.app.locals.logAudit({

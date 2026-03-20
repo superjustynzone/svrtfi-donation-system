@@ -9,12 +9,245 @@ const multer = require("multer");
 const fs = require("fs");
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
+
+// Logger for debugging API calls
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 
 // PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+});
+
+// Multer configuration for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, "uploads", "profiles");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now();
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `user_${req.body.userId || 'unknown'}_${uniqueSuffix}${ext}`);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = /jpeg|jpg|png|gif|webp|csv/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const isCSV = path.extname(file.originalname).toLowerCase() === '.csv';
+  
+  if (isCSV || extname) {
+    return cb(null, true);
+  } else {
+    cb(new Error("Allowed files: images and csv"));
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: fileFilter
+});
+
+// ─────────────────────────────────────────────
+// Mailing Routes (Priority)
+// ─────────────────────────────────────────────
+const { sendEmail } = require("./EmailService");
+
+app.post("/api/admin/send-email", async (req, res) => {
+  const { to, subject, message } = req.body;
+  if (!to || !subject || !message) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+  const result = await sendEmail(
+    to,
+    subject,
+    `<div style="font-family: sans-serif; line-height: 1.6; color: #333; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            ${message.replace(/\n/g, '<br>')}
+        </div>`
+  );
+
+  if (result.success) {
+    res.json({ message: "Email sent successfully!" });
+  } else {
+    res.status(500).json({ message: "Failed to send email", error: result.error });
+  }
+});
+
+app.get("/api/admin/email-logs", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM email_logs ORDER BY sent_at DESC LIMIT 100");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/subscribers", async (req, res) => {
+  try {
+    const result = await pool.query(`
+            SELECT s.*, 
+                   COALESCE(s.first_name, u.first_name) as first_name, 
+                   COALESCE(s.last_name, u.last_name) as last_name
+            FROM subscribers s 
+            LEFT JOIN users u ON s.user_id = u.user_id 
+            ORDER BY subscribed_at DESC
+        `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Error fetching subscribers:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/subscribers", async (req, res) => {
+  console.log("📬 Mailing API Hit: POST /api/admin/subscribers", req.body);
+  const { email, first_name, last_name, newsletter } = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  try {
+    const existing = await pool.query("SELECT * FROM subscribers WHERE email = $1", [email]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ message: "Email already exists in mailing list" });
+    }
+
+    const result = await pool.query(
+      "INSERT INTO subscribers (email, first_name, last_name, full_name, newsletters_opt_in) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [email, first_name, last_name, `${first_name} ${last_name}`.trim(), newsletter || false]
+    );
+    res.json({ message: "Subscriber added successfully", subscriber: result.rows[0] });
+  } catch (err) {
+    console.error("❌ Subscriber addition error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/receipt-template", async (req, res) => {
+  const { campaign_id } = req.query;
+  try {
+    if (campaign_id && campaign_id !== 'global') {
+      const result = await pool.query("SELECT receipt_email_subject as title, receipt_email_message as message FROM campaigns WHERE campaign_id = $1", [campaign_id]);
+      if (result.rows.length > 0 && result.rows[0].title) {
+        return res.json(result.rows[0]);
+      }
+    }
+    const result = await pool.query("SELECT * FROM email_campaigns WHERE category = 'receipt_template' LIMIT 1");
+    res.json(result.rows[0] || {});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/receipt-template", async (req, res) => {
+  const { title, message, campaign_id } = req.body;
+  try {
+    if (campaign_id && campaign_id !== 'global') {
+      await pool.query(
+        "UPDATE campaigns SET receipt_email_subject = $1, receipt_email_message = $2 WHERE campaign_id = $3",
+        [title, message, campaign_id]
+      );
+      return res.json({ message: "Campaign-specific receipt template updated successfully!" });
+    }
+    await pool.query(
+      "UPDATE email_campaigns SET title = $1, message = $2, updated_at = NOW() WHERE category = 'receipt_template'",
+      [title, message]
+    );
+    res.json({ message: "Global receipt template updated successfully!" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Download CSV Template for Mailing List
+app.get("/api/admin/subscribers/template", (req, res) => {
+  const csvContent = "first_name,last_name,email\nJohn,Doe,john@example.com\nJane,Smith,jane@example.com";
+  res.setHeader("Content-Type", "text/csv");
+  res.attachment("mailing_list_template.csv");
+  res.status(200).send(csvContent);
+});
+
+// Import CSV for Mailing List
+app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: "No file uploaded" });
+  }
+
+  try {
+    const filePath = req.file.path;
+    const fileContent = fs.readFileSync(filePath, "utf8");
+    const rows = fileContent.split(/\r?\n/).filter(row => row.trim() !== "");
+    
+    if (rows.length < 2) {
+      return res.status(400).json({ message: "CSV file is empty or missing headers" });
+    }
+
+    const headers = rows[0].split(",").map(h => h.trim().toLowerCase());
+    const emailIndex = headers.indexOf("email");
+    const firstNameIndex = headers.indexOf("first_name");
+    const lastNameIndex = headers.indexOf("last_name");
+
+    if (emailIndex === -1) {
+      return res.status(400).json({ message: "CSV must have an 'email' column" });
+    }
+
+    let successCount = 0;
+    let duplicateCount = 0;
+    let errorCount = 0;
+
+    for (let i = 1; i < rows.length; i++) {
+      const columns = rows[i].split(",").map(c => c.trim());
+      const email = columns[emailIndex];
+      const firstName = firstNameIndex !== -1 ? columns[firstNameIndex] : "";
+      const lastName = lastNameIndex !== -1 ? columns[lastNameIndex] : "";
+
+      if (!email || !email.includes("@")) {
+        errorCount++;
+        continue;
+      }
+
+      try {
+        const existing = await pool.query("SELECT email FROM subscribers WHERE email = $1", [email]);
+        if (existing.rows.length === 0) {
+          await pool.query(
+            "INSERT INTO subscribers (email, first_name, last_name, full_name, receipts_opt_in) VALUES ($1, $2, $3, $4, TRUE)",
+            [email, firstName, lastName, `${firstName} ${lastName}`.trim()]
+          );
+          successCount++;
+        } else {
+          duplicateCount++;
+        }
+      } catch (err) {
+        console.error("Row import error:", err);
+        errorCount++;
+      }
+    }
+
+    // Clean up uploaded file
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+    res.json({
+      message: `Import completed: ${successCount} successful, ${duplicateCount} duplicates skipped, ${errorCount} errors skipped.`,
+      stats: { successCount, duplicateCount, errorCount }
+    });
+  } catch (err) {
+    console.error("❌ CSV Import Error:", err);
+    res.status(500).json({ message: "Error parsing CSV file", error: err.message });
+  }
 });
 
 const jwt = require("jsonwebtoken");
@@ -23,8 +256,8 @@ app.get("/api/health", (req, res) => res.json({ status: "ok", time: new Date() }
 
 // CSRF TOKEN ROUTE (Simple signed-token implementation)
 app.get("/api/csrf-token", (req, res) => {
-    const token = jwt.sign({ type: "csrf_v1" }, process.env.JWT_SECRET, { expiresIn: "15m" });
-    res.json({ csrfToken: token });
+  const token = jwt.sign({ type: "csrf_v1" }, process.env.JWT_SECRET, { expiresIn: "15m" });
+  res.json({ csrfToken: token });
 });
 
 
@@ -85,10 +318,10 @@ const initDB = async () => {
           last_login TIMESTAMP
         );
       `);
-      
+
       // Ensure existing tables get the new column dynamically
       await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP`);
-      
+
       console.log("✅ Users table verified");
     } catch (e) {
       console.error("❌ Error in Users table:", e.message);
@@ -400,18 +633,7 @@ const initDB = async () => {
             updated_at TIMESTAMP DEFAULT NOW()
         );
       `);
-      
-      // Dynamic column addition
-      await pool.query(`
-        DO $$ 
-        BEGIN 
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='email_campaigns' AND column_name='associated_campaign_id') THEN
-                ALTER TABLE email_campaigns ADD COLUMN associated_campaign_id BIGINT REFERENCES campaigns(campaign_id) ON DELETE CASCADE;
-            END IF;
-        END $$;
-      `);
 
-      // Seed default receipt template if missing
       const checkTemplate = await pool.query("SELECT * FROM email_campaigns WHERE category = 'receipt_template'");
       if (checkTemplate.rows.length === 0) {
         await pool.query(`
@@ -428,6 +650,67 @@ const initDB = async () => {
     } catch (e) {
       console.error("❌ Error in Email Campaigns table:", e.message);
     }
+
+    // 12. Email Logs table
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS email_logs (
+          log_id SERIAL PRIMARY KEY,
+          recipient_email VARCHAR(255) NOT NULL,
+          subject VARCHAR(255) NOT NULL,
+          message TEXT,
+          status VARCHAR(50) DEFAULT 'success',
+          error_message TEXT,
+          sent_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
+      console.log("✅ Email Logs table verified");
+    } catch (e) {
+      console.error("❌ Error in Email Logs table:", e.message);
+    }
+
+    // 13. Subscribers table
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS subscribers (
+          subscriber_id SERIAL PRIMARY KEY,
+          user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          first_name VARCHAR(100),
+          last_name VARCHAR(100),
+          full_name VARCHAR(255),
+          receipts_opt_in BOOLEAN DEFAULT TRUE,
+          newsletters_opt_in BOOLEAN DEFAULT FALSE,
+          status VARCHAR(50) DEFAULT 'active',
+          subscribed_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
+      
+      // Ensure existing tables see the new columns if necessary
+      await pool.query(`ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS first_name VARCHAR(100)`);
+      await pool.query(`ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS last_name VARCHAR(100)`);
+
+      console.log("✅ Subscribers table verified");
+
+      // Seed subscribers from users if empty
+      const subRes = await pool.query("SELECT COUNT(*) FROM subscribers");
+      if (parseInt(subRes.rows[0].count) === 0) {
+        await pool.query(`
+          INSERT INTO subscribers (user_id, email, full_name, receipts_opt_in, newsletters_opt_in)
+          SELECT u.user_id, a.email, u.first_name || ' ' || u.last_name, TRUE, FALSE
+          FROM users u
+          JOIN auth_users a ON u.user_id = a.user_id
+          ON CONFLICT (email) DO NOTHING
+        `);
+        console.log("✅ Root subscribers list seeded from existing users");
+      }
+    } catch (e) {
+      console.error("❌ Error in Subscribers table:", e.message);
+    }
+
+
+
+
 
     console.log("🌟 Database Initialization Complete!");
   } catch (err) {
@@ -455,42 +738,7 @@ const logAudit = async (data) => {
 app.locals.logAudit = logAudit;
 app.locals.pool = pool;
 
-// Multer configuration for profile image uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, "uploads", "profiles");
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    // Generate unique filename: user_ID_timestamp.extension
-    const uniqueSuffix = Date.now();
-    const ext = path.extname(file.originalname);
-    cb(null, `user_${req.body.userId || 'unknown'}_${uniqueSuffix}${ext}`);
-  }
-});
-
-// File filter to accept only images
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-
-  if (mimetype && extname) {
-    return cb(null, true);
-  } else {
-    cb(new Error("Only image files are allowed (jpeg, jpg, png, gif, webp)"));
-  }
-};
-
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: fileFilter
-});
+// Multer configuration relocated to top
 
 
 // Health check
@@ -578,69 +826,7 @@ try {
   console.error("❌ Error loading Transaction routes:", error.message);
 }
 
-// ─────────────────────────────────────────────
-// Mailing Routes
-// ─────────────────────────────────────────────
-const { sendEmail } = require("./EmailService");
-
-app.post("/api/admin/send-email", async (req, res) => {
-    const { to, subject, message } = req.body;
-    if (!to || !subject || !message) {
-        return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    const result = await sendEmail(
-        to, 
-        subject, 
-        `<div style="font-family: sans-serif; line-height: 1.6; color: #333; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-            ${message.replace(/\n/g, '<br>')}
-        </div>`
-    );
-
-    if (result.success) {
-        res.json({ message: "Email sent successfully!" });
-    } else {
-        res.status(500).json({ message: "Failed to send email", error: result.error });
-    }
-});
-
-// Get Receipt Template (Global or Campaign-specific)
-app.get("/api/admin/receipt-template", async (req, res) => {
-    const { campaign_id } = req.query;
-    try {
-        if (campaign_id && campaign_id !== 'global') {
-            const result = await pool.query("SELECT receipt_email_subject as title, receipt_email_message as message FROM campaigns WHERE campaign_id = $1", [campaign_id]);
-            if (result.rows.length > 0 && result.rows[0].title) {
-                return res.json(result.rows[0]);
-            }
-        }
-        const result = await pool.query("SELECT * FROM email_campaigns WHERE category = 'receipt_template' LIMIT 1");
-        res.json(result.rows[0] || {});
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Update Receipt Template (Global or Campaign-specific)
-app.put("/api/admin/receipt-template", async (req, res) => {
-    const { title, message, campaign_id } = req.body;
-    try {
-        if (campaign_id && campaign_id !== 'global') {
-            await pool.query(
-                "UPDATE campaigns SET receipt_email_subject = $1, receipt_email_message = $2 WHERE campaign_id = $3",
-                [title, message, campaign_id]
-            );
-            return res.json({ message: "Campaign-specific receipt template updated successfully!" });
-        }
-        await pool.query(
-            "UPDATE email_campaigns SET title = $1, message = $2, updated_at = NOW() WHERE category = 'receipt_template'",
-            [title, message]
-        );
-        res.json({ message: "Global receipt template updated successfully!" });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+// Relocated to top
 
 // ─────────────────────────────────────────────
 // Thank You Letters CRUD
@@ -648,85 +834,123 @@ app.put("/api/admin/receipt-template", async (req, res) => {
 
 // Get all Thank You Letters
 app.get("/api/admin/thank-you-letters", async (req, res) => {
-    try {
-        const result = await pool.query(`
+  try {
+    const result = await pool.query(`
             SELECT e.*, c.campaign_name 
             FROM email_campaigns e 
             LEFT JOIN campaigns c ON e.associated_campaign_id = c.campaign_id 
             WHERE e.category = 'thank_you_letter' 
             ORDER BY e.updated_at DESC
         `);
-        res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Create Thank You Letter
 app.post("/api/admin/thank-you-letters", async (req, res) => {
-    const { title, message, status, associated_campaign_id } = req.body;
-    try {
-        const campaignId = (!associated_campaign_id || associated_campaign_id === 'global') ? null : associated_campaign_id;
-        const result = await pool.query(
-            "INSERT INTO email_campaigns (title, message, category, status, associated_campaign_id) VALUES ($1, $2, 'thank_you_letter', $3, $4) RETURNING *",
-            [title, message, status || 'draft', campaignId]
-        );
-        res.json({ message: "Thank You Letter created successfully!", letter: result.rows[0] });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+  const { title, message, status, associated_campaign_id } = req.body;
+  try {
+    const campaignId = (!associated_campaign_id || associated_campaign_id === 'global') ? null : associated_campaign_id;
+    const result = await pool.query(
+      "INSERT INTO email_campaigns (title, message, category, status, associated_campaign_id) VALUES ($1, $2, 'thank_you_letter', $3, $4) RETURNING *",
+      [title, message, status || 'draft', campaignId]
+    );
+    res.json({ message: "Thank You Letter created successfully!", letter: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Update Thank You Letter
 app.put("/api/admin/thank-you-letters/:id", async (req, res) => {
-    const { id } = req.params;
-    const { title, message, status, associated_campaign_id } = req.body;
-    try {
-        const campaignId = (!associated_campaign_id || associated_campaign_id === 'global') ? null : associated_campaign_id;
-        const result = await pool.query(
-            "UPDATE email_campaigns SET title = $1, message = $2, status = $3, associated_campaign_id = $4, updated_at = NOW() WHERE campaign_id = $5 RETURNING *",
-            [title, message, status, campaignId, id]
-        );
-        res.json({ message: "Thank You Letter updated successfully!", letter: result.rows[0] });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+  const { id } = req.params;
+  const { title, message, status, associated_campaign_id } = req.body;
+  try {
+    const campaignId = (!associated_campaign_id || associated_campaign_id === 'global') ? null : associated_campaign_id;
+    const result = await pool.query(
+      "UPDATE email_campaigns SET title = $1, message = $2, status = $3, associated_campaign_id = $4, updated_at = NOW() WHERE campaign_id = $5 RETURNING *",
+      [title, message, status, campaignId, id]
+    );
+    res.json({ message: "Thank You Letter updated successfully!", letter: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Delete Thank You Letter
 app.delete("/api/admin/thank-you-letters/:id", async (req, res) => {
-    const { id } = req.params;
+  const { id } = req.params;
+  try {
+    await pool.query("DELETE FROM email_campaigns WHERE campaign_id = $1", [id]);
+    res.json({ message: "Thank You Letter deleted successfully!" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bulk Send Emails
+app.post("/api/admin/bulk-send-emails", async (req, res) => {
+  const { recipients, subject, html } = req.body;
+  
+  if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+    return res.status(400).json({ message: "No recipients provided" });
+  }
+
+  let successCount = 0;
+  let failCount = 0;
+  const errors = [];
+
+  // Sending in sequence to avoid SMTP limits/spam flags for now, 
+  // though for massive lists a queue would be better.
+  for (const recipient of recipients) {
     try {
-        await pool.query("DELETE FROM email_campaigns WHERE campaign_id = $1", [id]);
-        res.json({ message: "Thank You Letter deleted successfully!" });
+      const emailAddr = typeof recipient === 'string' ? recipient : recipient.email;
+      const result = await sendEmail(emailAddr, subject, html);
+      if (result.success) successCount++;
+      else {
+        failCount++;
+        errors.push({ email: emailAddr, error: result.error });
+      }
     } catch (err) {
-        res.status(500).json({ error: err.message });
+      failCount++;
+      errors.push({ error: err.message });
     }
+  }
+
+  res.json({
+    message: `Mailing completed. ${successCount} sent, ${failCount} failed.`,
+    successCount,
+    failCount,
+    errors
+  });
 });
 
 // Get Donors for Manual Sending
 app.get("/api/admin/mailing-donors", async (req, res) => {
-    const { campaign_id } = req.query;
-    try {
-        let query = `
+
+  const { campaign_id } = req.query;
+  try {
+    let query = `
             SELECT DISTINCT dn.donor_id, dn.first_name, dn.last_name, dn.email
             FROM donors dn
             INNER JOIN donations d ON dn.donor_id = d.donor_id
             WHERE dn.email IS NOT NULL AND dn.email != ''
         `;
-        const params = [];
-        if (campaign_id && campaign_id !== 'global' && campaign_id !== 'null') {
-            query += ` AND d.campaign_id = $1`;
-            params.push(campaign_id);
-        }
-        query += ` ORDER BY dn.first_name`;
-        
-        const result = await pool.query(query, params);
-        res.json(result.rows);
-    } catch (err) {
-        console.error("Mailing donors error:", err);
-        res.status(500).json({ error: err.message });
+    const params = [];
+    if (campaign_id && campaign_id !== 'global' && campaign_id !== 'null') {
+      query += ` AND d.campaign_id = $1`;
+      params.push(campaign_id);
     }
+    query += ` ORDER BY dn.first_name`;
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Mailing donors error:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 
@@ -789,16 +1013,16 @@ const axios = require("axios");
 
 // ReCAPTCHA Verification Helper
 const verifyCaptcha = async (token) => {
-    if (!token) return false;
-    try {
-        const response = await axios.post(
-            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`
-        );
-        return response.data.success;
-    } catch (error) {
-        console.error("reCAPTCHA Verification Error:", error);
-        return false;
-    }
+  if (!token) return false;
+  try {
+    const response = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`
+    );
+    return response.data.success;
+  } catch (error) {
+    console.error("reCAPTCHA Verification Error:", error);
+    return false;
+  }
 };
 
 // REGISTER USER
@@ -808,10 +1032,10 @@ app.post("/api/auth_users/register", async (req, res) => {
   // 1. Verify CSRF
   if (!csrfToken) return res.status(403).json({ message: "Missing CSRF token." });
   try {
-      const decoded = jwt.verify(csrfToken, process.env.JWT_SECRET);
-      if (decoded.type !== "csrf_v1") throw new Error();
+    const decoded = jwt.verify(csrfToken, process.env.JWT_SECRET);
+    if (decoded.type !== "csrf_v1") throw new Error();
   } catch (err) {
-      return res.status(403).json({ message: "Invalid or expired CSRF token." });
+    return res.status(403).json({ message: "Invalid or expired CSRF token." });
   }
 
   // 2. Verify CAPTCHA
@@ -857,9 +1081,20 @@ app.post("/api/auth_users/register", async (req, res) => {
       [userId]
     )
 
-
+    // 5. Add to subscribers mailing list
+    try {
+      await pool.query(
+        `INSERT INTO subscribers (user_id, email, full_name, receipts_opt_in, newsletters_opt_in)
+             VALUES ($1, $2, $3, TRUE, FALSE)
+             ON CONFLICT (email) DO NOTHING`,
+        [userId, email, `${firstName} ${lastName}`]
+      );
+    } catch (subErr) {
+      console.error("Failed to add to subscribers:", subErr.message);
+    }
 
     return res.json({ message: "Registration successful!", userId });
+
 
   } catch (err) {
     console.error(err);
@@ -951,6 +1186,7 @@ app.put("/api/user/profile/:id", async (req, res) => {
 });
 
 // Start server - MUST be at the end after all routes are defined
-app.listen(5000, () => {
-  console.log("Nagana na yah!");
+// Start server - Explicitly listen on 127.0.0.1 to avoid IPv6 confusion
+app.listen(5000, '127.0.0.1', () => {
+  console.log("Nagana na yah! Running on http://127.0.0.1:5000");
 });

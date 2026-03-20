@@ -16,6 +16,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendEmail = async (to, subject, html) => {
+    let result = { success: false };
     try {
         const mailOptions = {
             from: `"SVRTV Donation System" <${process.env.EMAIL_USER}>`,
@@ -26,12 +27,26 @@ const sendEmail = async (to, subject, html) => {
 
         const info = await transporter.sendMail(mailOptions);
         console.log("Email sent: " + info.response);
-        return { success: true, message: "Email sent successfully" };
+        result = { success: true, message: "Email sent successfully" };
     } catch (error) {
         console.error("Email send error:", error);
-        return { success: false, error: error.message };
+        result = { success: false, error: error.message };
     }
+
+    // DB Logging
+    try {
+        await pool.query(
+            "INSERT INTO email_logs (recipient_email, subject, message, status, error_message) VALUES ($1, $2, $3, $4, $5)",
+            [to, subject, html, result.success ? 'success' : 'failed', result.error || null]
+        );
+    } catch (logErr) {
+        console.error("Critical: Failed to log email to DB:", logErr);
+    }
+
+    return result;
 };
+
+
 
 const sendDonationReceipt = async (donationData) => {
     if (!donationData) {
