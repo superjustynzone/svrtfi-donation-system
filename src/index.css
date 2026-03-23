@@ -209,3 +209,11 @@ input[type="checkbox"] {
 .prose.ql-editor .ql-align-justify {
   text-align: justify !important;
 }
+/* Hide reCAPTCHA badge */
+.grecaptcha-badge {
+    visibility: hidden;
+}
+
+.show-captcha .grecaptcha-badge {
+    visibility: visible !important;
+}

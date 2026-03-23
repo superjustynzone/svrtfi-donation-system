@@ -15,6 +15,12 @@ const UserLogin = () => {
 
   useEffect(() => {
     fetchCsrfToken();
+    
+    // Show reCAPTCHA badge only on this page
+    document.body.classList.add('show-captcha');
+    return () => {
+      document.body.classList.remove('show-captcha');
+    };
   }, []);
 
   const fetchCsrfToken = async () => {
@@ -204,6 +210,11 @@ const UserLogin = () => {
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
             </button>
+
+            {/* reCAPTCHA Disclaimer */}
+            <p className="text-[10px] text-gray-400 text-center mt-2 leading-tight">
+              This site is protected by reCAPTCHA and the Google <a href="https://policies.google.com/privacy" className="underline hover:text-gray-600">Privacy Policy</a> and <a href="https://policies.google.com/terms" className="underline hover:text-gray-600">Terms of Service</a> apply.
+            </p>
 
             {/* Divider */}
             <div className="relative">

@@ -186,7 +186,7 @@ export default function AdminSidebar({ activePage, mobileMenuOpen, setMobileMenu
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 py-6 overflow-y-auto">
+            <nav className="flex-1 py-6 overflow-y-hidden">
                 {/* Main Navigation */}
                 {allowedNavItems.length > 0 && (
                     <div className="px-3 space-y-1">
