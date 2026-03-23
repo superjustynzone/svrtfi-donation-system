@@ -23,7 +23,8 @@ const verifyCaptcha = async (token) => {
         const response = await axios.post(
             `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`
         );
-        return response.data.success;
+        // For v3, we check success AND score
+        return response.data.success && (response.data.score === undefined || response.data.score >= 0.5);
     } catch (error) {
         console.error("reCAPTCHA Verification Error:", error);
         return false;

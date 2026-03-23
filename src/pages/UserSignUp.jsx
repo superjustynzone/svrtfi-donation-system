@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import ReCAPTCHA from "react-google-recaptcha/lib/index.js";
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import TermsModal from '@/components/ui/TermsModal';
 import PrivacyModal from '@/components/ui/PrivacyModal';
 
@@ -13,9 +13,8 @@ const UserSignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState(null);
   const [csrfToken, setCsrfToken] = useState('');
-  const captchaRef = useRef(null);
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   useEffect(() => {
     fetchCsrfToken();
@@ -78,18 +77,20 @@ const UserSignUp = () => {
 
   const onSubmit = async (data) => {
     try {
-      if (!captchaToken) {
-        toast.error('Please complete the CAPTCHA verification');
+      if (!executeRecaptcha) {
+        toast.error('ReCAPTCHA is not yet available');
         return;
       }
       setIsLoading(true);
+
+      const token = await executeRecaptcha('signup');
 
       const response = await axios.post('http://localhost:5000/api/auth_users/register', {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
         password: data.password,
-        captchaToken: captchaToken,
+        captchaToken: token,
         csrfToken: csrfToken
       });
 
@@ -101,8 +102,6 @@ const UserSignUp = () => {
 
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
-      if (captchaRef.current) captchaRef.current.reset();
-      setCaptchaToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -378,15 +377,7 @@ const UserSignUp = () => {
               )}
             </div>
 
-            {/* ReCAPTCHA */}
-            <div className="flex justify-center my-3 overflow-hidden rounded-lg">
-                <ReCAPTCHA
-                    ref={captchaRef}
-                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                    onChange={(token) => setCaptchaToken(token)}
-                    onExpired={() => setCaptchaToken(null)}
-                />
-            </div>
+            {/* ReCAPTCHA v3 is invisible */}
 
             {/* Create Account Button */}
             <button

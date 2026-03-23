@@ -341,7 +341,7 @@ router.get("/user/:userId", async (req, res) => {
             `SELECT
               d.*,
               c.campaign_name, c.campaign_type,
-              pt.payment_reference, pt.payment_status,
+              pt.payment_reference, pt.payment_status, pt.receipt_upload,
               dn.first_name, dn.last_name
              FROM donations d
              LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id

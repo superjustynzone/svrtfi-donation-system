@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import { Send, RefreshCw, FileText, CheckCircle, Server, List, History, Settings, Users, ArrowRight, Mail, Search, Clock, ShieldCheck, MailWarning, Eye, X } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 export default function AdminMailing() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -15,7 +17,7 @@ export default function AdminMailing() {
     // Thank You Letters State
     const [thankYouLetters, setThankYouLetters] = useState([]);
     const [isLetterModalOpen, setIsLetterModalOpen] = useState(false);
-    const [letterForm, setLetterForm] = useState({ id: null, title: '', message: '', status: 'active', associated_campaign_id: 'global' });
+    const [letterForm, setLetterForm] = useState({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '' });
     const [isSavingLetter, setIsSavingLetter] = useState(false);
 
     // Send Modal State
@@ -29,7 +31,7 @@ export default function AdminMailing() {
     const [receiptTemplate, setReceiptTemplate] = useState({ title: '', message: '' });
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [campaigns, setCampaigns] = useState([]);
-    const [selectedCampaignId, setSelectedCampaignId] = useState('global');
+    const [selectedCampaignId, setSelectedCampaignId] = useState('');
 
     // Data lists
     const [emailLogs, setEmailLogs] = useState([]);
@@ -42,20 +44,33 @@ export default function AdminMailing() {
 
     // New Subscriber Modal State
     const [isAddSubscriberModalOpen, setIsAddSubscriberModalOpen] = useState(false);
-    const [subscriberForm, setSubscriberForm] = useState({ firstName: '', lastName: '', email: '', newsletter: true });
+    const [subscriberForm, setSubscriberForm] = useState({ firstName: '', lastName: '', email: '' });
     const [isAddingSubscriber, setIsAddingSubscriber] = useState(false);
+    const [manageMenuId, setManageMenuId] = useState(null); // Track which user's manage menu is open
+    const [isSubscriberDeleteModalOpen, setIsSubscriberDeleteModalOpen] = useState(false);
+    const [subscriberToDelete, setSubscriberToDelete] = useState(null);
 
     // CSV Import State
     const [isImporting, setIsImporting] = useState(false);
 
     // SMTP Details State
     const [smtpSettings, setSmtpSettings] = useState({
+        provider: 'Gmail',
         host: 'smtp.gmail.com',
         port: '465',
         user: 'svrtfi@gmail.com',
+        password: '********', // Placeholder for existing password
         encryption: 'SSL/TLS',
         status: 'Connected'
     });
+    const [isSavingSmtp, setIsSavingSmtp] = useState(false);
+
+    const smtpProviders = [
+        { name: 'Gmail', host: 'smtp.gmail.com', port: '465', encryption: 'SSL/TLS' },
+        { name: 'SendGrid', host: 'smtp.sendgrid.net', port: '465', encryption: 'SSL/TLS' },
+        { name: 'Outlook', host: 'smtp.office365.com', port: '587', encryption: 'STARTTLS' },
+        { name: 'Custom', host: '', port: '', encryption: 'SSL/TLS' }
+    ];
 
     useEffect(() => {
         fetchCampaigns();
@@ -63,17 +78,71 @@ export default function AdminMailing() {
     }, []);
 
     useEffect(() => {
-        if (activeTab === 'templates') fetchReceiptTemplate();
-        if (activeTab === 'letters') fetchThankYouLetters();
-        if (activeTab === 'logs') fetchEmailLogs();
-        if (activeTab === 'list') fetchSubscribers();
+        if (tabFetchMap[activeTab]) tabFetchMap[activeTab]();
     }, [activeTab, selectedCampaignId]);
+
+    const tabFetchMap = {
+        'templates': () => fetchReceiptTemplate(),
+        'letters': () => fetchThankYouLetters(),
+        'logs': () => fetchEmailLogs(),
+        'list': () => fetchSubscribers(),
+        'smtp': () => fetchSmtpSettings()
+    };
+
+    const fetchSmtpSettings = async () => {
+        try {
+            const res = await fetch('http://127.0.0.1:5000/api/admin/smtp-settings');
+            const data = await res.json();
+            if (res.ok && data) {
+                setSmtpSettings({
+                    provider: data.provider || 'Gmail',
+                    host: data.host || 'smtp.gmail.com',
+                    port: data.port || '465',
+                    user: data.user_email || '',
+                    password: '********', // Don't show the real password
+                    encryption: data.encryption || 'SSL/TLS',
+                    status: 'Connected'
+                });
+            }
+        } catch (err) { console.error('Error fetching SMTP settings:', err); }
+    };
+
+    const handleSaveSmtpSettings = async () => {
+        setIsSavingSmtp(true);
+        try {
+            const res = await fetch('http://127.0.0.1:5000/api/admin/smtp-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    provider: smtpSettings.provider,
+                    host: smtpSettings.host,
+                    port: parseInt(smtpSettings.port),
+                    user_email: smtpSettings.user,
+                    password: smtpSettings.password,
+                    encryption: smtpSettings.encryption
+                })
+            });
+            if (res.ok) {
+                toast.success('SMTP settings updated successfully!');
+                fetchSmtpSettings(); // Refresh (clears the password field placeholder if it was changed)
+            } else {
+                toast.error('Failed to update SMTP settings.');
+            }
+        } catch (err) { toast.error('Connection error.'); }
+        finally { setIsSavingSmtp(false); }
+    };
+
 
     const fetchCampaigns = async () => {
         try {
             const res = await fetch('http://127.0.0.1:5000/api/campaigns/all');
             const data = await res.json();
-            if (res.ok && Array.isArray(data)) setCampaigns(data);
+            if (res.ok && Array.isArray(data)) {
+                setCampaigns(data);
+                if (data.length > 0 && !selectedCampaignId) {
+                    setSelectedCampaignId(data[0].campaign_id);
+                }
+            }
         } catch (err) { console.error('Error fetching campaigns:', err); }
     };
 
@@ -201,7 +270,7 @@ export default function AdminMailing() {
             const data = await res.json();
             if (res.ok) {
                 setMailingDonors(data);
-                setSelectedDonors(data.map(d => d.email)); // Select all by default
+                setSelectedDonors(data); // Select all by default (full objects)
             }
         } catch (err) { console.error('Error fetching donors:', err); }
     };
@@ -212,14 +281,18 @@ export default function AdminMailing() {
             return;
         }
         setIsSendingBatch(true);
+        const campaign = campaigns.find(c => c.campaign_id === selectedTemplateForSend.associated_campaign_id);
+        const campaignName = campaign ? campaign.campaign_name : 'Our Campaign';
+
         try {
             const res = await fetch('http://127.0.0.1:5000/api/admin/bulk-send-emails', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    recipients: selectedDonors,
+                    recipients: selectedDonors, // Objects with first_name, last_name, email, address
                     subject: selectedTemplateForSend.title,
-                    html: `<div style="font-family: sans-serif; line-height: 1.6;">${selectedTemplateForSend.message.replace(/\n/g, '<br>')}</div>`
+                    html: selectedTemplateForSend.message, // Already HTML from Quill
+                    campaign_name: campaignName
                 })
             });
             const data = await res.json();
@@ -232,6 +305,35 @@ export default function AdminMailing() {
             }
         } catch (err) { toast.error('Bulk sending error.'); }
         finally { setIsSendingBatch(false); }
+    };
+    const handleDeleteSubscriber = async (sub) => {
+        setSubscriberToDelete(sub);
+        setIsSubscriberDeleteModalOpen(true);
+        setManageMenuId(null);
+    };
+
+    const confirmDeleteSubscriber = async () => {
+        if (!subscriberToDelete) return;
+        try {
+            const res = await fetch(`http://127.0.0.1:5000/api/admin/subscribers/${subscriberToDelete.subscriber_id}`, { method: 'DELETE' });
+            if (res.ok) {
+                toast.success('Subscriber removed.');
+                setIsSubscriberDeleteModalOpen(false);
+                setSubscriberToDelete(null);
+                fetchSubscribers();
+            }
+        } catch (err) { toast.error('Error deleting subscriber.'); }
+    };
+
+    const handleToggleReceipts = async (id) => {
+        try {
+            const res = await fetch(`http://127.0.0.1:5000/api/admin/subscribers/${id}/toggle-receipts`, { method: 'PATCH' });
+            if (res.ok) {
+                toast.success('Preference updated.');
+                fetchSubscribers();
+                setManageMenuId(null);
+            }
+        } catch (err) { toast.error('Error updating preference.'); }
     };
 
 
@@ -249,14 +351,13 @@ export default function AdminMailing() {
                 body: JSON.stringify({
                     email: subscriberForm.email,
                     first_name: subscriberForm.firstName,
-                    last_name: subscriberForm.lastName,
-                    newsletter: subscriberForm.newsletter
+                    last_name: subscriberForm.lastName
                 })
             });
             if (res.ok) {
                 toast.success('Subscriber added successfully!');
                 setIsAddSubscriberModalOpen(false);
-                setSubscriberForm({ firstName: '', lastName: '', email: '', newsletter: true });
+                setSubscriberForm({ firstName: '', lastName: '', email: '' });
                 fetchSubscribers();
             } else {
                 const contentType = res.headers.get('content-type');
@@ -375,17 +476,12 @@ export default function AdminMailing() {
                                                 onChange={e => setSelectedCampaignId(e.target.value)}
                                                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#63A6B2] shadow-sm bg-white"
                                             >
-                                                <option value="global">🌍 Global Default (All Campaigns)</option>
-                                                <optgroup label="Specific Campaigns">
-                                                    {(campaigns || []).map(c => (
-                                                        <option key={c.campaign_id} value={c.campaign_id}>🎁 {c.campaign_name}</option>
-                                                    ))}
-                                                </optgroup>
+                                                {(campaigns || []).map(c => (
+                                                    <option key={c.campaign_id} value={c.campaign_id}>🎁 {c.campaign_name}</option>
+                                                ))}
                                             </select>
                                             <p className="text-[10px] text-gray-500 mt-2 italic font-medium">
-                                                {selectedCampaignId === 'global'
-                                                    ? "* Configuring the global fallback. This will be used if a campaign doesn't have its own setup."
-                                                    : "* Configuring a unique receipt for this specific campaign."}
+                                                * Configuring a unique receipt for this specific campaign. All donations to this campaign will receive this receipt template.
                                             </p>
                                         </div>
 
@@ -439,27 +535,101 @@ export default function AdminMailing() {
                                         <p className="text-xs text-gray-400 mt-0.5">Configure your outgoing mail server settings for the system.</p>
                                     </div>
                                     <div className="p-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-6">
                                             <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">SMTP Host</label>
-                                                <input type="text" value={smtpSettings.host} readOnly className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-600" />
+                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Mailing Provider</label>
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                                    {smtpProviders.map(p => (
+                                                        <button 
+                                                            key={p.name}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSmtpSettings(prev => ({
+                                                                    ...prev,
+                                                                    provider: p.name,
+                                                                    host: p.name === 'Custom' ? prev.host : p.host,
+                                                                    port: p.name === 'Custom' ? prev.port : p.port,
+                                                                    encryption: p.name === 'Custom' ? prev.encryption : p.encryption
+                                                                }));
+                                                                if (p.name !== 'Custom') {
+                                                                    toast.info(`Switched to ${p.name} configuration`, { icon: '📧' });
+                                                                }
+                                                            }}
+                                                            className={`px-3 py-2 text-xs font-bold border rounded-xl transition-all ${smtpSettings.provider === p.name ? 'bg-[#63A6B2] text-white border-[#63A6B2]' : 'bg-gray-50 text-gray-500 border-gray-100 hover:bg-white hover:border-gray-200'}`}
+                                                        >
+                                                            {p.name}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">SMTP Port</label>
-                                                <input type="text" value={smtpSettings.port} readOnly className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-600" />
-                                            </div>
-                                            <div className="md:col-span-2">
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">User / Display Name</label>
-                                                <input type="text" value={smtpSettings.user} readOnly className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-600" />
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">SMTP Host</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={smtpSettings.host} 
+                                                        onChange={e => setSmtpSettings(p => ({ ...p, host: e.target.value }))}
+                                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#63A6B2]" 
+                                                        placeholder="e.g. smtp.gmail.com"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">SMTP Port</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={smtpSettings.port} 
+                                                        onChange={e => setSmtpSettings(p => ({ ...p, port: e.target.value }))}
+                                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#63A6B2]" 
+                                                        placeholder="e.g. 465"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">User Email / API Key</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={smtpSettings.user} 
+                                                        onChange={e => setSmtpSettings(p => ({ ...p, user: e.target.value }))}
+                                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#63A6B2]" 
+                                                        placeholder="email@example.com"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Password / Secret Key</label>
+                                                    <input 
+                                                        type="password" 
+                                                        value={smtpSettings.password} 
+                                                        onChange={e => setSmtpSettings(p => ({ ...p, password: e.target.value }))}
+                                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#63A6B2]" 
+                                                        placeholder="Enter password or key"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Encryption</label>
+                                                    <select 
+                                                        value={smtpSettings.encryption}
+                                                        onChange={e => setSmtpSettings(p => ({ ...p, encryption: e.target.value }))}
+                                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#63A6B2] bg-white"
+                                                    >
+                                                        <option value="SSL/TLS">SSL/TLS (Port 465)</option>
+                                                        <option value="STARTTLS">STARTTLS (Port 587/2525)</option>
+                                                        <option value="None">None</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                         </div>
+                                        
                                         <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between">
                                             <div className="flex items-center gap-2 text-xs text-amber-600 font-medium">
                                                 <ShieldCheck className="w-4 h-4" />
-                                                Settings are currently read-only (Managed by Environment)
+                                                Updates affect all system-wide outgoing emails.
                                             </div>
-                                            <button className="px-4 py-2 text-sm font-bold text-[#63A6B2] hover:bg-[#63A6B2]/5 rounded-lg transition-colors">
-                                                Request Change
+                                            <button 
+                                                onClick={handleSaveSmtpSettings}
+                                                disabled={isSavingSmtp}
+                                                className="px-6 py-2.5 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#63A6B2]/20 hover:bg-[#4a8a95] transition-all disabled:opacity-50 flex items-center gap-2"
+                                            >
+                                                {isSavingSmtp ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving...</> : <><CheckCircle className="w-3.5 h-3.5" /> Save Configuration</>}
                                             </button>
                                         </div>
                                     </div>
@@ -522,7 +692,7 @@ export default function AdminMailing() {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                setLetterForm({ id: null, title: '', message: '', status: 'active', associated_campaign_id: 'global' });
+                                                setLetterForm({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '' });
                                                 setIsLetterModalOpen(true);
                                             }}
                                             className="px-4 py-2 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-sm hover:bg-[#4a8a95] flex items-center gap-2"
@@ -545,7 +715,7 @@ export default function AdminMailing() {
                                                             title: letter.title,
                                                             message: letter.message,
                                                             status: letter.status,
-                                                            associated_campaign_id: letter.associated_campaign_id || 'global'
+                                                            associated_campaign_id: letter.associated_campaign_id || ''
                                                         });
                                                         setIsLetterModalOpen(true);
                                                     }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg"><Settings className="w-3.5 h-3.5" /></button>
@@ -555,7 +725,7 @@ export default function AdminMailing() {
                                             <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{letter.title}</h3>
                                             <p className="text-xs text-gray-400 line-clamp-2 mb-4 h-8 leading-relaxed">{letter.message}</p>
                                             <div className="flex items-center justify-between text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                                <span>{letter.campaign_name || 'Global'}</span>
+                                                <span>{letter.campaign_name || 'Unassigned'}</span>
                                                 <span className={`px-2 py-0.5 rounded-full ${letter.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>{letter.status}</span>
                                             </div>
                                             <button
@@ -692,9 +862,8 @@ export default function AdminMailing() {
                                         <thead>
                                             <tr className="bg-gray-50">
                                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Subscriber</th>
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center whitespace-nowrap">Receipts</th>
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center whitespace-nowrap">Newsletters</th>
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center whitespace-nowrap">Receipt Pref</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Account Status</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
                                             </tr>
                                         </thead>
@@ -713,27 +882,45 @@ export default function AdminMailing() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
-                                                        <div className="flex justify-center">
+                                                        <div className="flex justify-center items-center gap-2">
                                                             <div className={`w-3 h-3 rounded-full ${sub.receipts_opt_in ? 'bg-green-500' : 'bg-gray-200'}`}></div>
+                                                            <span className="text-[10px] font-bold text-gray-400">{sub.receipts_opt_in ? 'Active' : 'Unsubscribed'}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
-                                                        <div className="flex justify-center">
-                                                            <div className={`w-3 h-3 rounded-full ${sub.newsletters_opt_in ? 'bg-green-500' : 'bg-gray-200'}`}></div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-50 text-blue-600 border border-blue-100`}>
-                                                            {sub.status}
+                                                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${sub.status === 'Active' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-100 text-gray-500 border-gray-200'} border`}>
+                                                            {sub.status || 'Active'}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <button className="text-xs font-bold text-[#63A6B2] hover:text-[#4a8a95]">Manage</button>
+                                                    <td className="px-6 py-4 text-right relative">
+                                                        <button 
+                                                            onClick={() => setManageMenuId(manageMenuId === sub.subscriber_id ? null : sub.subscriber_id)}
+                                                            className="text-xs font-bold text-[#63A6B2] hover:text-[#4a8a95] bg-[#63A6B2]/5 px-3 py-1.5 rounded-lg transition-all"
+                                                        >
+                                                            Manage
+                                                        </button>
+                                                        {manageMenuId === sub.subscriber_id && (
+                                                            <div className="absolute right-6 top-14 z-20 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 animate-in zoom-in-95 duration-200">
+                                                                <button 
+                                                                    onClick={() => handleToggleReceipts(sub.subscriber_id)}
+                                                                    className="w-full px-4 py-2 text-left text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                                >
+                                                                    {sub.receipts_opt_in ? <><Clock className="w-3.5 h-3.5" /> Stop Receipts</> : <><CheckCircle className="w-3.5 h-3.5" /> Start Receipts</>}
+                                                                </button>
+                                                                <div className="my-1 border-t border-gray-50"></div>
+                                                                <button 
+                                                                    onClick={() => handleDeleteSubscriber(sub)}
+                                                                    className="w-full px-4 py-2 text-left text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                                                >
+                                                                    <X className="w-3.5 h-3.5" /> Delete User
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             )) : (
                                                 <tr>
-                                                    <td colSpan="5" className="px-6 py-20 text-center">
+                                                    <td colSpan="4" className="px-6 py-20 text-center">
                                                         {isLoadingSubscribers ? (
                                                             <RefreshCw className="w-8 h-8 animate-spin text-gray-200 mx-auto" />
                                                         ) : (
@@ -823,15 +1010,43 @@ export default function AdminMailing() {
                                 <input type="text" value={letterForm.title} onChange={e => setLetterForm(p => ({ ...p, title: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#63A6B2] outline-none" placeholder="e.g. Special Thank You for your Support" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Associated Campaign (Optional)</label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Associated Campaign</label>
                                 <select value={letterForm.associated_campaign_id} onChange={e => setLetterForm(p => ({ ...p, associated_campaign_id: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#63A6B2] outline-none bg-white">
-                                    <option value="global">Global Fallback</option>
+                                    <option value="" disabled>Select a Campaign</option>
                                     {campaigns.map(c => <option key={c.campaign_id} value={c.campaign_id}>{c.campaign_name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Message Body</label>
-                                <textarea value={letterForm.message} onChange={e => setLetterForm(p => ({ ...p, message: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium h-48 resize-none focus:ring-2 focus:ring-[#63A6B2] outline-none leading-relaxed" placeholder="Write your template message here..."></textarea>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Message Body (Rich HTML Editor)</label>
+                                <div className="quill-editor-container bg-white rounded-2xl overflow-hidden border border-gray-200">
+                                    <ReactQuill 
+                                        theme="snow"
+                                        value={letterForm.message}
+                                        onChange={content => setLetterForm(p => ({ ...p, message: content }))}
+                                        className="min-h-[250px] text-sm"
+                                        placeholder="Compose your professional thank you letter here..."
+                                        modules={{
+                                            toolbar: [
+                                                [{ 'header': [1, 2, 3, false] }],
+                                                ['bold', 'italic', 'underline', 'strike'],
+                                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                ['link', 'clean']
+                                            ]
+                                        }}
+                                    />
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <span className="text-[10px] font-bold text-[#63A6B2] uppercase tracking-wider">Shortcuts:</span>
+                                    {['{{firstname}}', '{{lastname}}', '{{campaign_name}}', '{{address}}'].map(v => (
+                                        <button 
+                                            key={v}
+                                            onClick={() => setLetterForm(p => ({ ...p, message: p.message + ' ' + v }))}
+                                            className="text-[10px] bg-[#63A6B2]/10 text-[#63A6B2] px-2 py-0.5 rounded-md font-bold border border-[#63A6B2]/20 hover:bg-[#63A6B2]/20 transition-all"
+                                        >
+                                            {v}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                         <div className="px-6 py-5 border-t border-gray-100 flex justify-end gap-3">
@@ -865,8 +1080,8 @@ export default function AdminMailing() {
                                                 <th className="px-4 py-3 text-[10px] font-bold text-gray-400 uppercase w-10">
                                                     <input
                                                         type="checkbox"
-                                                        checked={selectedDonors.length === mailingDonors.length}
-                                                        onChange={(e) => setSelectedDonors(e.target.checked ? mailingDonors.map(d => d.email) : [])}
+                                                        checked={selectedDonors.length === mailingDonors.length && mailingDonors.length > 0}
+                                                        onChange={(e) => setSelectedDonors(e.target.checked ? [...mailingDonors] : [])}
                                                         className="accent-[#63A6B2]"
                                                     />
                                                 </th>
@@ -880,10 +1095,10 @@ export default function AdminMailing() {
                                                     <td className="px-4 py-3">
                                                         <input
                                                             type="checkbox"
-                                                            checked={selectedDonors.includes(donor.email)}
-                                                            onChange={() => {
-                                                                if (selectedDonors.includes(donor.email)) setSelectedDonors(p => p.filter(e => e !== donor.email));
-                                                                else setSelectedDonors(p => [...p, donor.email]);
+                                                            checked={selectedDonors.some(sd => sd.donor_id === donor.donor_id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) setSelectedDonors(p => [...p, donor]);
+                                                                else setSelectedDonors(p => p.filter(sd => sd.donor_id !== donor.donor_id));
                                                             }}
                                                             className="accent-[#63A6B2]"
                                                         />
@@ -961,16 +1176,7 @@ export default function AdminMailing() {
                                     placeholder="email@example.com"
                                 />
                             </div>
-                            <div className="flex items-center gap-3 pt-2">
-                                <input
-                                    type="checkbox"
-                                    id="newsletter_opt"
-                                    checked={subscriberForm.newsletter}
-                                    onChange={e => setSubscriberForm(p => ({ ...p, newsletter: e.target.checked }))}
-                                    className="accent-[#63A6B2] w-4 h-4"
-                                />
-                                <label htmlFor="newsletter_opt" className="text-sm font-medium text-gray-600 cursor-pointer">Opt-in to Newsletters</label>
-                            </div>
+                            {/* Removed Newsletter Opt-in */}
 
                             <div className="pt-6 flex gap-3">
                                 <button type="button" onClick={() => setIsAddSubscriberModalOpen(false)} className="flex-1 px-6 py-2.5 text-gray-500 font-bold text-sm hover:bg-gray-50 rounded-xl transition-all border border-gray-100">Cancel</button>
@@ -979,6 +1185,26 @@ export default function AdminMailing() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Delete Subscriber Confirmation Modal */}
+            {isSubscriberDeleteModalOpen && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center">
+                            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <X className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Subscriber?</h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Are you sure you want to remove <span className="font-bold text-gray-900">{subscriberToDelete?.email}</span> from the mailing list? This action cannot be undone.
+                            </p>
+                            <div className="flex gap-3">
+                                <button onClick={() => setIsSubscriberDeleteModalOpen(false)} className="flex-1 px-6 py-3 bg-gray-50 text-gray-600 font-bold text-sm rounded-xl hover:bg-gray-100 transition-all border border-gray-100">Cancel</button>
+                                <button onClick={confirmDeleteSubscriber} className="flex-1 px-6 py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20">Delete</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

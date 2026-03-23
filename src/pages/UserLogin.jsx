@@ -4,15 +4,14 @@ import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import ReCAPTCHA from "react-google-recaptcha/lib/index.js";
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 const UserLogin = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState(null);
   const [csrfToken, setCsrfToken] = useState('');
-  const captchaRef = useRef(null);
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   useEffect(() => {
     fetchCsrfToken();
@@ -33,17 +32,19 @@ const UserLogin = () => {
 
   const onSubmit = async (data) => {
     try {
-      if (!captchaToken) {
-        toast.error('Please complete the CAPTCHA verification');
+      if (!executeRecaptcha) {
+        toast.error('ReCAPTCHA is not yet available');
         return;
       }
       
       setIsLoading(true);
 
+      const token = await executeRecaptcha('login');
+
       const response = await axios.post('http://localhost:5000/api/auth/login', {
         email: data.email,
         password: data.password,
-        captchaToken: captchaToken,
+        captchaToken: token,
         csrfToken: csrfToken
       });
 
@@ -67,8 +68,6 @@ const UserLogin = () => {
 
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid email or password');
-      if (captchaRef.current) captchaRef.current.reset();
-      setCaptchaToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -195,15 +194,7 @@ const UserLogin = () => {
               </Link>
             </div>
 
-            {/* ReCAPTCHA */}
-            <div className="flex justify-center my-4 overflow-hidden rounded-lg">
-                <ReCAPTCHA
-                    ref={captchaRef}
-                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                    onChange={(token) => setCaptchaToken(token)}
-                    onExpired={() => setCaptchaToken(null)}
-                />
-            </div>
+            {/* ReCAPTCHA v3 is invisible */}
 
             {/* Sign In Button */}
             <button

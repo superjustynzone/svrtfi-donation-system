@@ -896,18 +896,20 @@ export default function Profile() {
                                                                 </span>
                                                             </td>
                                                             <td className="py-4 px-4">
-                                                                {donation.payment_status === 'completed' ? (
-                                                                    <button
-                                                                        onClick={() => fetchReceiptDetails(donation.donation_id)}
-                                                                        disabled={isReceiptLoading && viewReceiptId === donation.donation_id}
-                                                                        className="flex items-center gap-1 text-teal-600 hover:text-teal-800 text-sm font-medium"
-                                                                    >
-                                                                        <FileText className={`w-4 h-4 ${isReceiptLoading && viewReceiptId === donation.donation_id ? 'animate-pulse' : ''}`} />
-                                                                        View Receipt
-                                                                    </button>
-                                                                ) : (
-                                                                    <span className="text-xs text-gray-400 italic">Not available</span>
-                                                                )}
+                                                                <div className="flex flex-col gap-2">
+                                                                    {donation.payment_status === 'completed' || donation.payment_status === 'pending' ? (
+                                                                        <button
+                                                                            onClick={() => fetchReceiptDetails(donation.donation_id)}
+                                                                            disabled={isReceiptLoading && viewReceiptId === donation.donation_id}
+                                                                            className="flex items-center gap-1.5 text-teal-600 hover:text-teal-800 text-sm font-bold group"
+                                                                        >
+                                                                            <FileText className={`w-4 h-4 group-hover:scale-110 transition ${isReceiptLoading && viewReceiptId === donation.donation_id ? 'animate-pulse' : ''}`} />
+                                                                            Official Receipt
+                                                                        </button>
+                                                                    ) : (
+                                                                        <span className="text-xs text-gray-400 italic">No proof available</span>
+                                                                    )}
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     ))
@@ -1157,13 +1159,31 @@ function ProfileReceiptModal({ data: d, handleClose }) {
         <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden">
             <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[95vh]">
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
-                    <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-[#63A6B2]" /> Official Receipt Preview
-                    </h3>
+                    <div className="flex flex-col">
+                        <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-[#63A6B2]" />
+                            {d.receipt_upload ? 'Uploaded Receipt' : 'Official Receipt Preview'}
+                        </h3>
+                        {d.receipt_upload && <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider ml-7">Proof of Payment</span>}
+                    </div>
                     <div className="flex gap-2">
-                        <button onClick={handlePrint} className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#4d8b96] transition shadow-sm">
-                            <Download className="w-4 h-4" /> Download / Print
-                        </button>
+                        {d.receipt_upload ? (
+                            <a
+                                href={`http://localhost:5000${d.receipt_upload}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#4d8b96] transition shadow-sm"
+                            >
+                                <Download className="w-4 h-4" /> View Full Image
+                            </a>
+                        ) : (
+                            <button
+                                onClick={handlePrint}
+                                className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#4d8b96] transition shadow-sm"
+                            >
+                                <Download className="w-4 h-4" /> Download / Print
+                            </button>
+                        )}
                         <button onClick={handleClose} className="p-2 hover:bg-gray-200 rounded-lg transition text-gray-500">
                             <X className="w-6 h-6" />
                         </button>
@@ -1171,118 +1191,140 @@ function ProfileReceiptModal({ data: d, handleClose }) {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-100/50">
-                    <div ref={printRef} className="bg-white mx-auto shadow-xl rounded-2xl overflow-hidden max-w-3xl text-left border border-gray-200">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white p-6 md:p-8">
-                            <div className="flex justify-between items-center">
-                                {/* Logos */}
-                                <div className="flex items-center gap-6">
-                                    {/* SVRTV Logo - Circle */}
-                                    <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{ width: '110px', height: '110px', borderRadius: '50%', padding: '8px' }}>
-                                        <img src="/images/logo.png" alt="SVRTV Logo" className="w-full h-full object-contain" style={{ borderRadius: '50%' }} />
-                                    </div>
-                                    {/* Divider */}
-                                    <div className="w-px h-16 bg-white/30"></div>
-                                    {/* Foundation Logo - Circle */}
-                                    {d.foundation_logo ? (
+                    {d.receipt_upload ? (
+                        <div className="max-w-3xl mx-auto">
+                            <div className="bg-white p-4 rounded-2xl shadow-xl border border-gray-200 flex flex-col items-center">
+                                <div className="w-full mb-4 flex justify-between items-center border-b pb-2">
+                                    <p className="text-sm font-bold text-gray-600">Reference: <span className="font-mono text-[#63A6B2]">{d.payment_reference || `#${d.donation_id}`}</span></p>
+                                </div>
+                                <img
+                                    src={`http://localhost:5000${d.receipt_upload}`}
+                                    alt="Uploaded Receipt"
+                                    className="max-w-full rounded-xl shadow-inner border border-gray-100 cursor-zoom-in"
+                                    onClick={() => window.open(`http://localhost:5000${d.receipt_upload}`, '_blank')}
+                                />
+                                <div className="mt-6 w-full p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                    <p className="text-center text-xs text-gray-500 font-medium italic">
+                                        This is the proof of payment uploaded for this donation.
+                                        Click the image to view the full-size original file.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div ref={printRef} className="bg-white mx-auto shadow-xl rounded-2xl overflow-hidden max-w-3xl text-left border border-gray-200">
+                            {/* Header */}
+                            <div className="bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] text-white p-6 md:p-8">
+                                <div className="flex justify-between items-center">
+                                    {/* Logos */}
+                                    <div className="flex items-center gap-6">
+                                        {/* SVRTV Logo - Circle */}
                                         <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{ width: '110px', height: '110px', borderRadius: '50%', padding: '8px' }}>
-                                            <img
-                                                src={`http://localhost:5000${d.foundation_logo}`}
-                                                alt={`${d.foundation_name} Logo`}
-                                                className="w-full h-full object-contain"
-                                            />
+                                            <img src="/images/logo.png" alt="SVRTV Logo" className="w-full h-full object-contain" style={{ borderRadius: '50%' }} />
                                         </div>
-                                    ) : (
-                                        <div className="bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0" style={{ width: '110px', height: '110px', borderRadius: '50%' }}>
-                                            <span className="text-white font-bold text-3xl">
-                                                {d.foundation_name ? d.foundation_name.charAt(0) : 'F'}
-                                            </span>
+                                        {/* Divider */}
+                                        <div className="w-px h-16 bg-white/30"></div>
+                                        {/* Foundation Logo - Circle */}
+                                        {d.foundation_logo ? (
+                                            <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{ width: '110px', height: '110px', borderRadius: '50%', padding: '8px' }}>
+                                                <img
+                                                    src={`http://localhost:5000${d.foundation_logo}`}
+                                                    alt={`${d.foundation_name} Logo`}
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0" style={{ width: '110px', height: '110px', borderRadius: '50%' }}>
+                                                <span className="text-white font-bold text-3xl">
+                                                    {d.foundation_name ? d.foundation_name.charAt(0) : 'F'}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="text-right">
+                                        <h1 className="text-3xl font-bold mb-1">Official Receipt</h1>
+                                        <p className="text-teal-100 text-sm mb-3">Tax Deductible Donation</p>
+                                        <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
+                                            <p className="text-xs text-teal-100">Receipt No.</p>
+                                            <p className="text-xl font-bold">RCP-2026-{String(d.donation_id).padStart(6, '0')}</p>
                                         </div>
-                                    )}
-                                </div>
-                                <div className="text-right">
-                                    <h1 className="text-3xl font-bold mb-1">Official Receipt</h1>
-                                    <p className="text-teal-100 text-sm mb-3">Tax Deductible Donation</p>
-                                    <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
-                                        <p className="text-xs text-teal-100">Receipt No.</p>
-                                        <p className="text-xl font-bold">RCP-2026-{String(d.donation_id).padStart(6, '0')}</p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="p-6 md:p-8 space-y-8">
-                            {/* Org Info */}
-                            <div className="pb-6 border-b-2 border-gray-50">
-                                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><div className="w-1 h-6 bg-[#63A6B2] rounded-full"></div>Organization Information</h2>
-                                <div className="space-y-1 text-sm">
-                                    <p className="text-[#63A6B2] font-extrabold text-xl">{d.foundation_name || "Shepherd's Voice Radio and Television Foundation, Inc."}</p>
-                                    <p className="text-gray-600">456 Faith Avenue, Manila, Metro Manila 1003</p>
-                                    <p className="text-gray-600">Phone: (02) 1234-5678</p>
-                                    <p className="text-gray-600">Email: info@svrtf.org</p>
-                                    <p className="text-gray-600">TIN: 000-123-456-000</p>
-                                </div>
-                            </div>
-
-                            {/* Donor Info */}
-                            <div className="pb-6 border-b-2 border-gray-50 text-sm">
-                                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><div className="w-1 h-6 bg-[#63A6B2] rounded-full"></div>Donor Information</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Full Name</p><p className="text-gray-900 font-bold text-base">{d.donor_name || 'N/A'}</p></div>
-                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Email Address</p><p className="text-gray-900 font-medium">{d.donor_email || 'N/A'}</p></div>
-                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Contact Number</p><p className="text-gray-900 font-medium">{d.donor_phone || 'N/A'}</p></div>
-                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Address</p><p className="text-gray-900 font-medium">{d.address || 'N/A'}</p></div>
-                                </div>
-                            </div>
-
-                            {/* Donation Details */}
-                            <div className="pb-6 border-b-2 border-gray-50 text-sm">
-                                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><div className="w-1 h-6 bg-[#63A6B2] rounded-full"></div>Donation Details</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Date &amp; Time</p><p className="text-gray-900 font-bold">{formatDateTime(d.created_at)}</p></div>
-                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Reference Number</p><p className="text-gray-900 font-bold font-mono">DON-2026-{String(d.donation_id).padStart(6, '0')}</p></div>
-                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Campaign Purpose</p><p className="text-[#63A6B2] font-bold">{d.campaign_name || 'N/A'}</p></div>
-                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Payment Method</p><p className="text-gray-900 font-bold">{getPaymentMethodName(d.payment_method)}</p></div>
-                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Donation Type</p><p className="text-gray-900 font-bold">{d.frequency === 'monthly' ? 'Monthly (Recurring)' : 'One-Time'}</p></div>
-                                    <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Transaction ID</p><p className="text-gray-900 font-mono italic">{d.payment_reference || `TXN-${d.donation_id}-SVRTF`}</p></div>
-                                </div>
-                            </div>
-
-                            {/* Total Amount */}
-                            <div className="pb-6 border-b-2 border-gray-50">
-                                <div className="flex flex-col md:flex-row justify-between items-center bg-gradient-to-br from-teal-50 to-blue-50 p-6 rounded-2xl border-2 border-[#63A6B2] gap-4">
-                                    <span className="text-xl font-bold text-gray-900">TOTAL DONATION AMOUNT:</span>
-                                    <span className="text-5xl font-black text-[#63A6B2] drop-shadow-sm">{fmt(d.amount)}</span>
-                                </div>
-                                <p className="text-[10px] text-gray-400 text-right mt-3 italic font-semibold uppercase tracking-widest">Confirmed &amp; Verified Transaction</p>
-                            </div>
-
-                            {/* Tax Deductible Info */}
-                            <div className="pb-6 border-b-2 border-gray-50">
-                                <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6">
-                                    <h3 className="font-bold text-orange-800 mb-2 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-orange-600" />Tax Deductible Information</h3>
-                                    <p className="text-xs text-orange-900 leading-relaxed font-medium">This donation is <strong>tax deductible</strong> under the laws of the Republic of the Philippines. Please retain this receipt for your tax filing purposes.</p>
-                                </div>
-                            </div>
-
-                            {d.message && (
+                            <div className="p-6 md:p-8 space-y-8">
+                                {/* Org Info */}
                                 <div className="pb-6 border-b-2 border-gray-50">
-                                    <h3 className="font-bold text-gray-900 mb-2">Notes &amp; Recognition</h3>
-                                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                                        <p className="text-xs font-black text-[#63A6B2] mb-2 uppercase tracking-widest">Donor Message:</p>
-                                        <p className="text-sm italic text-gray-800 font-medium">"{d.message}"</p>
+                                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><div className="w-1 h-6 bg-[#63A6B2] rounded-full"></div>Organization Information</h2>
+                                    <div className="space-y-1 text-sm">
+                                        <p className="text-[#63A6B2] font-extrabold text-xl">{d.foundation_name || "Shepherd's Voice Radio and Television Foundation, Inc."}</p>
+                                        <p className="text-gray-600">456 Faith Avenue, Manila, Metro Manila 1003</p>
+                                        <p className="text-gray-600">Phone: (02) 1234-5678</p>
+                                        <p className="text-gray-600">Email: info@svrtf.org</p>
+                                        <p className="text-gray-600">TIN: 000-123-456-000</p>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Footer */}
-                            <div className="text-center pt-8 border-t border-gray-100">
-                                <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-3" />
-                                <p className="text-base font-black text-[#63A6B2] mb-2">Your support makes a difference!</p>
-                                <p className="text-[10px] text-gray-400 leading-relaxed font-medium">This is a computer-generated receipt valid for tax deduction purposes.<br />© 2026 Shepherd's Voice Radio and Television Foundation, Inc.</p>
+                                {/* Donor Info */}
+                                <div className="pb-6 border-b-2 border-gray-50 text-sm">
+                                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><div className="w-1 h-6 bg-[#63A6B2] rounded-full"></div>Donor Information</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Full Name</p><p className="text-gray-900 font-bold text-base">{d.donor_name || 'N/A'}</p></div>
+                                        <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Email Address</p><p className="text-gray-900 font-medium">{d.donor_email || 'N/A'}</p></div>
+                                        <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Contact Number</p><p className="text-gray-900 font-medium">{d.donor_phone || 'N/A'}</p></div>
+                                        <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Address</p><p className="text-gray-900 font-medium">{d.address || 'N/A'}</p></div>
+                                    </div>
+                                </div>
+
+                                {/* Donation Details */}
+                                <div className="pb-6 border-b-2 border-gray-50 text-sm">
+                                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><div className="w-1 h-6 bg-[#63A6B2] rounded-full"></div>Donation Details</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Date &amp; Time</p><p className="text-gray-900 font-bold">{formatDateTime(d.created_at)}</p></div>
+                                        <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Reference Number</p><p className="text-gray-900 font-bold font-mono">DON-2026-{String(d.donation_id).padStart(6, '0')}</p></div>
+                                        <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Campaign Purpose</p><p className="text-[#63A6B2] font-bold">{d.campaign_name || 'N/A'}</p></div>
+                                        <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Payment Method</p><p className="text-gray-900 font-bold">{getPaymentMethodName(d.payment_method)}</p></div>
+                                        <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Donation Type</p><p className="text-gray-900 font-bold">{d.frequency === 'monthly' ? 'Monthly (Recurring)' : 'One-Time'}</p></div>
+                                        <div><p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Transaction ID</p><p className="text-gray-900 font-mono italic">{d.payment_reference || `TXN-${d.donation_id}-SVRTF`}</p></div>
+                                    </div>
+                                </div>
+
+                                {/* Total Amount */}
+                                <div className="pb-6 border-b-2 border-gray-50">
+                                    <div className="flex flex-col md:flex-row justify-between items-center bg-gradient-to-br from-teal-50 to-blue-50 p-6 rounded-2xl border-2 border-[#63A6B2] gap-4">
+                                        <span className="text-xl font-bold text-gray-900">TOTAL DONATION AMOUNT:</span>
+                                        <span className="text-5xl font-black text-[#63A6B2] drop-shadow-sm">{fmt(d.amount)}</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 text-right mt-3 italic font-semibold uppercase tracking-widest">Confirmed &amp; Verified Transaction</p>
+                                </div>
+
+                                {/* Tax Deductible Info */}
+                                <div className="pb-6 border-b-2 border-gray-50">
+                                    <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6">
+                                        <h3 className="font-bold text-orange-800 mb-2 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-orange-600" />Tax Deductible Information</h3>
+                                        <p className="text-xs text-orange-900 leading-relaxed font-medium">This donation is <strong>tax deductible</strong> under the laws of the Republic of the Philippines. Please retain this receipt for your tax filing purposes.</p>
+                                    </div>
+                                </div>
+
+                                {d.message && (
+                                    <div className="pb-6 border-b-2 border-gray-50">
+                                        <h3 className="font-bold text-gray-900 mb-2">Notes &amp; Recognition</h3>
+                                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                            <p className="text-xs font-black text-[#63A6B2] mb-2 uppercase tracking-widest">Donor Message:</p>
+                                            <p className="text-sm italic text-gray-800 font-medium">"{d.message}"</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Footer */}
+                                <div className="text-center pt-8 border-t border-gray-100">
+                                    <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-3" />
+                                    <p className="text-base font-black text-[#63A6B2] mb-2">Your support makes a difference!</p>
+                                    <p className="text-[10px] text-gray-400 leading-relaxed font-medium">This is a computer-generated receipt valid for tax deduction purposes.<br />© 2026 Shepherd's Voice Radio and Television Foundation, Inc.</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

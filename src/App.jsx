@@ -36,6 +36,8 @@ import DonationNotification from './components/DonationNotification';
 // Global CSS imports
 import './index.css';
 
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
 function App() {
 
   // Auto-redirect based on role on mount
@@ -56,53 +58,55 @@ function App() {
   };
 
   return (
-    <Router>
-      <DonationNotification />
-      <Routes>
+    <GoogleReCaptchaProvider reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}>
+      <Router>
+        <DonationNotification />
+        <Routes>
 
-        {/* Redirect root to correct dashboard */}
-        <Route path="/" element={<Homepage />} />
-        <Route path="/home" element={<Navigate to={getDefaultRoute()} replace />} />
+          {/* Redirect root to correct dashboard */}
+          <Route path="/" element={<Homepage />} />
+          <Route path="/home" element={<Navigate to={getDefaultRoute()} replace />} />
 
-        {/* Auth */}
-        <Route path="/login" element={<UserLogin />} />
-        <Route path="/signup" element={<UserSignUp />} />
+          {/* Auth */}
+          <Route path="/login" element={<UserLogin />} />
+          <Route path="/signup" element={<UserSignUp />} />
 
-        {/* Public pages */}
-        <Route path="/contact" element={<ContactUs />} />
-        <Route path="/about" element={<AboutUs />} />
-        <Route path="/foundations" element={<Foundations />} />
-        <Route path="/campaigns" element={<Campaigns />} />
-        <Route path="/campaigns/:id" element={<CampaignDetails />} />
-        <Route path="/campaigns/:id/donate" element={<CampaignDonation />} />
-        <Route path="/payment/:donationId" element={<PaymentGateway />} />
-        <Route path="/donations/:donationId/confirmation" element={<DonationConfirmation />} />
-        <Route path="/donations/:donationId/receipt" element={<DonationReceipt />} />
-        <Route path="/foundations/:id" element={<FoundationDetails />} />
-        <Route path="/stories" element={<Stories />} />
-        <Route path="/stories/:id" element={<StoryDetails />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/test" element={<PasswordChanged />} />
+          {/* Public pages */}
+          <Route path="/contact" element={<ContactUs />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/foundations" element={<Foundations />} />
+          <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/campaigns/:id" element={<CampaignDetails />} />
+          <Route path="/campaigns/:id/donate" element={<CampaignDonation />} />
+          <Route path="/payment/:donationId" element={<PaymentGateway />} />
+          <Route path="/donations/:donationId/confirmation" element={<DonationConfirmation />} />
+          <Route path="/donations/:donationId/receipt" element={<DonationReceipt />} />
+          <Route path="/foundations/:id" element={<FoundationDetails />} />
+          <Route path="/stories" element={<Stories />} />
+          <Route path="/stories/:id" element={<StoryDetails />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/test" element={<PasswordChanged />} />
 
-        {/* Admin protected routes */}
-        <Route path="/admin_dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-        <Route path="/admin_donors" element={<AdminRoute><AdminDonors /></AdminRoute>} />
-        <Route path="/admin_users" element={<AdminRoute><AdminUserManagement /></AdminRoute>} />
-        <Route path="/admin_campaigns" element={<AdminRoute><AdminCampaignCreation /></AdminRoute>} />
-        <Route path="/admin_foundations" element={<AdminRoute><AdminFoundationCreation /></AdminRoute>} />
-        <Route path="/admin_stories" element={<AdminRoute><AdminStories /></AdminRoute>} />
-        <Route path="/admin_settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
-        <Route path="/admin_profile" element={<AdminRoute><AdminProfile /></AdminRoute>} />
-        <Route path="/admin_audit" element={<AdminRoute><AdminAuditLogs /></AdminRoute>} />
-        <Route path="/admin_donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />
-        <Route path="/admin_transactions" element={<AdminRoute><AdminTransactions /></AdminRoute>} />
-        <Route path="/admin_reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
-        <Route path="/admin_mailing" element={<AdminRoute><AdminMailing /></AdminRoute>} />
+          {/* Admin protected routes */}
+          <Route path="/admin_dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin_donors" element={<AdminRoute><AdminDonors /></AdminRoute>} />
+          <Route path="/admin_users" element={<AdminRoute><AdminUserManagement /></AdminRoute>} />
+          <Route path="/admin_campaigns" element={<AdminRoute><AdminCampaignCreation /></AdminRoute>} />
+          <Route path="/admin_foundations" element={<AdminRoute><AdminFoundationCreation /></AdminRoute>} />
+          <Route path="/admin_stories" element={<AdminRoute><AdminStories /></AdminRoute>} />
+          <Route path="/admin_settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+          <Route path="/admin_profile" element={<AdminRoute><AdminProfile /></AdminRoute>} />
+          <Route path="/admin_audit" element={<AdminRoute><AdminAuditLogs /></AdminRoute>} />
+          <Route path="/admin_donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />
+          <Route path="/admin_transactions" element={<AdminRoute><AdminTransactions /></AdminRoute>} />
+          <Route path="/admin_reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
+          <Route path="/admin_mailing" element={<AdminRoute><AdminMailing /></AdminRoute>} />
 
-      </Routes>
+        </Routes>
 
-      <Toaster position="top-right" richColors={false} expand={true} offset={20} />
-    </Router>
+        <Toaster position="top-right" richColors={false} expand={true} offset={20} />
+      </Router>
+    </GoogleReCaptchaProvider>
   );
 }
 

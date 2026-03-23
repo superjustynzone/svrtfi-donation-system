@@ -137,6 +137,31 @@ app.post("/api/admin/subscribers", async (req, res) => {
   }
 });
 
+// Toggle Subscriber Receipt Opt-in
+app.patch("/api/admin/subscribers/:id/toggle-receipts", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const check = await pool.query("SELECT receipts_opt_in FROM subscribers WHERE subscriber_id = $1", [id]);
+    if (check.rows.length === 0) return res.status(404).json({ message: "Subscriber not found" });
+    const newValue = !check.rows[0].receipts_opt_in;
+    await pool.query("UPDATE subscribers SET receipts_opt_in = $1 WHERE subscriber_id = $2", [newValue, id]);
+    res.json({ message: `Receipts ${newValue ? 'enabled' : 'disabled'} successfully`, receipts_opt_in: newValue });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete Subscriber
+app.delete("/api/admin/subscribers/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query("DELETE FROM subscribers WHERE subscriber_id = $1", [id]);
+    res.json({ message: "Subscriber removed successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/admin/receipt-template", async (req, res) => {
   const { campaign_id } = req.query;
   try {
@@ -169,6 +194,60 @@ app.put("/api/admin/receipt-template", async (req, res) => {
     );
     res.json({ message: "Global receipt template updated successfully!" });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// SMTP Configuration Routes
+app.get("/api/admin/smtp-settings", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM smtp_settings ORDER BY id DESC LIMIT 1");
+    if (result.rows.length > 0) {
+      const settings = result.rows[0];
+      // Don't send the password back (or send it as stars)
+      // settings.password = "********"; 
+      res.json(settings);
+    } else {
+      res.json({ provider: "Gmail", host: "smtp.gmail.com", port: 465, user_email: "", encryption: "SSL/TLS" });
+    }
+  } catch (err) {
+    console.error("Error fetching SMTP settings:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/smtp-settings", async (req, res) => {
+  const { provider, host, port, user_email, password, encryption } = req.body;
+  try {
+    // We only keep one main SMTP config for now
+    const existing = await pool.query("SELECT id FROM smtp_settings LIMIT 1");
+
+    if (existing.rows.length > 0) {
+      // Update
+      const id = existing.rows[0].id;
+      let updateFields = ["provider = $1", "host = $2", "port = $3", "user_email = $4", "encryption = $5", "updated_at = NOW()"];
+      let values = [provider, host, port, user_email, encryption];
+
+      // Only update password if it's provided and not the stars/placeholder
+      if (password && password !== "********" && password.trim() !== "") {
+        updateFields.push(`password = $${values.length + 1}`);
+        values.push(password);
+      }
+
+      await pool.query(
+        `UPDATE smtp_settings SET ${updateFields.join(", ")} WHERE id = $${values.length + 1}`,
+        [...values, id]
+      );
+    } else {
+      // Insert
+      await pool.query(
+        "INSERT INTO smtp_settings (provider, host, port, user_email, password, encryption) VALUES ($1, $2, $3, $4, $5, $6)",
+        [provider, host, port, user_email, password, encryption]
+      );
+    }
+    res.json({ message: "SMTP settings updated successfully!" });
+  } catch (err) {
+    console.error("Error saving SMTP settings:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -955,7 +1034,7 @@ app.delete("/api/admin/thank-you-letters/:id", async (req, res) => {
 
 // Bulk Send Emails
 app.post("/api/admin/bulk-send-emails", async (req, res) => {
-  const { recipients, subject, html } = req.body;
+  const { recipients, subject, html, campaign_name } = req.body;
 
   if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
     return res.status(400).json({ message: "No recipients provided" });
@@ -965,12 +1044,34 @@ app.post("/api/admin/bulk-send-emails", async (req, res) => {
   let failCount = 0;
   const errors = [];
 
-  // Sending in sequence to avoid SMTP limits/spam flags for now, 
-  // though for massive lists a queue would be better.
-  for (const recipient of recipients) {
+  for (const donor of recipients) {
     try {
-      const emailAddr = typeof recipient === 'string' ? recipient : recipient.email;
-      const result = await sendEmail(emailAddr, subject, html);
+      const emailAddr = donor.email;
+      if (!emailAddr) continue;
+
+      // Variable Replacement Logic
+      const replacements = {
+        '{{firstname}}': donor.first_name || '',
+        '{{lastname}}': donor.last_name || '',
+        '{{campaign_name}}': campaign_name || 'Our Campaign',
+        '{{address}}': donor.address || 'Standard Address'
+      };
+
+      let personalizedSubject = subject;
+      let personalizedHtml = html;
+
+      Object.entries(replacements).forEach(([key, val]) => {
+        const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        personalizedSubject = personalizedSubject.replace(regex, val);
+        personalizedHtml = personalizedHtml.replace(regex, val);
+      });
+
+      // Wrap in standard container - Trusting Quill HTML
+      const finalHtml = `<div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+                ${personalizedHtml}
+            </div>`;
+
+      const result = await sendEmail(emailAddr, personalizedSubject, finalHtml);
       if (result.success) successCount++;
       else {
         failCount++;
@@ -978,12 +1079,12 @@ app.post("/api/admin/bulk-send-emails", async (req, res) => {
       }
     } catch (err) {
       failCount++;
-      errors.push({ error: err.message });
+      errors.push({ donor: donor.email, error: err.message });
     }
   }
 
   res.json({
-    message: `Mailing completed. ${successCount} sent, ${failCount} failed.`,
+    message: `Batch complete: ${successCount} successful, ${failCount} failed.`,
     successCount,
     failCount,
     errors
@@ -996,7 +1097,7 @@ app.get("/api/admin/mailing-donors", async (req, res) => {
   const { campaign_id } = req.query;
   try {
     let query = `
-            SELECT DISTINCT dn.donor_id, dn.first_name, dn.last_name, dn.email
+            SELECT DISTINCT dn.donor_id, dn.first_name, dn.last_name, dn.email, dn.address
             FROM donors dn
             INNER JOIN donations d ON dn.donor_id = d.donor_id
             WHERE dn.email IS NOT NULL AND dn.email != ''
@@ -1081,7 +1182,8 @@ const verifyCaptcha = async (token) => {
     const response = await axios.post(
       `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`
     );
-    return response.data.success;
+    // For v3, we check success AND score (typically 0.5+)
+    return response.data.success && (response.data.score === undefined || response.data.score >= 0.5);
   } catch (error) {
     console.error("reCAPTCHA Verification Error:", error);
     return false;

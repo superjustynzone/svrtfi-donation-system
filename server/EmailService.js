@@ -7,19 +7,48 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
 
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // Use App Password here
-    },
-});
+
+const getTransporter = async () => {
+    try {
+        const res = await pool.query("SELECT * FROM smtp_settings ORDER BY id DESC LIMIT 1");
+        if (res.rows.length > 0) {
+            const s = res.rows[0];
+            return nodemailer.createTransport({
+                host: s.host,
+                port: s.port,
+                secure: s.port === 465, // true for 465, false for other ports
+                auth: {
+                    user: s.user_email,
+                    pass: s.password,
+                },
+                tls: {
+                    rejectUnauthorized: false // Helps with some shared hosting
+                }
+            });
+        }
+    } catch (err) {
+        console.error("Error getting SMTP settings from DB, falling back to ENV:", err);
+    }
+
+    // Fallback to ENV settings
+    return nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
+};
 
 const sendEmail = async (to, subject, html) => {
     let result = { success: false };
     try {
+        const transporter = await getTransporter();
+        const res = await pool.query("SELECT user_email FROM smtp_settings LIMIT 1");
+        const fromEmail = res.rows.length > 0 ? res.rows[0].user_email : process.env.EMAIL_USER;
+
         const mailOptions = {
-            from: `"SVRTV Donation System" <${process.env.EMAIL_USER}>`,
+            from: `"SVRTV Donation System" <${fromEmail}>`,
             to,
             subject,
             html,
