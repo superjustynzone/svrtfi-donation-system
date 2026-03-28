@@ -68,8 +68,8 @@ function App() {
           <Route path="/home" element={<Navigate to={getDefaultRoute()} replace />} />
 
           {/* Auth */}
-          <Route path="/login" element={<UserLogin />} />
-          <Route path="/signup" element={<UserSignUp />} />
+          <Route path="/login" element={<GuestRoute><UserLogin /></GuestRoute>} />
+          <Route path="/signup" element={<GuestRoute><UserSignUp /></GuestRoute>} />
 
           {/* Public pages */}
           <Route path="/contact" element={<ContactUs />} />
@@ -122,6 +122,29 @@ const AdminRoute = ({ children }) => {
 
   // valid admin roles
   if (!["admin", "finance", "encoder", "auditor"].includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
+// USER-BASED PROTECTION
+const UserRoute = ({ children }) => {
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  return children;
+};
+
+// GUEST-BASED PROTECTION (Blocks logged-in users from login/signup)
+const GuestRoute = ({ children }) => {
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  if (user) {
+    if (["admin", "super_admin", "finance", "encoder", "auditor"].includes(user.role?.toLowerCase())) {
+      return <Navigate to="/admin_dashboard" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 

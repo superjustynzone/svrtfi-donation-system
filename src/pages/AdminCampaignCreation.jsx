@@ -4,7 +4,7 @@ import {
     UserCog, Settings, AlertTriangle, Search, Menu, X, LogOut,
     Plus, Edit, Trash2, Calendar, Target, TrendingUp, Image as ImageIcon,
     MapPin, MoreVertical, Filter, ChevronDown, Upload, Star,
-    Send, FileEdit, Eye, EyeOff
+    Send, FileEdit, Eye, EyeOff, ChevronLeft, ChevronRight, Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -30,6 +30,7 @@ export default function AdminCampaignCreation() {
     const [showViewModal, setShowViewModal] = useState(false);
     const [viewingCampaign, setViewingCampaign] = useState(null);
     const [sortBy, setSortBy] = useState('newest');
+    const [selectedViewImage, setSelectedViewImage] = useState(0);
 
     const [formData, setFormData] = useState({
         campaign_name: '',
@@ -623,105 +624,250 @@ export default function AdminCampaignCreation() {
             </main>
 
             {/* View Campaign Modal */}
-            {showViewModal && viewingCampaign && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-                        {/* Campaign Image */}
-                        {viewingCampaign.file_url && (
-                            <div className="h-52 w-full overflow-hidden rounded-t-xl">
-                                <img src={`http://localhost:5000${viewingCampaign.file_url}`} alt={viewingCampaign.campaign_name} className="w-full h-full object-cover" />
-                            </div>
-                        )}
-                        <div className="p-6">
-                            {/* Header */}
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        {viewingCampaign.status === 'draft' ? (
-                                            <span className="px-3 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700">Draft</span>
-                                        ) : (
-                                            <span className="px-3 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">Published</span>
-                                        )}
-                                        {viewingCampaign.is_featured && (
-                                            <span className="px-3 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
-                                                <Star className="w-3 h-3" /> Featured
-                                            </span>
-                                        )}
-                                    </div>
-                                    <h3 className="text-xl font-bold text-gray-900">{viewingCampaign.campaign_name}</h3>
-                                    <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                                        <MapPin className="w-4 h-4 flex-shrink-0" />
-                                        <span>{viewingCampaign.foundation_name || 'No foundation'}</span>
-                                        {viewingCampaign.campaign_type && (
-                                            <>
-                                                <span>•</span>
-                                                <span>{viewingCampaign.campaign_type}</span>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                                <button onClick={() => { setShowViewModal(false); setViewingCampaign(null); }} className="text-gray-400 hover:text-gray-600 transition flex-shrink-0 ml-4">
-                                    <X className="w-6 h-6" />
-                                </button>
-                            </div>
+            {showViewModal && viewingCampaign && (() => {
+                const allMedia = [];
+                if (viewingCampaign.file_url) allMedia.push({ file_url: viewingCampaign.file_url, media_id: 'main' });
+                if (viewingCampaign.media && Array.isArray(viewingCampaign.media)) allMedia.push(...viewingCampaign.media);
+                
+                const progress = getProgressPercentage(viewingCampaign.current_amount || 0, viewingCampaign.goal_amount);
+                const hasMedia = allMedia.length > 0;
+                
+                const getDaysRemainingModal = (endDate) => {
+                    if (!endDate) return null;
+                    const end = new Date(endDate);
+                    const today = new Date();
+                    const diffTime = end - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays > 0 ? diffDays : 0;
+                };
+                const daysRemaining = getDaysRemainingModal(viewingCampaign.end_date);
 
-                            {/* Description */}
-                            {viewingCampaign.campaign_description && (
-                                <div className="mb-5">
-                                    <h4 className="text-sm font-bold text-gray-700 mb-2">Description</h4>
-                                    <div className="prose prose-sm max-w-none text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingCampaign.campaign_description }} />
-                                </div>
-                            )}
-
-                            {/* Progress */}
-                            <div className="mb-5 p-4 bg-gray-50 rounded-lg">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-bold text-gray-700">Fundraising Progress</span>
-                                    <span className="text-sm font-bold text-[#63A6B2]">{getProgressPercentage(viewingCampaign.current_amount || 0, viewingCampaign.goal_amount).toFixed(0)}%</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden mb-3">
-                                    <div
-                                        className="bg-gradient-to-r from-[#63A6B2] to-[#4d8b96] h-full rounded-full transition-all duration-500"
-                                        style={{ width: `${getProgressPercentage(viewingCampaign.current_amount || 0, viewingCampaign.goal_amount)}%` }}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-medium">Raised</p>
-                                        <p className="text-lg font-bold text-[#63A6B2]">{formatCurrency(viewingCampaign.current_amount || 0)}</p>
+                return (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                        <div className="bg-[#f8fafb] rounded-[2rem] w-full max-w-6xl shadow-2xl relative max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+                            {/* Header / Close Switch - Fixed at top */}
+                            <div className="shrink-0 bg-white px-8 py-5 border-b border-gray-100 flex items-center justify-between shadow-sm z-30">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2]">
+                                        <Eye className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <p className="text-xs text-gray-500 font-medium">Goal</p>
-                                        <p className="text-lg font-bold text-gray-900">{formatCurrency(viewingCampaign.goal_amount)}</p>
+                                        <h3 className="text-xl font-extrabold text-gray-900 leading-none">Campaign Simulation</h3>
+                                        <p className="text-[10px] text-[#63A6B2] mt-1.5 uppercase tracking-widest font-black">User-side View Draft Preview</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={() => { setShowViewModal(false); setViewingCampaign(null); setSelectedViewImage(0); }}
+                                        className="px-6 py-2.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold text-sm transition-all shadow-lg hover:shadow-black/20 flex items-center gap-2 group"
+                                    >
+                                        <X className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                                        Close Preview
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Scrollable Content Area */}
+                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    {/* Left Column */}
+                                    <div className="lg:col-span-2 space-y-8">
+                                        {/* Image Carousel */}
+                                        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 group">
+                                            {hasMedia ? (
+                                                <div className="relative h-[480px] bg-gray-100">
+                                                    <img
+                                                        src={`http://localhost:5000${allMedia[selectedViewImage]?.file_url}`}
+                                                        alt="Campaign"
+                                                        className="w-full h-full object-cover transition-opacity duration-500"
+                                                    />
+                                                    {allMedia.length > 1 && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => setSelectedViewImage(prev => prev === 0 ? allMedia.length - 1 : prev - 1)}
+                                                                className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm p-3 rounded-2xl shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-white text-gray-800"
+                                                            >
+                                                                <ChevronLeft className="w-6 h-6" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setSelectedViewImage(prev => prev === allMedia.length - 1 ? 0 : prev + 1)}
+                                                                className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm p-3 rounded-2xl shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-white text-gray-800"
+                                                            >
+                                                                <ChevronRight className="w-6 h-6" />
+                                                            </button>
+                                                            <div className="absolute top-6 right-6 bg-black/60 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-xs font-bold ring-1 ring-white/20">
+                                                                {selectedViewImage + 1} / {allMedia.length}
+                                                            </div>
+                                                            {/* Thumbnails */}
+                                                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-[80%] p-2 bg-black/20 backdrop-blur-md rounded-2xl">
+                                                                {allMedia.map((m, idx) => (
+                                                                    <button
+                                                                        key={idx}
+                                                                        onClick={() => setSelectedViewImage(idx)}
+                                                                        className={`w-12 h-12 rounded-lg border-2 transition-all shrink-0 ${selectedViewImage === idx ? 'border-[#63A6B2] scale-110 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                                                    >
+                                                                        <img src={`http://localhost:5000${m.file_url}`} className="w-full h-full object-cover rounded-md" />
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="h-[480px] bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                                                    <ImageIcon className="w-16 h-16 text-gray-400 opacity-20" />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Content Card */}
+                                        <div className="bg-white rounded-3xl shadow-xl p-10 border border-gray-100 space-y-10">
+                                            <div className="space-y-6">
+                                                <div className="flex flex-wrap gap-2">
+                                                    <span className="px-5 py-1.5 rounded-full bg-gradient-to-r from-[#63A6B2] to-[#4d8b96] text-white text-xs font-bold uppercase tracking-widest shadow-lg shadow-[#63A6B2]/20">
+                                                        {viewingCampaign.campaign_type || 'Fundraiser'}
+                                                    </span>
+                                                    {viewingCampaign.status === 'draft' && (
+                                                        <span className="px-5 py-1.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold uppercase tracking-widest border border-amber-200">
+                                                            Draft Preview
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <h1 className="text-4xl font-extrabold text-gray-900 leading-tight">
+                                                    {viewingCampaign.campaign_name}
+                                                </h1>
+                                                {/* Foundation Info */}
+                                                <div className="flex items-center gap-4 bg-gray-50/80 p-5 rounded-2xl border border-gray-100 w-fit">
+                                                    <div className="w-14 h-14 rounded-2xl bg-[#63A6B2] flex items-center justify-center text-white overflow-hidden shadow-lg border-4 border-white">
+                                                        {viewingCampaign.foundation_logo ? (
+                                                            <img src={`http://localhost:5000${viewingCampaign.foundation_logo}`} className="w-full h-full object-contain p-1 bg-white" alt="logo" />
+                                                        ) : (
+                                                            <span className="text-xl font-black uppercase">{viewingCampaign.foundation_name?.charAt(0)}</span>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1.5">Organized by</p>
+                                                        <p className="text-lg font-bold text-gray-900 leading-none">{viewingCampaign.foundation_name || 'Individual Organizers'}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-6">
+                                                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2]">
+                                                        <FileText className="w-4 h-4" />
+                                                    </div>
+                                                    About this campaign
+                                                </h2>
+                                                <div 
+                                                    className="prose prose-sm md:prose-base max-w-none text-gray-600 leading-relaxed font-medium ql-editor"
+                                                    style={{ padding: 0 }}
+                                                    dangerouslySetInnerHTML={{ __html: viewingCampaign.campaign_description || '<p class="italic">No description provided yet.</p>' }} 
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-gray-50/50 rounded-3xl border border-gray-100">
+                                                <div>
+                                                    <p className="text-[10px] text-gray-400 font-bold mb-2 uppercase tracking-widest">Start Date</p>
+                                                    <p className="text-lg font-bold text-gray-800">{formatDate(viewingCampaign.start_date)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-gray-400 font-bold mb-2 uppercase tracking-widest">Expected Completion</p>
+                                                    <p className="text-lg font-bold text-gray-800">{viewingCampaign.end_date ? formatDate(viewingCampaign.end_date) : 'Ongoing Campaign'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right Column */}
+                                    <div className="lg:col-span-1 space-y-6">
+                                        <div className="sticky top-24 space-y-6">
+                                            {/* Time Left Card */}
+                                            {daysRemaining !== null && (
+                                                <div className="bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden group">
+                                                    <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700">
+                                                        <Clock className="w-32 h-32" />
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mb-4">
+                                                        <Clock className="w-5 h-5 text-blue-200" />
+                                                        <p className="text-xs font-bold uppercase tracking-widest text-blue-100">Time Left</p>
+                                                    </div>
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-5xl font-black">{daysRemaining}</span>
+                                                        <span className="text-lg font-bold opacity-80 uppercase tracking-tighter">Days</span>
+                                                    </div>
+                                                    <p className="mt-4 text-sm text-blue-50 font-medium">Until fundraising goal period ends</p>
+                                                </div>
+                                            )}
+
+                                            {/* Funding Progress Card */}
+                                            <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100 space-y-8">
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between items-baseline">
+                                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Raised So Far</p>
+                                                        <span className="text-sm font-black text-[#63A6B2]">{progress.toFixed(0)}%</span>
+                                                    </div>
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-3xl font-black text-gray-900 leading-none">{formatCurrency(viewingCampaign.current_amount || 0)}</span>
+                                                    </div>
+                                                    <div className="text-sm font-bold text-gray-500">
+                                                        Target Goal: <span className="text-gray-900">{formatCurrency(viewingCampaign.goal_amount)}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    <div className="h-4 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-50">
+                                                        <div 
+                                                            className="h-full bg-gradient-to-r from-[#63A6B2] via-[#4d8b96] to-teal-500 rounded-full transition-all duration-1000 relative shadow-lg"
+                                                            style={{ width: `${progress}%` }}
+                                                        >
+                                                            <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                                        </div>
+                                                    </div>
+                                                    {progress >= 100 && <p className="text-[10px] font-black text-green-600 uppercase tracking-widest text-center">🎉 Goal Fully Reached!</p>}
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Still Needed</p>
+                                                        <p className="text-sm font-bold text-gray-900">{formatCurrency(Math.max(0, viewingCampaign.goal_amount - (viewingCampaign.current_amount || 0)))}</p>
+                                                    </div>
+                                                    <div className="space-y-1 text-right">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Donors</p>
+                                                        <p className="text-sm font-bold text-gray-900">{viewingCampaign.donor_count || 0}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-3 pt-6 border-t border-gray-100">
+                                                    <button className="w-full h-14 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
+                                                       <Plus className="w-4 h-4" /> Simulate Donation
+                                                    </button>
+                                                    <p className="text-[10px] text-gray-400 text-center italic">Buttons are disabled in preview mode</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Share Simulation */}
+                                            <div className="bg-gray-100/50 rounded-3xl p-6 border border-gray-200">
+                                                <p className="text-[10px] text-gray-400 font-bold mb-4 uppercase tracking-widest">Simulation Tags</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {viewingCampaign.is_featured && (
+                                                        <span className="px-3 py-1 bg-amber-100 text-amber-700 text-[10px] font-black rounded-lg uppercase border border-amber-200 flex items-center gap-1.5">
+                                                            <Star className="w-3 h-3" /> Featured
+                                                        </span>
+                                                    )}
+                                                    <span className="px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-black rounded-lg uppercase border border-blue-200">
+                                                        {viewingCampaign.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Dates */}
-                            <div className="mb-5 p-4 bg-gray-50 rounded-lg">
-                                <h4 className="text-sm font-bold text-gray-700 mb-3">Campaign Duration</h4>
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <Calendar className="w-4 h-4 text-[#63A6B2] flex-shrink-0" />
-                                    <span>{formatDate(viewingCampaign.start_date)}</span>
-                                    <span>→</span>
-                                    <span>{formatDate(viewingCampaign.end_date)}</span>
-                                    {!viewingCampaign.end_date && (
-                                        <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-700 ml-2">Ongoing</span>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Close Button */}
-                            <button
-                                onClick={() => { setShowViewModal(false); setViewingCampaign(null); }}
-                                className="w-full px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
-                            >
-                                Close
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (

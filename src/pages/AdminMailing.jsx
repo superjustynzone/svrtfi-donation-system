@@ -17,7 +17,7 @@ export default function AdminMailing() {
     // Thank You Letters State
     const [thankYouLetters, setThankYouLetters] = useState([]);
     const [isLetterModalOpen, setIsLetterModalOpen] = useState(false);
-    const [letterForm, setLetterForm] = useState({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '' });
+    const [letterForm, setLetterForm] = useState({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '', from: '', cc: '', auto_send: false });
     const [isSavingLetter, setIsSavingLetter] = useState(false);
 
     // Send Modal State
@@ -32,6 +32,7 @@ export default function AdminMailing() {
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [campaigns, setCampaigns] = useState([]);
     const [selectedCampaignId, setSelectedCampaignId] = useState('');
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
     // Data lists
     const [emailLogs, setEmailLogs] = useState([]);
@@ -187,7 +188,10 @@ export default function AdminMailing() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...receiptTemplate, campaign_id: selectedCampaignId })
             });
-            if (res.ok) toast.success(`${selectedCampaignId === 'global' ? 'Global' : 'Campaign'} receipt template updated!`);
+            if (res.ok) {
+                toast.success(`${selectedCampaignId === 'global' ? 'Global' : 'Campaign'} receipt template updated!`);
+                setIsReceiptModalOpen(false);
+            }
             else toast.error('Failed to update template.');
         } catch (err) { toast.error('Connection error.'); }
         finally { setIsSavingTemplate(false); }
@@ -292,7 +296,9 @@ export default function AdminMailing() {
                     recipients: selectedDonors, // Objects with first_name, last_name, email, address
                     subject: selectedTemplateForSend.title,
                     html: selectedTemplateForSend.message, // Already HTML from Quill
-                    campaign_name: campaignName
+                    campaign_name: campaignName,
+                    from_email: selectedTemplateForSend.from || null,
+                    cc: selectedTemplateForSend.cc || null
                 })
             });
             const data = await res.json();
@@ -458,65 +464,78 @@ export default function AdminMailing() {
                     {/* Tab Content */}
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         {activeTab === 'templates' && (
-                            <div className="max-w-4xl mx-auto space-y-6">
-                                <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                                    <div className="px-6 pt-6 pb-4 border-b border-gray-100 bg-[#63A6B2]/5">
+                            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[500px]">
+                                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                                    <div>
                                         <div className="flex items-center gap-2">
                                             <FileText className="w-4 h-4 text-[#63A6B2]" />
                                             <h2 className="text-base font-bold text-gray-900">Receipt Email Configuration</h2>
                                         </div>
-                                        <p className="text-xs text-gray-400 mt-0.5">Customize the email content sent to donors after a successful donation.</p>
+                                        <p className="text-xs text-gray-400 mt-0.5">Manage receipt content sent to donors after a successful donation per campaign.</p>
                                     </div>
-
-                                    <div className="p-6 space-y-4">
-                                        <div className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                            <label className="block text-xs font-bold text-[#63A6B2] uppercase tracking-wider mb-2">Configure For:</label>
-                                            <select
-                                                value={selectedCampaignId}
-                                                onChange={e => setSelectedCampaignId(e.target.value)}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#63A6B2] shadow-sm bg-white"
-                                            >
-                                                {(campaigns || []).map(c => (
-                                                    <option key={c.campaign_id} value={c.campaign_id}>🎁 {c.campaign_name}</option>
-                                                ))}
-                                            </select>
-                                            <p className="text-[10px] text-gray-500 mt-2 italic font-medium">
-                                                * Configuring a unique receipt for this specific campaign. All donations to this campaign will receive this receipt template.
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase">Email Subject Title</label>
-                                            <input type="text" value={receiptTemplate.title}
-                                                onChange={e => setReceiptTemplate(p => ({ ...p, title: e.target.value }))}
-                                                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] transition-all font-medium"
-                                                placeholder="e.g. Official Donation Receipt" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase">Thank You Message (Inside Receipt)</label>
-                                            <textarea
-                                                value={receiptTemplate.message}
-                                                onChange={e => setReceiptTemplate(p => ({ ...p, message: e.target.value }))}
-                                                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] transition-all resize-none h-32 leading-relaxed"
-                                                placeholder="Thank you for your generous support! Your donation helps..."
-                                            ></textarea>
-                                            <div className="mt-2 flex flex-wrap gap-2">
-                                                <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-md font-bold uppercase tracking-tighter cursor-default">Subject Only: {"${donation_id}"}</span>
-                                                <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-md font-bold uppercase tracking-tighter cursor-default">Subject Only: {"${campaign_name}"}</span>
-                                                <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-md font-bold uppercase tracking-tighter cursor-default">Subject Only: {"${donor_name}"}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50/50">
-                                        <button onClick={handleSaveTemplate} disabled={isSavingTemplate}
-                                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm bg-[#63A6B2] hover:bg-[#4a8a95] text-white disabled:opacity-50">
-                                            {isSavingTemplate ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</>
-                                                : <><CheckCircle className="w-4 h-4" /> Save Configuration</>}
-                                        </button>
-                                    </div>
-                                </section>
-                            </div>
+                                    <button onClick={fetchCampaigns} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                                        <RefreshCw className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="bg-gray-50">
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Campaign Name</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {/* Campaign-specific Rows */}
+                                            {campaigns.length > 0 ? campaigns.map(c => (
+                                                <tr key={c.campaign_id} className="hover:bg-[#63A6B2]/5 transition-colors group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2]">
+                                                                <FileText className="w-4 h-4" />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <div className="text-sm font-bold text-gray-900 leading-tight truncate">{c.campaign_name}</div>
+                                                                {(c.receipt_email_subject || c.receipt_email_message) && (
+                                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                                        <span className="px-1.5 py-0.5 bg-green-50 text-[9px] font-bold text-green-600 border border-green-100 rounded-md uppercase tracking-tighter">Custom Receipt Set</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <button 
+                                                            onClick={async () => {
+                                                                setSelectedCampaignId(c.campaign_id);
+                                                                try {
+                                                                    const res = await fetch(`http://127.0.0.1:5000/api/admin/receipt-template?campaign_id=${c.campaign_id}`);
+                                                                    const data = await res.json();
+                                                                    if (res.ok && data) setReceiptTemplate({ title: data.title || '', message: data.message || '' });
+                                                                    else setReceiptTemplate({ title: '', message: '' });
+                                                                } catch { setReceiptTemplate({ title: '', message: '' }); }
+                                                                setIsReceiptModalOpen(true);
+                                                            }}
+                                                            className="text-xs font-bold text-[#63A6B2] hover:text-white hover:bg-[#63A6B2] border border-[#63A6B2]/20 px-4 py-2 rounded-xl transition-all shadow-sm"
+                                                        >
+                                                            Configure Receipt
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan="2" className="px-6 py-20 text-center">
+                                                        <div className="flex flex-col items-center text-gray-400">
+                                                            <FileText className="w-10 h-10 mb-2 opacity-20" />
+                                                            <p className="text-sm font-medium">No campaigns found.</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
                         )}
 
                         {activeTab === 'smtp' && (
@@ -538,29 +557,29 @@ export default function AdminMailing() {
                                         <div className="space-y-6">
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Mailing Provider</label>
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                                <select
+                                                    value={smtpSettings.provider}
+                                                    onChange={(e) => {
+                                                        const p = smtpProviders.find(provider => provider.name === e.target.value);
+                                                        if (p) {
+                                                            setSmtpSettings(prev => ({
+                                                                ...prev,
+                                                                provider: p.name,
+                                                                host: p.name === 'Custom' ? prev.host : p.host,
+                                                                port: p.name === 'Custom' ? prev.port : p.port,
+                                                                encryption: p.name === 'Custom' ? prev.encryption : p.encryption
+                                                            }));
+                                                            if (p.name !== 'Custom') {
+                                                                toast.info(`Switched to ${p.name} configuration`, { icon: '📧' });
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#63A6B2]/20 focus:border-[#63A6B2] shadow-sm bg-white transition-all cursor-pointer"
+                                                >
                                                     {smtpProviders.map(p => (
-                                                        <button 
-                                                            key={p.name}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setSmtpSettings(prev => ({
-                                                                    ...prev,
-                                                                    provider: p.name,
-                                                                    host: p.name === 'Custom' ? prev.host : p.host,
-                                                                    port: p.name === 'Custom' ? prev.port : p.port,
-                                                                    encryption: p.name === 'Custom' ? prev.encryption : p.encryption
-                                                                }));
-                                                                if (p.name !== 'Custom') {
-                                                                    toast.info(`Switched to ${p.name} configuration`, { icon: '📧' });
-                                                                }
-                                                            }}
-                                                            className={`px-3 py-2 text-xs font-bold border rounded-xl transition-all ${smtpSettings.provider === p.name ? 'bg-[#63A6B2] text-white border-[#63A6B2]' : 'bg-gray-50 text-gray-500 border-gray-100 hover:bg-white hover:border-gray-200'}`}
-                                                        >
-                                                            {p.name}
-                                                        </button>
+                                                        <option key={p.name} value={p.name}>{p.name} SMTP</option>
                                                     ))}
-                                                </div>
+                                                </select>
                                             </div>
                                             
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -692,7 +711,7 @@ export default function AdminMailing() {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                setLetterForm({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '' });
+                                                setLetterForm({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '', from: '', cc: '', bcc: '', to: '' });
                                                 setIsLetterModalOpen(true);
                                             }}
                                             className="px-4 py-2 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-sm hover:bg-[#4a8a95] flex items-center gap-2"
@@ -701,46 +720,92 @@ export default function AdminMailing() {
                                         </button>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-                                    {thankYouLetters.length > 0 ? thankYouLetters.map((letter) => (
-                                        <div key={letter.campaign_id} className="border border-gray-100 rounded-2xl p-5 hover:border-[#63A6B2] transition-colors group relative shadow-sm hover:shadow-md">
-                                            <div className="flex items-start justify-between mb-4">
-                                                <div className="bg-[#63A6B2]/10 p-2.5 rounded-xl text-[#63A6B2]">
-                                                    <Mail className="w-5 h-5" />
-                                                </div>
-                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => {
-                                                        setLetterForm({
-                                                            id: letter.campaign_id,
-                                                            title: letter.title,
-                                                            message: letter.message,
-                                                            status: letter.status,
-                                                            associated_campaign_id: letter.associated_campaign_id || ''
-                                                        });
-                                                        setIsLetterModalOpen(true);
-                                                    }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg"><Settings className="w-3.5 h-3.5" /></button>
-                                                    <button onClick={() => handleDeleteLetter(letter.campaign_id)} className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg"><X className="w-3.5 h-3.5" /></button>
-                                                </div>
-                                            </div>
-                                            <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{letter.title}</h3>
-                                            <p className="text-xs text-gray-400 line-clamp-2 mb-4 h-8 leading-relaxed">{letter.message}</p>
-                                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                                <span>{letter.campaign_name || 'Unassigned'}</span>
-                                                <span className={`px-2 py-0.5 rounded-full ${letter.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>{letter.status}</span>
-                                            </div>
-                                            <button
-                                                onClick={() => openSendModal(letter)}
-                                                className="w-full mt-5 py-2.5 bg-gray-50 hover:bg-[#63A6B2] group-hover:bg-[#63A6B2] text-gray-500 group-hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 border border-gray-100 group-hover:border-[#63A6B2]"
-                                            >
-                                                <Send className="w-3.5 h-3.5" /> Start Mailing
-                                            </button>
-                                        </div>
-                                    )) : (
-                                        <div className="col-span-full py-20 flex flex-col items-center text-gray-400 border-2 border-dashed border-gray-100 rounded-3xl">
-                                            <MailWarning className="w-10 h-10 mb-2 opacity-20" />
-                                            <p className="text-sm font-medium">No templates created yet.</p>
-                                        </div>
-                                    )}
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="bg-gray-50">
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Template Details</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Campaign</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center whitespace-nowrap">Status</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right whitespace-nowrap">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {thankYouLetters.length > 0 ? thankYouLetters.map((letter) => (
+                                                <tr key={letter.campaign_id} className="hover:bg-[#63A6B2]/5 transition-colors group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2] shrink-0">
+                                                                <Mail className="w-4 h-4" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-bold text-gray-900 leading-tight truncate max-w-[250px]">{letter.title}</div>
+                                                                <div className="text-[10px] text-gray-400 line-clamp-1 max-w-[250px] mt-0.5" dangerouslySetInnerHTML={{ __html: letter.message || 'No content...' }}></div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-xs font-bold text-gray-500 uppercase tracking-tight">{letter.campaign_name || 'Unassigned'}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <div className="flex flex-col items-center gap-1">
+                                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${letter.status === 'active' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{letter.status}</span>
+                                                            {letter.auto_send && (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-blue-50 text-blue-600 border border-blue-100">
+                                                                    <Send className="w-2 h-2" /> Auto
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={() => openSendModal(letter)}
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-all shadow-sm"
+                                                            >
+                                                                <Send className="w-3 h-3" /> Blast
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setLetterForm({
+                                                                        id: letter.campaign_id,
+                                                                        title: letter.title,
+                                                                        message: letter.message,
+                                                                        status: letter.status,
+                                                                        associated_campaign_id: letter.associated_campaign_id || '',
+                                                                        from: letter.from || '',
+                                                                        cc: letter.cc || '',
+                                                                        auto_send: letter.auto_send || false
+                                                                    });
+                                                                    setIsLetterModalOpen(true);
+                                                                }} 
+                                                                className="p-1.5 hover:bg-blue-50 text-[#63A6B2] bg-[#63A6B2]/10 hover:text-[#4a8a95] rounded-lg transition-colors border border-transparent hover:border-[#63A6B2]/20"
+                                                                title="Configure Template"
+                                                            >
+                                                                <Settings className="w-4 h-4" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDeleteLetter(letter.campaign_id)} 
+                                                                className="p-1.5 hover:bg-red-50 text-red-500 bg-red-50 hover:text-red-700 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                                title="Delete Template"
+                                                            >
+                                                                <X className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan="4" className="px-6 py-20 text-center">
+                                                        <div className="flex flex-col items-center text-gray-400">
+                                                            <MailWarning className="w-10 h-10 mb-2 opacity-20" />
+                                                            <p className="text-sm font-medium">No templates created yet.</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </section>
                         )}
@@ -1005,9 +1070,28 @@ export default function AdminMailing() {
                             <button onClick={() => setIsLetterModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X className="w-5 h-5" /></button>
                         </div>
                         <div className="p-6 space-y-4 overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Sender Details (From Name/Email)</label>
+                                    <input type="text" value={letterForm.from} onChange={e => setLetterForm(p => ({ ...p, from: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#63A6B2] outline-none" placeholder="e.g. SVRTFI Support <info@svrtfi.org>" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">CC (Visible Copy)</label>
+                                    <input type="text" value={letterForm.cc} onChange={e => setLetterForm(p => ({ ...p, cc: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#63A6B2] outline-none" placeholder="e.g. admin@svrtfi.org" />
+                                </div>
+                            </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Template Title (Email Subject)</label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Subject</label>
                                 <input type="text" value={letterForm.title} onChange={e => setLetterForm(p => ({ ...p, title: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#63A6B2] outline-none" placeholder="e.g. Special Thank You for your Support" />
+                            </div>
+                            <div className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors cursor-pointer ${letterForm.auto_send ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'}`} onClick={() => setLetterForm(p => ({ ...p, auto_send: !p.auto_send }))}>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-800">Auto-Send After Donation</p>
+                                    <p className="text-[11px] text-gray-500 mt-0.5">This template will be automatically sent when a donation is marked as completed.</p>
+                                </div>
+                                <div className={`w-11 h-6 rounded-full flex items-center transition-all ml-4 shrink-0 ${letterForm.auto_send ? 'bg-blue-500 justify-end' : 'bg-gray-300 justify-start'}`}>
+                                    <div className="w-5 h-5 bg-white rounded-full shadow-sm mx-0.5" />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Associated Campaign</label>
@@ -1037,7 +1121,7 @@ export default function AdminMailing() {
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     <span className="text-[10px] font-bold text-[#63A6B2] uppercase tracking-wider">Shortcuts:</span>
-                                    {['{{firstname}}', '{{lastname}}', '{{campaign_name}}', '{{address}}'].map(v => (
+                                    {['{{firstname}}', '{{lastname}}', '{{campaign_name}}', '{{foundation_name}}', '{{donation_amount}}', '{{address}}'].map(v => (
                                         <button 
                                             key={v}
                                             onClick={() => setLetterForm(p => ({ ...p, message: p.message + ' ' + v }))}
@@ -1204,6 +1288,72 @@ export default function AdminMailing() {
                                 <button onClick={() => setIsSubscriberDeleteModalOpen(false)} className="flex-1 px-6 py-3 bg-gray-50 text-gray-600 font-bold text-sm rounded-xl hover:bg-gray-100 transition-all border border-gray-100">Cancel</button>
                                 <button onClick={confirmDeleteSubscriber} className="flex-1 px-6 py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20">Delete</button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Receipt Edit Modal */}
+            {isReceiptModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+                        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900">Receipt Email Template</h3>
+                                <p className="text-xs text-[#63A6B2] font-bold mt-0.5">Campaign: {campaigns.find(c => c.campaign_id === selectedCampaignId)?.campaign_name}</p>
+                            </div>
+                            <button onClick={() => setIsReceiptModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X className="w-5 h-5" /></button>
+                        </div>
+                        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase">Email Subject Title</label>
+                                <input type="text" value={receiptTemplate.title}
+                                    onChange={e => setReceiptTemplate(p => ({ ...p, title: e.target.value }))}
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 transition-all font-medium"
+                                    placeholder="e.g. Official Donation Receipt" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Message Body (Rich HTML Editor)</label>
+                                <div className="quill-editor-container bg-white rounded-2xl overflow-hidden border border-gray-200">
+                                    <ReactQuill 
+                                        theme="snow"
+                                        value={receiptTemplate.message}
+                                        onChange={content => setReceiptTemplate(p => ({ ...p, message: content }))}
+                                        className="min-h-[250px] text-sm"
+                                        placeholder="Thank you for your generous support! Your donation helps..."
+                                        modules={{
+                                            toolbar: [
+                                                [{ 'header': [1, 2, 3, false] }],
+                                                ['bold', 'italic', 'underline', 'strike'],
+                                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                ['link', 'clean']
+                                            ]
+                                        }}
+                                    />
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <span className="text-[10px] font-bold text-[#63A6B2] uppercase tracking-wider">Shortcuts:</span>
+                                    {['{{firstname}}', '{{lastname}}', '{{campaign_name}}', '{{donation_amount}}', '{{address}}', '{{donation_id}}'].map(v => (
+                                        <button 
+                                            key={v}
+                                            type="button"
+                                            onClick={() => setReceiptTemplate(p => ({ ...p, message: (p.message || '') + ' ' + v }))}
+                                            className="text-[10px] bg-[#63A6B2]/10 text-[#63A6B2] px-2 py-0.5 rounded-md font-bold border border-[#63A6B2]/20 hover:bg-[#63A6B2]/20 transition-all"
+                                        >
+                                            {v}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="px-6 py-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50">
+                            <button onClick={() => setIsReceiptModalOpen(false)} className="px-6 py-2.5 text-gray-500 font-bold text-sm hover:bg-gray-100 hover:text-gray-700 rounded-xl border border-gray-200 bg-white transition-all shadow-sm">Cancel</button>
+                            <button onClick={() => {
+                                handleSaveTemplate();
+                            }} disabled={isSavingTemplate}
+                                className="px-8 py-2.5 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#63A6B2]/20 hover:bg-[#4a8a95] disabled:opacity-50 flex items-center justify-center gap-2">
+                                {isSavingTemplate ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</> : <><CheckCircle className="w-4 h-4" /> Save Configuration</>}
+                            </button>
                         </div>
                     </div>
                 </div>

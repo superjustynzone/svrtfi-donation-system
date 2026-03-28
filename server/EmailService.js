@@ -40,19 +40,23 @@ const getTransporter = async () => {
     });
 };
 
-const sendEmail = async (to, subject, html) => {
+const sendEmail = async (to, subject, html, customFrom = null, ccEmail = null) => {
     let result = { success: false };
     try {
         const transporter = await getTransporter();
         const res = await pool.query("SELECT user_email FROM smtp_settings LIMIT 1");
-        const fromEmail = res.rows.length > 0 ? res.rows[0].user_email : process.env.EMAIL_USER;
+        const fromEmail = res.rows.length > 0 && res.rows[0].user_email ? res.rows[0].user_email : process.env.EMAIL_USER;
 
         const mailOptions = {
-            from: `"SVRTV Donation System" <${fromEmail}>`,
+            from: customFrom || `"SVRTV Donation System" <${fromEmail}>`,
             to,
             subject,
             html,
         };
+        
+        if (ccEmail) {
+            mailOptions.cc = ccEmail;
+        }
 
         const info = await transporter.sendMail(mailOptions);
         console.log("Email sent: " + info.response);
@@ -87,6 +91,7 @@ const sendDonationReceipt = async (donationData) => {
     // Fetch user-configured template from DB
     let templateTitle = `Official Donation Receipt - RCP-${donation_id}`;
     let thankYouMsg = "Thank you for your generous support! Your donation helps us make a difference.";
+    let customHtmlBody = null; // If set, replaces the entire hardcoded receipt
 
     try {
         const { campaign_id: campaignId } = donationData;
@@ -94,20 +99,46 @@ const sendDonationReceipt = async (donationData) => {
         const campRes = await pool.query("SELECT receipt_email_subject as title, receipt_email_message as message FROM campaigns WHERE campaign_id = $1", [campaignId]);
         
         let config = null;
-        if (campRes.rows.length > 0 && campRes.rows[0].title) {
+        if (campRes.rows.length > 0 && (campRes.rows[0].title || campRes.rows[0].message)) {
             config = campRes.rows[0];
-        } else {
-            // 2. Fallback to global template
-            const globalRes = await pool.query("SELECT * FROM email_campaigns WHERE category = 'receipt_template' LIMIT 1");
-            if (globalRes.rows.length > 0) config = globalRes.rows[0];
         }
 
+        // If a campaign-specific custom template exists, use it as the full body.
         if (config) {
-            templateTitle = (config.title || "")
-                .replace(/\${donation_id}/g, donation_id)
-                .replace(/\${campaign_name}/g, campaign_name)
-                .replace(/\${donor_name}/g, donor_name);
-            thankYouMsg = config.message;
+            // Apply variable replacements on the subject
+            const replacements = {
+                '{{firstname}}':       (donor_name || '').split(' ')[0],
+                '{{lastname}}':        (donor_name || '').split(' ').slice(1).join(' '),
+                '{{firstname}}':       (donor_name || '').split(' ')[0],
+                '{{campaign_name}}':   campaign_name || '',
+                '{{donation_amount}}': `₱${parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+                '{{donation_id}}':     String(donation_id),
+                '{{address}}':         '',
+                '{{foundation_name}}': '',
+                // Legacy ${} style replacements
+                '${donation_id}':      String(donation_id),
+                '${campaign_name}':    campaign_name || '',
+                '${donor_name}':       donor_name || '',
+            };
+
+            let subject = config.title || '';
+            Object.entries(replacements).forEach(([key, val]) => {
+                const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                subject = subject.replace(regex, val);
+            });
+            templateTitle = subject;
+
+            // If message body has content (from Quill), use it as the full email body
+            if (config.message && config.message.trim() && config.message.trim() !== '<p><br></p>') {
+                let body = config.message;
+                Object.entries(replacements).forEach(([key, val]) => {
+                    const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                    body = body.replace(regex, val);
+                });
+                customHtmlBody = `<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 20px auto; color: #333; line-height: 1.6;">${body}</div>`;
+            } else {
+                thankYouMsg = config.message || thankYouMsg;
+            }
         }
     } catch (err) {
         console.error("Error fetching receipt template from DB:", err);
@@ -277,7 +308,8 @@ const sendDonationReceipt = async (donationData) => {
         </div>
     `;
 
-    return await sendEmail(donor_email, templateTitle, receiptHtml);
+    // Use custom body if configured, else fall back to the standard receipt layout
+    return await sendEmail(donor_email, templateTitle, customHtmlBody || receiptHtml);
 };
 
 module.exports = { sendEmail, sendDonationReceipt };

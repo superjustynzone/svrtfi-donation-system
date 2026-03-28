@@ -151,6 +151,7 @@ router.get("/all", async (req, res) => {
         c.campaign_description, c.goal_amount, c.current_amount,
         c.start_date, c.end_date, c.file_url, c.media_type,
         c.is_featured, c.status, c.created_at, c.updated_at,
+        c.receipt_email_subject, c.receipt_email_message,
         f.foundation_id, f.foundation_name,
         f.image_logo as foundation_logo,
         (

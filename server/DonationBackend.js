@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { Pool } = require("pg");
-const { sendDonationReceipt } = require("./EmailService");
+const { sendDonationReceipt, sendEmail } = require("./EmailService");
 require("dotenv").config();
 
 const pool = new Pool({
@@ -453,6 +453,46 @@ router.patch("/:id/complete", async (req, res) => {
                     frequency: data.frequency,
                     message: data.message
                 });
+
+                // --- Auto-send Thank You Letter ---
+                try {
+                    const tplRes = await pool.query(
+                        `SELECT * FROM email_campaigns 
+                         WHERE category = 'thank_you_letter' 
+                           AND auto_send = TRUE 
+                           AND status = 'active'
+                           AND (associated_campaign_id = $1 OR associated_campaign_id IS NULL)
+                         ORDER BY associated_campaign_id DESC NULLS LAST
+                         LIMIT 1`,
+                        [data.campaign_id]
+                    );
+                    if (tplRes.rows.length > 0) {
+                        const tpl = tplRes.rows[0];
+                        const donor_email = data.email;
+                        if (donor_email) {
+                            const replacements = {
+                                '{{firstname}}':       data.first_name || '',
+                                '{{lastname}}':        data.last_name  || '',
+                                '{{campaign_name}}':   data.campaign_name || '',
+                                '{{donation_amount}}': `₱${parseFloat(data.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})}`,
+                                '{{address}}':         '',
+                                '{{foundation_name}}': '',
+                            };
+                            let personalizedSubject = tpl.title;
+                            let personalizedHtml    = tpl.message;
+                            Object.entries(replacements).forEach(([key, val]) => {
+                                const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                                personalizedSubject = personalizedSubject.replace(regex, val);
+                                personalizedHtml    = personalizedHtml.replace(regex, val);
+                            });
+                            const finalHtml = `<div style="font-family: sans-serif; line-height: 1.6; color: #333;">${personalizedHtml}</div>`;
+                            await sendEmail(donor_email, personalizedSubject, finalHtml, tpl.from_email || null, tpl.cc_email || null);
+                            console.log(`✅ Auto Thank You Letter sent to ${donor_email}`);
+                        }
+                    }
+                } catch (tplErr) {
+                    console.error("FAILED TO SEND AUTO THANK YOU LETTER:", tplErr);
+                }
             }
         } catch (emailErr) {
             console.error("FAILED TO SEND RECEIPT EMAIL:", emailErr);

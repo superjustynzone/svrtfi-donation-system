@@ -167,12 +167,11 @@ app.get("/api/admin/receipt-template", async (req, res) => {
   try {
     if (campaign_id && campaign_id !== 'global') {
       const result = await pool.query("SELECT receipt_email_subject as title, receipt_email_message as message FROM campaigns WHERE campaign_id = $1", [campaign_id]);
-      if (result.rows.length > 0 && result.rows[0].title) {
+      if (result.rows.length > 0) {
         return res.json(result.rows[0]);
       }
     }
-    const result = await pool.query("SELECT * FROM email_campaigns WHERE category = 'receipt_template' LIMIT 1");
-    res.json(result.rows[0] || {});
+    res.json({ title: '', message: '' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -188,11 +187,7 @@ app.put("/api/admin/receipt-template", async (req, res) => {
       );
       return res.json({ message: "Campaign-specific receipt template updated successfully!" });
     }
-    await pool.query(
-      "UPDATE email_campaigns SET title = $1, message = $2, updated_at = NOW() WHERE category = 'receipt_template'",
-      [title, message]
-    );
-    res.json({ message: "Global receipt template updated successfully!" });
+    res.status(400).json({ error: "Campaign ID is required for receipt templates." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -727,6 +722,10 @@ const initDB = async () => {
         );
       `);
 
+      await pool.query(`ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS from_email VARCHAR(255)`);
+      await pool.query(`ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS cc_email VARCHAR(255)`);
+      await pool.query(`ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS auto_send BOOLEAN DEFAULT FALSE`);
+
       const checkTemplate = await pool.query("SELECT * FROM email_campaigns WHERE category = 'receipt_template'");
       if (checkTemplate.rows.length === 0) {
         await pool.query(`
@@ -978,7 +977,7 @@ try {
 app.get("/api/admin/thank-you-letters", async (req, res) => {
   try {
     const result = await pool.query(`
-            SELECT e.*, c.campaign_name 
+            SELECT e.*, e.from_email as from, e.cc_email as cc, e.auto_send, c.campaign_name 
             FROM email_campaigns e 
             LEFT JOIN campaigns c ON e.associated_campaign_id = c.campaign_id 
             WHERE e.category = 'thank_you_letter' 
@@ -992,12 +991,12 @@ app.get("/api/admin/thank-you-letters", async (req, res) => {
 
 // Create Thank You Letter
 app.post("/api/admin/thank-you-letters", async (req, res) => {
-  const { title, message, status, associated_campaign_id } = req.body;
+  const { title, message, status, associated_campaign_id, from, cc, auto_send } = req.body;
   try {
     const campaignId = (!associated_campaign_id || associated_campaign_id === 'global') ? null : associated_campaign_id;
     const result = await pool.query(
-      "INSERT INTO email_campaigns (title, message, category, status, associated_campaign_id) VALUES ($1, $2, 'thank_you_letter', $3, $4) RETURNING *",
-      [title, message, status || 'draft', campaignId]
+      "INSERT INTO email_campaigns (title, message, category, status, associated_campaign_id, from_email, cc_email, auto_send) VALUES ($1, $2, 'thank_you_letter', $3, $4, $5, $6, $7) RETURNING *",
+      [title, message, status || 'draft', campaignId, from || null, cc || null, auto_send || false]
     );
     res.json({ message: "Thank You Letter created successfully!", letter: result.rows[0] });
   } catch (err) {
@@ -1008,12 +1007,12 @@ app.post("/api/admin/thank-you-letters", async (req, res) => {
 // Update Thank You Letter
 app.put("/api/admin/thank-you-letters/:id", async (req, res) => {
   const { id } = req.params;
-  const { title, message, status, associated_campaign_id } = req.body;
+  const { title, message, status, associated_campaign_id, from, cc, auto_send } = req.body;
   try {
     const campaignId = (!associated_campaign_id || associated_campaign_id === 'global') ? null : associated_campaign_id;
     const result = await pool.query(
-      "UPDATE email_campaigns SET title = $1, message = $2, status = $3, associated_campaign_id = $4, updated_at = NOW() WHERE campaign_id = $5 RETURNING *",
-      [title, message, status, campaignId, id]
+      "UPDATE email_campaigns SET title = $1, message = $2, status = $3, associated_campaign_id = $4, from_email = $5, cc_email = $6, auto_send = $7, updated_at = NOW() WHERE campaign_id = $8 RETURNING *",
+      [title, message, status, campaignId, from || null, cc || null, auto_send || false, id]
     );
     res.json({ message: "Thank You Letter updated successfully!", letter: result.rows[0] });
   } catch (err) {
@@ -1034,7 +1033,7 @@ app.delete("/api/admin/thank-you-letters/:id", async (req, res) => {
 
 // Bulk Send Emails
 app.post("/api/admin/bulk-send-emails", async (req, res) => {
-  const { recipients, subject, html, campaign_name } = req.body;
+  const { recipients, subject, html, campaign_name, from_email, cc } = req.body;
 
   if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
     return res.status(400).json({ message: "No recipients provided" });
@@ -1071,7 +1070,7 @@ app.post("/api/admin/bulk-send-emails", async (req, res) => {
                 ${personalizedHtml}
             </div>`;
 
-      const result = await sendEmail(emailAddr, personalizedSubject, finalHtml);
+      const result = await sendEmail(emailAddr, personalizedSubject, finalHtml, from_email, cc);
       if (result.success) successCount++;
       else {
         failCount++;

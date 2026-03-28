@@ -3,7 +3,8 @@ import {
     Home, Users, DollarSign, PieChart, FileText, BarChart3,
     UserCog, Settings, AlertTriangle, Search, Menu, X, LogOut,
     Plus, Edit, Trash2, Building2, Mail, Phone, MapPin,
-    MoreVertical, Filter, ChevronDown, Upload, CreditCard, CheckCircle2, Eye
+    MoreVertical, Filter, ChevronDown, Upload, CreditCard, CheckCircle2, Eye,
+    ChevronLeft, ChevronRight, Clock, Image as ImageIcon, Globe, Heart, Star
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ export default function AdminFoundationCreation() {
     const [searchTerm, setSearchTerm] = useState('');
     const [showViewModal, setShowViewModal] = useState(false);
     const [viewingFoundation, setViewingFoundation] = useState(null);
+    const [selectedViewImage, setSelectedViewImage] = useState(0);
 
     const [formData, setFormData] = useState({
         foundation_name: '',
@@ -690,112 +692,259 @@ export default function AdminFoundationCreation() {
             </main>
 
             {/* View Foundation Modal */}
-            {showViewModal && viewingFoundation && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-                        {/* Cover Image */}
-                        {viewingFoundation.image_cover && (
-                            <div className="h-40 w-full overflow-hidden rounded-t-xl">
-                                <img src={`http://localhost:5000${viewingFoundation.image_cover}`} alt="Cover" className="w-full h-full object-cover" />
-                            </div>
-                        )}
-                        <div className="p-6">
-                            {/* Header */}
-                            <div className="flex items-start gap-4 mb-6">
-                                {viewingFoundation.image_logo ? (
-                                    <img src={`http://localhost:5000${viewingFoundation.image_logo}`} alt="Logo" className="w-16 h-16 rounded-lg object-cover border border-gray-200 shadow-sm flex-shrink-0" />
-                                ) : (
-                                    <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center border border-gray-200 flex-shrink-0">
-                                        <Building2 className="w-8 h-8 text-gray-400" />
+            {showViewModal && viewingFoundation && (() => {
+                const allCoverMedia = [];
+                if (viewingFoundation.image_cover) allCoverMedia.push({ file_url: viewingFoundation.image_cover, media_id: 'main' });
+                if (viewingFoundation.media && Array.isArray(viewingFoundation.media)) allCoverMedia.push(...viewingFoundation.media);
+                
+                const hasMedia = allCoverMedia.length > 0;
+                const currentCoverUrl = hasMedia 
+                    ? `http://localhost:5000${allCoverMedia[selectedViewImage]?.file_url}` 
+                    : 'https://via.placeholder.com/1200x400/63A6B2/FFFFFF?text=Foundation';
+
+                const stripHtml = (html) => {
+                    if (!html) return '';
+                    return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+                };
+
+                const focusAreasList = viewingFoundation.focus_areas 
+                    ? (Array.isArray(viewingFoundation.focus_areas) ? viewingFoundation.focus_areas : viewingFoundation.focus_areas.split(',')) 
+                    : [];
+
+                return (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                        <div className="bg-[#f8fafb] rounded-[2rem] w-full max-w-6xl shadow-2xl relative max-h-[95vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+                            {/* Header - Fixed */}
+                            <div className="shrink-0 bg-white px-8 py-5 border-b border-gray-100 flex items-center justify-between shadow-sm z-30">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2]">
+                                        <Building2 className="w-6 h-6" />
                                     </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="text-xl font-bold text-gray-900">{viewingFoundation.foundation_name}</h3>
-                                    {viewingFoundation.focus_areas && (
-                                        <p className="text-sm text-[#63A6B2] font-medium mt-1">{viewingFoundation.focus_areas}</p>
-                                    )}
+                                    <div>
+                                        <h3 className="text-xl font-extrabold text-gray-900 leading-none">Foundation Simulation</h3>
+                                        <p className="text-[10px] text-[#63A6B2] mt-1.5 uppercase tracking-widest font-black">User-side View Draft Preview</p>
+                                    </div>
                                 </div>
-                                <button onClick={() => { setShowViewModal(false); setViewingFoundation(null); }} className="text-gray-400 hover:text-gray-600 transition flex-shrink-0">
-                                    <X className="w-6 h-6" />
+                                <button
+                                    onClick={() => { setShowViewModal(false); setViewingFoundation(null); setSelectedViewImage(0); }}
+                                    className="px-6 py-2.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold text-sm transition-all shadow-lg hover:shadow-black/20 flex items-center gap-2 group"
+                                >
+                                    <X className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                                    Close Preview
                                 </button>
                             </div>
 
-                            {/* About */}
-                            {viewingFoundation.about_foundation && (
-                                <div className="mb-5">
-                                    <h4 className="text-sm font-bold text-gray-700 mb-2">About Foundation</h4>
-                                    <div className="prose prose-sm max-w-none text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.about_foundation }} />
-                                </div>
-                            )}
+                            {/* Scrollable Body */}
+                            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                {/* Hero Section */}
+                                <div className="relative group bg-gray-200">
+                                    <div 
+                                        className="h-80 md:h-96 bg-cover bg-center transition-all duration-700"
+                                        style={{ backgroundImage: `url(${currentCoverUrl})` }}
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/80"></div>
+                                        
+                                        {/* Image Controls */}
+                                        {allCoverMedia.length > 1 && (
+                                            <>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedViewImage(prev => prev === 0 ? allCoverMedia.length - 1 : prev - 1); }}
+                                                    className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center hover:bg-white hover:text-gray-900 transition-all opacity-0 group-hover:opacity-100"
+                                                >
+                                                    <ChevronLeft className="w-6 h-6" />
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedViewImage(prev => prev === allCoverMedia.length - 1 ? 0 : prev + 1); }}
+                                                    className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center hover:bg-white hover:text-gray-900 transition-all opacity-0 group-hover:opacity-100"
+                                                >
+                                                    <ChevronRight className="w-6 h-6" />
+                                                </button>
+                                                <div className="absolute top-6 right-6 px-4 py-1.5 bg-black/40 backdrop-blur-md rounded-full text-xs font-bold text-white tracking-widest border border-white/20">
+                                                    {selectedViewImage + 1} / {allCoverMedia.length}
+                                                </div>
+                                            </>
+                                        )}
 
-                            {/* Mission & Vision */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                                {viewingFoundation.mission && (
-                                    <div>
-                                        <h4 className="text-sm font-bold text-gray-700 mb-2">Mission</h4>
-                                        <div className="prose prose-sm max-w-none text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.mission }} />
+                                        {/* Foundation Header Overlay */}
+                                        <div className="absolute bottom-10 left-10 right-10 flex items-end justify-between">
+                                            <div className="flex items-center gap-8">
+                                                {/* Logo Container */}
+                                                <div className="w-28 h-28 rounded-3xl bg-white p-2 shadow-2xl border-4 border-white/20 overflow-hidden shrink-0 hidden md:block group-hover:scale-105 transition-transform">
+                                                    {viewingFoundation.image_logo ? (
+                                                        <img src={`http://localhost:5000${viewingFoundation.image_logo}`} className="w-full h-full object-contain" alt="Logo" />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-[#63A6B2] flex items-center justify-center text-white">
+                                                            <Building2 className="w-10 h-10" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <span className="px-5 py-1.5 bg-[#63A6B2] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg shadow-[#63A6B2]/40">Foundation</span>
+                                                    <h1 className="text-5xl font-black text-white leading-none drop-shadow-2xl">{viewingFoundation.foundation_name}</h1>
+                                                    <p className="text-xl text-white/90 font-medium max-w-2xl drop-shadow-md line-clamp-2">
+                                                        {viewingFoundation.mission ? stripHtml(viewingFoundation.mission).substring(0, 160) + '...' : 'A partner foundation dedicated to making a difference.'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
-                                {viewingFoundation.vision && (
-                                    <div>
-                                        <h4 className="text-sm font-bold text-gray-700 mb-2">Vision</h4>
-                                        <div className="prose prose-sm max-w-none text-sm text-gray-600 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingFoundation.vision }} />
+                                    {/* Thumbnails */}
+                                    {allCoverMedia.length > 1 && (
+                                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+                                            {allCoverMedia.map((_, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setSelectedViewImage(idx)}
+                                                    className={`h-1.5 rounded-full transition-all duration-300 ${selectedViewImage === idx ? 'w-10 bg-[#63A6B2]' : 'w-2 bg-white/40 hover:bg-white'}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Main Content Grid */}
+                                <div className="p-10">
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                                        {/* Left Column */}
+                                        <div className="lg:col-span-2 space-y-10">
+                                            {/* About Section */}
+                                            <div className="bg-white rounded-[2.5rem] shadow-xl p-10 border border-gray-100">
+                                                <div className="flex items-center gap-4 mb-8">
+                                                    <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+                                                        <Heart className="w-6 h-6" />
+                                                    </div>
+                                                    <h2 className="text-3xl font-black text-gray-900">About the Foundation</h2>
+                                                </div>
+                                                <div 
+                                                    className="prose prose-base max-w-none text-gray-600 leading-relaxed ql-editor font-medium" 
+                                                    style={{ padding: 0 }} 
+                                                    dangerouslySetInnerHTML={{ __html: viewingFoundation.about_foundation || viewingFoundation.description || '<p class="italic text-gray-400">No profile description provided.</p>' }} 
+                                                />
+                                            </div>
+
+                                            {/* Mission & Vision Rows */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-medium">
+                                                {/* Mission Card */}
+                                                <div className="bg-white rounded-[2rem] shadow-lg p-8 border-l-[10px] border-[#63A6B2]">
+                                                    <div className="flex items-center gap-3 mb-6">
+                                                        <div className="w-10 h-10 bg-[#63A6B2]/10 rounded-xl flex items-center justify-center text-[#63A6B2]">
+                                                           <Globe className="w-5 h-5" />
+                                                        </div>
+                                                        <h3 className="text-xl font-black text-[#63A6B2] uppercase tracking-wider">Mission</h3>
+                                                    </div>
+                                                    <div 
+                                                        className="prose prose-sm max-w-none text-gray-600 ql-editor" 
+                                                        style={{ padding: 0 }} 
+                                                        dangerouslySetInnerHTML={{ __html: viewingFoundation.mission || '<p>To create lasting impact through service.</p>' }} 
+                                                    />
+                                                </div>
+
+                                                {/* Vision Card */}
+                                                <div className="bg-white rounded-[2rem] shadow-lg p-8 border-l-[10px] border-indigo-500">
+                                                    <div className="flex items-center gap-3 mb-6">
+                                                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                                                           <Eye className="w-5 h-5" />
+                                                        </div>
+                                                        <h3 className="text-xl font-black text-indigo-600 uppercase tracking-wider">Vision</h3>
+                                                    </div>
+                                                    <div 
+                                                        className="prose prose-sm max-w-none text-gray-600 ql-editor" 
+                                                        style={{ padding: 0 }} 
+                                                        dangerouslySetInnerHTML={{ __html: viewingFoundation.vision || '<p>A world where everyone has opportunity.</p>' }} 
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Focus Areas Tokens */}
+                                            <div className="bg-white rounded-[2.5rem] shadow-xl p-10 border border-gray-100">
+                                                <h3 className="text-2xl font-black text-gray-900 mb-8 flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
+                                                        <Star className="w-6 h-6" />
+                                                    </div>
+                                                    Key Focus Areas
+                                                </h3>
+                                                <div className="flex flex-wrap gap-4">
+                                                    {focusAreasList.length > 0 ? focusAreasList.map((area, idx) => (
+                                                        <div key={idx} className="px-6 py-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-3 hover:bg-gray-100 transition-colors group">
+                                                            <div className="w-2.5 h-2.5 rounded-full bg-[#63A6B2] shadow-lg shadow-[#63A6B2]/40 group-hover:scale-125 transition-transform" />
+                                                            <span className="font-bold text-gray-700">{area.trim()}</span>
+                                                        </div>
+                                                    )) : <p className="text-gray-400 italic">No specific focus areas listed.</p>}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Column / Sidebar */}
+                                        <div className="space-y-8">
+                                            {/* Contact Card */}
+                                            <div className="bg-white rounded-[2rem] shadow-xl p-8 border border-gray-100 space-y-8">
+                                                <h4 className="text-xl font-black text-gray-900 flex items-center gap-3">
+                                                    <Mail className="w-5 h-5 text-[#63A6B2]" /> Get in Touch
+                                                </h4>
+                                                <div className="space-y-6">
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="w-10 h-10 rounded-xl bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2] border border-[#63A6B2]/20 shrink-0">
+                                                            <Mail className="w-4 h-4" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Email</p>
+                                                            <p className="text-sm font-bold text-gray-900 break-all">{viewingFoundation.foundation_email || 'n/a'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="w-10 h-10 rounded-xl bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2] border border-[#63A6B2]/20 shrink-0">
+                                                            <Phone className="w-4 h-4" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Phone</p>
+                                                            <p className="text-sm font-bold text-gray-900">{viewingFoundation.foundation_contact || 'n/a'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="w-10 h-10 rounded-xl bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2] border border-[#63A6B2]/20 shrink-0">
+                                                            <MapPin className="w-4 h-4" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Address</p>
+                                                            <p className="text-sm font-bold text-gray-900 leading-relaxed">{viewingFoundation.foundation_address || 'n/a'}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Bank Details Card Simulation */}
+                                            <div className="bg-white rounded-[2rem] shadow-xl overflow-hidden border border-emerald-100">
+                                                <div className="bg-emerald-600 px-8 py-4 flex items-center gap-2">
+                                                    <CreditCard className="w-4 h-4 text-white" />
+                                                    <span className="text-white text-[10px] font-black uppercase tracking-widest">Bank Information</span>
+                                                </div>
+                                                <div className="p-8 space-y-6">
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1.5">Bank Name</p>
+                                                        <p className="text-sm font-bold text-gray-900">{viewingFoundation.bank_name || 'Individual Bank Details'}</p>
+                                                    </div>
+                                                    <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                                                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-2">Account Details</p>
+                                                        <p className="text-sm font-medium text-gray-700 leading-relaxed italic">
+                                                            {viewingFoundation.bank_information || 'No bank information provided yet.'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Simulation */}
+                                            <button className="w-full h-16 bg-gradient-to-r from-[#63A6B2] to-[#4d8b96] text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl hover:shadow-[#63A6B2]/20 hover:-translate-y-1 transition-all">
+                                                Support Ongoing Campaigns
+                                            </button>
+                                            <p className="text-center text-[10px] text-gray-400 italic">Interactions are disabled in preview mode</p>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-
-                            {/* Contact Info */}
-                            <div className="mb-5 p-4 bg-gray-50 rounded-lg">
-                                <h4 className="text-sm font-bold text-gray-700 mb-3">Contact Information</h4>
-                                <div className="space-y-2">
-                                    {viewingFoundation.foundation_email && (
-                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                            <Mail className="w-4 h-4 text-[#63A6B2] flex-shrink-0" />
-                                            <span>{viewingFoundation.foundation_email}</span>
-                                        </div>
-                                    )}
-                                    {viewingFoundation.foundation_contact && (
-                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                            <Phone className="w-4 h-4 text-[#63A6B2] flex-shrink-0" />
-                                            <span>{viewingFoundation.foundation_contact}</span>
-                                        </div>
-                                    )}
-                                    {viewingFoundation.foundation_address && (
-                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                            <MapPin className="w-4 h-4 text-[#63A6B2] flex-shrink-0" />
-                                            <span>{viewingFoundation.foundation_address}</span>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
-
-                            {/* Bank Info */}
-                            {(viewingFoundation.bank_name || viewingFoundation.bank_information) && (
-                                <div className="mb-5 p-4 bg-gray-50 rounded-lg">
-                                    <h4 className="text-sm font-bold text-gray-700 mb-3">Bank Information</h4>
-                                    {viewingFoundation.bank_name && (
-                                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                                            <CreditCard className="w-4 h-4 text-[#63A6B2] flex-shrink-0" />
-                                            <span className="font-semibold">{viewingFoundation.bank_name}</span>
-                                        </div>
-                                    )}
-                                    {viewingFoundation.bank_information && (
-                                        <p className="text-sm text-gray-500 ml-6">{viewingFoundation.bank_information}</p>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Close Button */}
-                            <button
-                                onClick={() => { setShowViewModal(false); setViewingFoundation(null); }}
-                                className="w-full px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
-                            >
-                                Close
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
