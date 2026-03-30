@@ -342,11 +342,13 @@ router.get("/user/:userId", async (req, res) => {
               d.*,
               c.campaign_name, c.campaign_type,
               pt.payment_reference, pt.payment_status, pt.receipt_upload,
-              dn.first_name, dn.last_name
+              dn.first_name, dn.last_name,
+              COALESCE(dr.is_active, false) AS is_reminded
              FROM donations d
              LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
              LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
              LEFT JOIN donors dn ON d.donor_id = dn.donor_id
+             LEFT JOIN donation_reminders dr ON d.donation_id = dr.donation_id
              WHERE d.user_id = $1
              ORDER BY d.initiated_at DESC`,
             [req.params.userId]
@@ -354,6 +356,151 @@ router.get("/user/:userId", async (req, res) => {
         res.json(result.rows);
     } catch (err) {
         console.error("GET USER DONATIONS ERROR:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+// ─────────────────────────────────────────────
+// POST /api/donations/:id/reminder/toggle — Toggle donation reminder
+// ─────────────────────────────────────────────
+router.post("/:id/reminder/toggle", async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { isActive } = req.body;
+        const donationId = req.params.id;
+
+        // Fetch the donation
+        const donationResult = await client.query(
+            `SELECT user_id, campaign_id, initiated_at, next_due_date 
+             FROM donations WHERE donation_id = $1`,
+            [donationId]
+        );
+        
+        if (donationResult.rows.length === 0) {
+            return res.status(404).json({ message: "Donation not found" });
+        }
+        
+        const d = donationResult.rows[0];
+
+        // Upsert the reminder
+        await client.query(
+            `INSERT INTO donation_reminders (donation_id, user_id, campaign_id, started_date, next_payment, is_active, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW())
+             ON CONFLICT (donation_id) 
+             DO UPDATE SET is_active = EXCLUDED.is_active, updated_at = NOW()`,
+            [donationId, d.user_id, d.campaign_id, d.initiated_at, d.next_due_date, isActive]
+        );
+
+        res.json({ message: "Reminder status updated successfully", isActive });
+    } catch (err) {
+        console.error("TOGGLE REMINDER ERROR:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        client.release();
+    }
+});
+
+// ─────────────────────────────────────────────
+// GET /api/donations/admin/reminders — Get active donation reminders (admin)
+// ─────────────────────────────────────────────
+router.get("/admin/reminders", async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT
+              dr.reminder_id, dr.started_date, dr.next_payment, dr.is_active,
+              d.amount, d.frequency,
+              c.campaign_name,
+              u.first_name, u.last_name, 
+              a.email AS user_email
+             FROM donation_reminders dr
+             INNER JOIN donations d ON dr.donation_id = d.donation_id
+             LEFT JOIN campaigns c ON dr.campaign_id = c.campaign_id
+             LEFT JOIN users u ON dr.user_id = u.user_id
+             LEFT JOIN auth_users a ON u.user_id = a.user_id
+             WHERE dr.is_active = TRUE
+             ORDER BY dr.started_date DESC`
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error("GET ADMIN REMINDERS ERROR:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+// ─────────────────────────────────────────────
+// POST /api/donations/admin/reminders/:id/send — Manually send reminder email
+// ─────────────────────────────────────────────
+router.post("/admin/reminders/:id/send", async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await pool.query(
+            `SELECT
+              dr.reminder_id, dr.next_payment,
+              d.amount, d.frequency,
+              c.campaign_name,
+              u.first_name, u.last_name, 
+              a.email AS user_email
+             FROM donation_reminders dr
+             INNER JOIN donations d ON dr.donation_id = d.donation_id
+             LEFT JOIN campaigns c ON dr.campaign_id = c.campaign_id
+             LEFT JOIN users u ON dr.user_id = u.user_id
+             LEFT JOIN auth_users a ON u.user_id = a.user_id
+             WHERE dr.reminder_id = $1`,
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Reminder not found." });
+        }
+
+        const rem = result.rows[0];
+        const donorName = rem.first_name ? `${rem.first_name} ${rem.last_name || ""}`.trim() : "valued donor";
+        const campaignName = rem.campaign_name || "General Operations";
+        const nextPayment = rem.next_payment ? new Date(rem.next_payment).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" }) : "N/A";
+        const amountStr = `₱${parseFloat(rem.amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
+
+        const emailHtml = `
+            <div style="font-family: sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; overflow: hidden;">
+                <div style="background-color: #63A6B2; padding: 20px; text-align: center; color: white;">
+                    <h2 style="margin: 0;">Donation Reminder</h2>
+                </div>
+                <div style="padding: 30px;">
+                    <p>Dear ${donorName},</p>
+                    <p>We hope this email finds you well. This is a friendly reminder from <strong>SVRTFI</strong> regarding your next scheduled donation for the <strong>${campaignName}</strong> campaign.</p>
+                    
+                    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <table style="width: 100%;">
+                            <tr>
+                                <td style="color: #666; font-size: 14px;">Amount:</td>
+                                <td style="font-weight: bold; text-align: right;">${amountStr}</td>
+                            </tr>
+                            <tr>
+                                <td style="color: #666; font-size: 14px;">Next Payment Date:</td>
+                                <td style="font-weight: bold; text-align: right;">${nextPayment}</td>
+                            </tr>
+                            <tr>
+                                <td style="color: #666; font-size: 14px;">Frequency:</td>
+                                <td style="font-weight: bold; text-align: right; text-transform: capitalize;">${rem.frequency}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <p>Your continuous support makes a huge difference in our ability to serve those in need. If you have any questions or need to update your preferences, please don't hesitate to contact us.</p>
+                    
+                    <p style="margin-top: 30px;">Warmly,<br/>The SVRTFI Team</p>
+                </div>
+                <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 12px; color: #999;">
+                    &copy; ${new Date().getFullYear()} SVRTFI Donation System. All rights reserved.
+                </div>
+            </div>
+        `;
+
+        await sendEmail(rem.user_email, `Reminder: Your upcoming donation for ${campaignName}`, emailHtml);
+
+        res.json({ message: "Reminder email sent successfully!" });
+    } catch (err) {
+        console.error("SEND MANUAL REMINDER ERROR:", err);
         res.status(500).json({ message: "Server error" });
     }
 });
@@ -432,26 +579,30 @@ router.patch("/:id/complete", async (req, res) => {
         // Send email receipt
         try {
             const details = await pool.query(
-                `SELECT d.*, c.campaign_name, dn.email, dn.first_name, dn.last_name
+                `SELECT d.*, c.campaign_name, dn.email, dn.first_name, dn.last_name, pt.receipt_upload
                  FROM donations d
                  JOIN campaigns c ON d.campaign_id = c.campaign_id
                  LEFT JOIN donors dn ON d.donor_id = dn.donor_id
-                 WHERE d.donation_id = $1`,
+                 LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+                 WHERE d.donation_id = $1
+                 LIMIT 1`,
                 [req.params.id]
             );
 
             if (details.rows.length > 0) {
                 const data = details.rows[0];
                 await sendDonationReceipt({
-                    donor_name: `${data.first_name || 'Donor'} ${data.last_name || ""}`.trim(),
+                    donor_name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Anonymous Donor',
                     donor_email: data.email,
                     amount: data.amount,
                     campaign_name: data.campaign_name,
+                    campaign_id: data.campaign_id,
                     donation_id: data.donation_id,
                     payment_method: data.payment_method || 'N/A',
                     date: new Date(),
                     frequency: data.frequency,
-                    message: data.message
+                    message: data.message,
+                    receipt_upload: data.receipt_upload || null
                 });
 
                 // --- Auto-send Thank You Letter ---

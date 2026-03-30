@@ -40,6 +40,11 @@ export default function AdminMailing() {
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
     const [isLoadingSubscribers, setIsLoadingSubscribers] = useState(false);
 
+    // Donation Reminders State
+    const [donationReminders, setDonationReminders] = useState([]);
+    const [isLoadingReminders, setIsLoadingReminders] = useState(false);
+    const [sendingReminderId, setSendingReminderId] = useState(null);
+
     // Selected Log Modal
     const [selectedLog, setSelectedLog] = useState(null);
 
@@ -87,7 +92,8 @@ export default function AdminMailing() {
         'letters': () => fetchThankYouLetters(),
         'logs': () => fetchEmailLogs(),
         'list': () => fetchSubscribers(),
-        'smtp': () => fetchSmtpSettings()
+        'smtp': () => fetchSmtpSettings(),
+        'deadlines': () => fetchDonationReminders()
     };
 
     const fetchSmtpSettings = async () => {
@@ -174,6 +180,36 @@ export default function AdminMailing() {
             if (res.ok) setSubscribers(data);
         } catch (err) { console.error('Error fetching subscribers:', err); }
         finally { setIsLoadingSubscribers(false); }
+    };
+
+    const fetchDonationReminders = async () => {
+        setIsLoadingReminders(true);
+        try {
+            const res = await fetch('http://127.0.0.1:5000/api/donations/admin/reminders');
+            const data = await res.json();
+            if (res.ok) setDonationReminders(data);
+        } catch (err) { console.error('Error fetching reminders:', err); }
+        finally { setIsLoadingReminders(false); }
+    };
+
+    const handleSendReminder = async (reminderId) => {
+        setSendingReminderId(reminderId);
+        try {
+            const res = await fetch(`http://127.0.0.1:5000/api/donations/admin/reminders/${reminderId}/send`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success('Reminder email sent successfully!');
+                if (activeTab === 'logs') fetchEmailLogs(); // Refresh logs if we are on that tab (not likely here but good practice)
+            } else {
+                toast.error(data.message || 'Failed to send reminder.');
+            }
+        } catch (err) {
+            toast.error('Connection error.');
+        } finally {
+            setSendingReminderId(null);
+        }
     };
 
     const handleSaveTemplate = async () => {
@@ -417,9 +453,9 @@ export default function AdminMailing() {
     const tabs = [
         { id: 'smtp', label: 'SMTP Details', icon: Server },
         { id: 'templates', label: 'Edit Templates', icon: FileText },
-        { id: 'letters', label: 'Thank You Letters', icon: Mail },
         { id: 'logs', label: 'Email Logs', icon: History },
         { id: 'list', label: 'Mailing List', icon: Users },
+        { id: 'deadlines', label: 'Donation Deadlines', icon: Clock },
     ];
 
 
@@ -464,6 +500,7 @@ export default function AdminMailing() {
                     {/* Tab Content */}
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         {activeTab === 'templates' && (
+                            <>
                             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[500px]">
                                 <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                                     <div>
@@ -536,6 +573,119 @@ export default function AdminMailing() {
                                     </table>
                                 </div>
                             </section>
+                            
+                            {/* Thank You Letters Section - Now under Templates tab */}
+                            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[500px] mt-6">
+                                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-base font-bold text-gray-900">Thank You Letter Templates</h2>
+                                        <p className="text-xs text-gray-400 mt-0.5">Manage manual templates for donor mailing campaigns.</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={fetchThankYouLetters} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                                            <RefreshCw className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setLetterForm({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '', from: '', cc: '', bcc: '', to: '' });
+                                                setIsLetterModalOpen(true);
+                                            }}
+                                            className="px-4 py-2 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-sm hover:bg-[#4a8a95] flex items-center gap-2"
+                                        >
+                                            <FileText className="w-4 h-4" /> New Template
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="bg-gray-50">
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Template Details</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Campaign</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center whitespace-nowrap">Status</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right whitespace-nowrap">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {thankYouLetters.length > 0 ? thankYouLetters.map((letter) => (
+                                                <tr key={letter.campaign_id} className="hover:bg-[#63A6B2]/5 transition-colors group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2] shrink-0">
+                                                                <Mail className="w-4 h-4" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-bold text-gray-900 leading-tight truncate max-w-[250px]">{letter.title}</div>
+                                                                <div className="text-[10px] text-gray-400 line-clamp-1 max-w-[250px] mt-0.5" dangerouslySetInnerHTML={{ __html: letter.message || 'No content...' }}></div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-xs font-bold text-gray-500 uppercase tracking-tight">{letter.campaign_name || 'Unassigned'}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <div className="flex flex-col items-center gap-1">
+                                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${letter.status === 'active' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{letter.status}</span>
+                                                            {letter.auto_send && (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-blue-50 text-blue-600 border border-blue-100">
+                                                                    <Send className="w-2 h-2" /> Auto
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={() => openSendModal(letter)}
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-all shadow-sm"
+                                                            >
+                                                                <Send className="w-3 h-3" /> Blast
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setLetterForm({
+                                                                        id: letter.campaign_id,
+                                                                        title: letter.title,
+                                                                        message: letter.message,
+                                                                        status: letter.status,
+                                                                        associated_campaign_id: letter.associated_campaign_id || '',
+                                                                        from: letter.from || '',
+                                                                        cc: letter.cc || '',
+                                                                        auto_send: letter.auto_send || false
+                                                                    });
+                                                                    setIsLetterModalOpen(true);
+                                                                }} 
+                                                                className="p-1.5 hover:bg-blue-50 text-[#63A6B2] bg-[#63A6B2]/10 hover:text-[#4a8a95] rounded-lg transition-colors border border-transparent hover:border-[#63A6B2]/20"
+                                                                title="Configure Template"
+                                                            >
+                                                                <Settings className="w-4 h-4" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDeleteLetter(letter.campaign_id)} 
+                                                                className="p-1.5 hover:bg-red-50 text-red-500 bg-red-50 hover:text-red-700 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                                title="Delete Template"
+                                                            >
+                                                                <X className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan="4" className="px-6 py-20 text-center">
+                                                        <div className="flex flex-col items-center text-gray-400">
+                                                            <MailWarning className="w-10 h-10 mb-2 opacity-20" />
+                                                            <p className="text-sm font-medium">No templates created yet.</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                            
+                            </>
                         )}
 
                         {activeTab === 'smtp' && (
@@ -698,117 +848,7 @@ export default function AdminMailing() {
                             </div>
                         )}
 
-                        {activeTab === 'letters' && (
-                            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[500px]">
-                                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                                    <div>
-                                        <h2 className="text-base font-bold text-gray-900">Thank You Letter Templates</h2>
-                                        <p className="text-xs text-gray-400 mt-0.5">Manage manual templates for donor mailing campaigns.</p>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <button onClick={fetchThankYouLetters} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
-                                            <RefreshCw className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setLetterForm({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '', from: '', cc: '', bcc: '', to: '' });
-                                                setIsLetterModalOpen(true);
-                                            }}
-                                            className="px-4 py-2 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-sm hover:bg-[#4a8a95] flex items-center gap-2"
-                                        >
-                                            <FileText className="w-4 h-4" /> New Template
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="bg-gray-50">
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Template Details</th>
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Campaign</th>
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center whitespace-nowrap">Status</th>
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right whitespace-nowrap">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {thankYouLetters.length > 0 ? thankYouLetters.map((letter) => (
-                                                <tr key={letter.campaign_id} className="hover:bg-[#63A6B2]/5 transition-colors group">
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-lg bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2] shrink-0">
-                                                                <Mail className="w-4 h-4" />
-                                                            </div>
-                                                            <div>
-                                                                <div className="text-sm font-bold text-gray-900 leading-tight truncate max-w-[250px]">{letter.title}</div>
-                                                                <div className="text-[10px] text-gray-400 line-clamp-1 max-w-[250px] mt-0.5" dangerouslySetInnerHTML={{ __html: letter.message || 'No content...' }}></div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="text-xs font-bold text-gray-500 uppercase tracking-tight">{letter.campaign_name || 'Unassigned'}</div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <div className="flex flex-col items-center gap-1">
-                                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${letter.status === 'active' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{letter.status}</span>
-                                                            {letter.auto_send && (
-                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-blue-50 text-blue-600 border border-blue-100">
-                                                                    <Send className="w-2 h-2" /> Auto
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button
-                                                                onClick={() => openSendModal(letter)}
-                                                                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-all shadow-sm"
-                                                            >
-                                                                <Send className="w-3 h-3" /> Blast
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => {
-                                                                    setLetterForm({
-                                                                        id: letter.campaign_id,
-                                                                        title: letter.title,
-                                                                        message: letter.message,
-                                                                        status: letter.status,
-                                                                        associated_campaign_id: letter.associated_campaign_id || '',
-                                                                        from: letter.from || '',
-                                                                        cc: letter.cc || '',
-                                                                        auto_send: letter.auto_send || false
-                                                                    });
-                                                                    setIsLetterModalOpen(true);
-                                                                }} 
-                                                                className="p-1.5 hover:bg-blue-50 text-[#63A6B2] bg-[#63A6B2]/10 hover:text-[#4a8a95] rounded-lg transition-colors border border-transparent hover:border-[#63A6B2]/20"
-                                                                title="Configure Template"
-                                                            >
-                                                                <Settings className="w-4 h-4" />
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => handleDeleteLetter(letter.campaign_id)} 
-                                                                className="p-1.5 hover:bg-red-50 text-red-500 bg-red-50 hover:text-red-700 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                                                                title="Delete Template"
-                                                            >
-                                                                <X className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )) : (
-                                                <tr>
-                                                    <td colSpan="4" className="px-6 py-20 text-center">
-                                                        <div className="flex flex-col items-center text-gray-400">
-                                                            <MailWarning className="w-10 h-10 mb-2 opacity-20" />
-                                                            <p className="text-sm font-medium">No templates created yet.</p>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </section>
-                        )}
+
 
                         {activeTab === 'logs' && (
                             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[500px]">
@@ -992,6 +1032,96 @@ export default function AdminMailing() {
                                                             <div className="flex flex-col items-center text-gray-400">
                                                                 <Users className="w-10 h-10 mb-2 opacity-20" />
                                                                 <p className="text-sm font-medium">No subscribers found.</p>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        )}
+
+                        {activeTab === 'deadlines' && (
+                            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[500px]">
+                                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-base font-bold text-gray-900">Donation Deadlines</h2>
+                                        <p className="text-xs text-gray-400 mt-0.5">Subscribers who opted-in to donation reminders.</p>
+                                    </div>
+                                    <button onClick={fetchDonationReminders} disabled={isLoadingReminders} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                                        <RefreshCw className={`w-4 h-4 ${isLoadingReminders ? 'animate-spin' : ''}`} />
+                                    </button>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="bg-gray-50">
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Donor</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Campaign</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Started Date</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Next Payment</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {donationReminders.length > 0 ? donationReminders.map((reminder) => (
+                                                <tr key={reminder.reminder_id} className="hover:bg-[#63A6B2]/5 transition-colors group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold text-xs uppercase shrink-0">
+                                                                {reminder.first_name ? reminder.first_name.charAt(0) : (reminder.user_email ? reminder.user_email.charAt(0) : '?')}
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-bold text-gray-900 leading-tight truncate">{reminder.first_name ? `${reminder.first_name} ${reminder.last_name || ''}` : 'Anonymous'}</div>
+                                                                <div className="text-[10px] text-gray-400">{reminder.user_email || 'No Email'}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-xs font-bold text-gray-600 truncate max-w-[200px]">{reminder.campaign_name || 'General Operations'}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-xs font-medium text-gray-500">{new Date(reminder.started_date).toLocaleDateString()}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-xs font-bold text-[#63A6B2]">{reminder.next_payment ? new Date(reminder.next_payment).toLocaleDateString() : 'N/A'}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-green-50 text-green-600 border border-green-100">
+                                                            Active
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <button 
+                                                            onClick={() => handleSendReminder(reminder.reminder_id)}
+                                                            disabled={sendingReminderId === reminder.reminder_id}
+                                                            className={`flex items-center gap-1.5 ml-auto px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all shadow-sm ${
+                                                                sendingReminderId === reminder.reminder_id 
+                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                                                : 'bg-[#63A6B2] text-white hover:bg-[#4a8a95]'
+                                                            }`}
+                                                        >
+                                                            {sendingReminderId === reminder.reminder_id ? (
+                                                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                                            ) : (
+                                                                <Send className="w-3 h-3" />
+                                                            )}
+                                                            {sendingReminderId === reminder.reminder_id ? 'Sending...' : 'Remind'}
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan="6" className="px-6 py-20 text-center">
+                                                        {isLoadingReminders ? (
+                                                            <RefreshCw className="w-8 h-8 animate-spin text-gray-200 mx-auto" />
+                                                        ) : (
+                                                            <div className="flex flex-col items-center text-gray-400">
+                                                                <Clock className="w-10 h-10 mb-2 opacity-20" />
+                                                                <p className="text-sm font-medium">No active donation deadlines found.</p>
                                                             </div>
                                                         )}
                                                     </td>

@@ -347,6 +347,33 @@ export default function Profile() {
         toast.info(`Viewing receipt for ${campaignName}`);
     };
 
+    const handleToggleReminder = async (donationId, isActive) => {
+        try {
+            // Optimistically update UI
+            setDonationHistory(prev => prev.map(d => 
+                d.donation_id === donationId ? { ...d, is_reminded: isActive } : d
+            ));
+            
+            const res = await fetch(`http://localhost:5000/api/donations/${donationId}/reminder/toggle`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('token')}` 
+                },
+                body: JSON.stringify({ isActive })
+            });
+            if (!res.ok) throw new Error();
+            toast.success(isActive ? 'Reminder activated for this donation' : 'Reminder disabled for this donation');
+        } catch (err) {
+            console.error(err);
+            toast.error('Failed to update reminder.');
+            // Revert on error
+            setDonationHistory(prev => prev.map(d => 
+                d.donation_id === donationId ? { ...d, is_reminded: !isActive } : d
+            ));
+        }
+    };
+
     const [userData, setUserData] = useState(() => {
         try {
             const storedUser = JSON.parse(localStorage.getItem('user'));
@@ -1019,6 +1046,8 @@ export default function Profile() {
                                                                         type="checkbox" 
                                                                         className="w-4 h-4 rounded border-gray-300 text-[#63A6B2] focus:ring-[#63A6B2] cursor-pointer" 
                                                                         id={`remind-${donation.donation_id}`}
+                                                                        checked={Boolean(donation.is_reminded)}
+                                                                        onChange={(e) => handleToggleReminder(donation.donation_id, e.target.checked)}
                                                                     />
                                                                     <label htmlFor={`remind-${donation.donation_id}`} className="text-sm text-gray-700 font-semibold leading-tight cursor-pointer">
                                                                         Donation Deadline

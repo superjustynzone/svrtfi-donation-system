@@ -641,6 +641,23 @@ const initDB = async () => {
         }
       }
       console.log("✅ Donations table verified");
+      
+      // 8.5. Donation Reminders table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS donation_reminders (
+          reminder_id BIGSERIAL PRIMARY KEY,
+          donation_id BIGINT REFERENCES donations(donation_id) ON DELETE CASCADE,
+          user_id BIGINT REFERENCES users(user_id) ON DELETE CASCADE,
+          campaign_id BIGINT REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
+          started_date TIMESTAMP DEFAULT NOW(),
+          next_payment DATE,
+          is_active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW(),
+          UNIQUE(donation_id)
+        );
+      `);
+      console.log("✅ Donation Reminders table verified");
     } catch (e) {
       console.error("❌ Error in Donations table:", e.message);
     }
