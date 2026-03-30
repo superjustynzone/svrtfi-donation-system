@@ -59,6 +59,7 @@ export default function AdminStories() {
     const [viewingStory, setViewingStory] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [storyToDelete, setStoryToDelete] = useState(null);
+    const [publishMode, setPublishMode] = useState('draft'); // draft, now, scheduled
 
     const getLoggedUserName = () => {
         try {
@@ -77,7 +78,8 @@ export default function AdminStories() {
         content: '',
         tags: '',
         author: defaultAuthor,
-        is_published: false
+        is_published: false,
+        scheduled_publish_at: ''
     });
 
     useEffect(() => {
@@ -87,11 +89,15 @@ export default function AdminStories() {
     }, []);
 
     // Separate stories by status
-    const draftStories = stories.filter(s => !s.is_published);
     const publishedStories = stories.filter(s => s.is_published);
+    const scheduledStories = stories.filter(s => !s.is_published && s.scheduled_publish_at && s.scheduled_publish_at !== null);
+    const draftStories = stories.filter(s => !s.is_published && (!s.scheduled_publish_at || s.scheduled_publish_at === null));
 
     // Filter the active tab's stories
-    const activeStories = activeTab === 'draft' ? draftStories : publishedStories;
+    const activeStories = 
+        activeTab === 'draft' ? draftStories : 
+        activeTab === 'publish' ? publishedStories : 
+        scheduledStories;
 
     const filteredStories = activeStories
         .filter(story => story.title.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -106,6 +112,7 @@ export default function AdminStories() {
         totalStories: stories.length,
         draftCount: draftStories.length,
         publishedCount: publishedStories.length,
+        scheduledCount: scheduledStories.length
     };
 
     const fetchStories = async () => {
@@ -235,8 +242,17 @@ export default function AdminStories() {
             content: story.content || '',
             tags: story.tags || '',
             author: story.author || defaultAuthor,
-            is_published: story.is_published || false
+            is_published: story.is_published || false,
+            scheduled_publish_at: story.scheduled_publish_at ? story.scheduled_publish_at.split('.')[0] : ''
         });
+
+        if (story.is_published) {
+            setPublishMode('now');
+        } else if (story.scheduled_publish_at) {
+            setPublishMode('scheduled');
+        } else {
+            setPublishMode('draft');
+        }
 
         const images = story.images || [];
         setExistingImages(images);
@@ -299,8 +315,14 @@ export default function AdminStories() {
             if (response.ok) {
                 toast.success(data.message);
                 fetchStories();
+                
+                // Switch tab before resetting form
+                if (!editingStory) {
+                    if (formData.is_published) setActiveTab('publish');
+                    else if (formData.scheduled_publish_at) setActiveTab('scheduled');
+                    else setActiveTab('draft');
+                }
                 resetForm();
-                if (!editingStory) setActiveTab('draft');
             } else {
                 toast.error(data.message || 'Operation failed');
             }
@@ -373,8 +395,10 @@ export default function AdminStories() {
             content: '',
             tags: '',
             author: defaultAuthor,
-            is_published: false
+            is_published: false,
+            scheduled_publish_at: ''
         });
+        setPublishMode('draft');
         setSelectedImages([]);
         setImagePreviewUrls([]);
         setExistingImages([]);
@@ -454,6 +478,12 @@ export default function AdminStories() {
                             iconBg="from-green-500 to-green-400"
                             title="Published"
                             value={stats.publishedCount}
+                        />
+                        <StatCard
+                            icon={<Calendar className="w-5 h-5 text-white" />}
+                            iconBg="from-indigo-500 to-indigo-400"
+                            title="Scheduled"
+                            value={stats.scheduledCount}
                         />
                     </div>
 
@@ -588,16 +618,80 @@ export default function AdminStories() {
                                     </div>
                                 </div>
 
-                                {/* Info: Saved as Draft */}
-                                {!editingStory && (
-                                    <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                        <FileEdit className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                                        <div>
-                                            <span className="text-sm font-semibold text-gray-700">Saved as Draft</span>
-                                            <p className="text-xs text-gray-500 mt-0.5">New stories are saved as drafts. You can publish them from the Drafts tab.</p>
-                                        </div>
+                                 {/* Publishing Options */}
+                                 <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                                    <label className="block text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                        <Send className="w-4 h-4 text-[#63A6B2]" />
+                                        Publishing Options
+                                    </label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setPublishMode('draft');
+                                                setFormData({ ...formData, is_published: false, scheduled_publish_at: '' });
+                                            }}
+                                            className={`p-4 rounded-xl border-2 transition-all text-left flex flex-col gap-1
+                                                ${publishMode === 'draft' 
+                                                    ? 'border-[#63A6B2] bg-[#63A6B2]/5 ring-4 ring-[#63A6B2]/10' 
+                                                    : 'border-white bg-white hover:border-gray-200 shadow-sm'}`}
+                                        >
+                                            <span className={`text-sm font-bold ${publishMode === 'draft' ? 'text-[#63A6B2]' : 'text-gray-900'}`}>Draft</span>
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Save for later</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setPublishMode('now');
+                                                setFormData({ ...formData, is_published: true, scheduled_publish_at: '' });
+                                            }}
+                                            className={`p-4 rounded-xl border-2 transition-all text-left flex flex-col gap-1
+                                                ${publishMode === 'now' 
+                                                    ? 'border-green-500 bg-green-50 ring-4 ring-green-100' 
+                                                    : 'border-white bg-white hover:border-gray-200 shadow-sm'}`}
+                                        >
+                                            <span className={`text-sm font-bold ${publishMode === 'now' ? 'text-green-600' : 'text-gray-900'}`}>Publish Now</span>
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Instant visibility</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setPublishMode('scheduled');
+                                                setFormData({ ...formData, is_published: false });
+                                            }}
+                                            className={`p-4 rounded-xl border-2 transition-all text-left flex flex-col gap-1
+                                                ${publishMode === 'scheduled' 
+                                                    ? 'border-indigo-500 bg-indigo-50 ring-4 ring-indigo-100' 
+                                                    : 'border-white bg-white hover:border-gray-200 shadow-sm'}`}
+                                        >
+                                            <span className={`text-sm font-bold ${publishMode === 'scheduled' ? 'text-indigo-600' : 'text-gray-900'}`}>Schedule</span>
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Set a target time</span>
+                                        </button>
                                     </div>
-                                )}
+
+                                    {publishMode === 'scheduled' && (
+                                        <div className="mt-6 animate-in slide-in-from-top-2 duration-300">
+                                            <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Scheduled Publish Date & Time</label>
+                                            <div className="relative">
+                                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                                                <input
+                                                    type="datetime-local"
+                                                    name="scheduled_publish_at"
+                                                    value={formData.scheduled_publish_at}
+                                                    onChange={handleChange}
+                                                    required={publishMode === 'scheduled'}
+                                                    className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all font-bold text-gray-900 shadow-sm"
+                                                />
+                                            </div>
+                                            <p className="mt-2 text-[10px] text-indigo-500 italic px-1 font-medium flex items-center gap-1.5">
+                                                <AlertTriangle className="w-3 h-3" />
+                                                Story will be automatically published at the selected time.
+                                            </p>
+                                        </div>
+                                    )}
+                                 </div>
 
                                 <div className="flex gap-4 pt-4 border-t border-gray-200">
                                     <button
@@ -650,6 +744,22 @@ export default function AdminStories() {
                                     ${activeTab === 'publish' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}
                                 >
                                     {publishedStories.length}
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('scheduled')}
+                                className={`flex-1 px-6 py-4 text-sm font-semibold transition-all flex items-center justify-center gap-2
+                                    ${activeTab === 'scheduled'
+                                        ? 'text-indigo-600 border-b-2 border-indigo-500 bg-indigo-50/50'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    }`}
+                            >
+                                <Calendar className="w-4 h-4" />
+                                Scheduled
+                                <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold
+                                    ${activeTab === 'scheduled' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}
+                                >
+                                    {scheduledStories.length}
                                 </span>
                             </button>
                         </div>
@@ -723,7 +833,6 @@ export default function AdminStories() {
                                                 <tr key={story.story_id} className="hover:bg-gray-50/50 transition-colors group">
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-4">
-                                                            {/* Image Preview */}
                                                             <div className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
                                                                 {story.images && story.images.length > 0 ? (
                                                                     <img 
@@ -775,6 +884,13 @@ export default function AdminStories() {
                                                                 {isDraft ? <Send className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                                                                 <span className="hidden sm:inline">{isDraft ? 'Publish' : 'Draft'}</span>
                                                             </button>
+                                                            
+                                                            {story.scheduled_publish_at && !story.is_published && (
+                                                                 <div className="flex flex-col items-end px-2 border-r border-gray-100">
+                                                                     <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Scheduled</span>
+                                                                     <span className="text-[9px] text-gray-400 font-bold">{new Date(story.scheduled_publish_at).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
+                                                                 </div>
+                                                             )}
                                                             
                                                             <div className="w-px h-5 bg-gray-200 mx-1"></div>
                                                             

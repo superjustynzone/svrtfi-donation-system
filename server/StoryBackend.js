@@ -51,24 +51,27 @@ router.post("/create", upload.array("images", 10), async (req, res) => {
     content,
     tags,
     author,
-    is_published
+    is_published,
+    scheduled_publish_at
   } = req.body;
+  
+  const isNow = is_published === 'true' || is_published === true;
 
   try {
     if (!title || !foundation_id) {
       return res.status(400).json({ message: "Story title and foundation are required." });
     }
 
-    const publishedDate = (is_published === 'true' || is_published === true) ? new Date() : null;
+    const publishedDate = isNow ? new Date() : null;
 
     const result = await pool.query(
       `INSERT INTO stories (
-        foundation_id, title, content, tags, author, is_published, published_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        foundation_id, title, content, tags, author, is_published, published_at, scheduled_publish_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING story_id`,
       [
         foundation_id, title, content, tags, author,
-        is_published === 'true' || is_published === true, publishedDate
+        isNow, publishedDate, scheduled_publish_at || null
       ]
     );
 
@@ -224,7 +227,13 @@ router.patch("/status/:id", async (req, res) => {
     const publishedDate = publishedFlag ? new Date() : null;
 
     const result = await pool.query(
-      `UPDATE stories SET is_published = $1, published_at = $2, updated_at = NOW() WHERE story_id = $3 RETURNING story_id`,
+      `UPDATE stories 
+       SET is_published = $1, 
+           published_at = $2, 
+           scheduled_publish_at = NULL, 
+           updated_at = NOW() 
+       WHERE story_id = $3 
+       RETURNING story_id`,
       [publishedFlag, publishedDate, storyId]
     );
 
@@ -258,21 +267,25 @@ router.put("/update/:id", upload.array("images", 10), async (req, res) => {
     tags,
     author,
     is_published,
+    scheduled_publish_at,
     keepExistingImages // Array of image_ids to keep
   } = req.body;
 
+  const isNow = is_published === 'true' || is_published === true;
+
   try {
-    const publishedDate = (is_published === 'true' || is_published === true) ? new Date() : null;
+    const publishedDate = isNow ? new Date() : null;
 
     await pool.query(
       `UPDATE stories 
        SET foundation_id = $1, title = $2, content = $3,
            tags = $4, author = $5, is_published = $6, published_at = $7,
+           scheduled_publish_at = $8,
            updated_at = NOW()
-       WHERE story_id = $8`,
+       WHERE story_id = $9`,
       [
         foundation_id, title, content, tags, author,
-        is_published === 'true' || is_published === true, publishedDate,
+        isNow, publishedDate, scheduled_publish_at || null,
         storyId
       ]
     );
@@ -369,5 +382,40 @@ router.delete("/delete/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// BACKGROUND JOB: Process scheduled stories
+// Automatically publish stories whose scheduled_publish_at time has passed
+const processScheduledStories = async () => {
+  try {
+    const now = new Date();
+    // Find stories that are NOT published but have a scheduled time in the past
+    const result = await pool.query(
+      `UPDATE stories 
+       SET is_published = true, 
+           published_at = scheduled_publish_at,
+           scheduled_publish_at = NULL,
+           updated_at = NOW()
+       WHERE is_published = false 
+       AND scheduled_publish_at IS NOT NULL 
+       AND scheduled_publish_at <= $1
+       RETURNING story_id, title`,
+      [now]
+    );
+
+    if (result.rowCount > 0) {
+      console.log(`[Scheduler] Automatically published ${result.rowCount} stories:`);
+      result.rows.forEach(story => {
+        console.log(`- ${story.title} (ID: ${story.story_id})`);
+      });
+    }
+  } catch (err) {
+    console.error("[Scheduler] Error processing scheduled stories:", err);
+  }
+};
+
+// Check every minute
+setInterval(processScheduledStories, 60 * 1000);
+// Run once on startup
+processScheduledStories();
 
 module.exports = router;
