@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Home, Users, DollarSign, PieChart, FileText, BarChart3,
     UserCog, Settings, AlertTriangle, Search, Menu, X, LogOut,
@@ -52,6 +52,11 @@ export default function AdminStories() {
     const [existingImages, setExistingImages] = useState([]);
     const [keepExistingImages, setKeepExistingImages] = useState([]);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [isPaused, setIsPaused] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const timerRef = useRef(null);
+    const progressIntervalRef = useRef(null);
+    const SLIDE_DURATION = 5000;
     const [activeTab, setActiveTab] = useState('draft');
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('newest');
@@ -87,6 +92,34 @@ export default function AdminStories() {
         fetchFoundations();
         fetchStoryCategories();
     }, []);
+
+    // Auto-slide effect for View Modal
+    useEffect(() => {
+        if (!showViewModal || !viewingStory || !viewingStory.images || viewingStory.images.length <= 1 || isPaused) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+            return;
+        }
+
+        const runNextSlide = () => {
+            setCurrentImageIndex(prev => (prev + 1) % viewingStory.images.length);
+            setProgress(0);
+        };
+
+        timerRef.current = setInterval(runNextSlide, SLIDE_DURATION);
+
+        progressIntervalRef.current = setInterval(() => {
+            setProgress(prev => {
+                if (prev >= 100) return 0;
+                return prev + (100 / (SLIDE_DURATION / 100));
+            });
+        }, 100);
+
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+        };
+    }, [showViewModal, viewingStory, isPaused]);
 
     // Separate stories by status
     const publishedStories = stories.filter(s => s.is_published);
@@ -460,7 +493,7 @@ export default function AdminStories() {
 
                 <div className="p-4 lg:p-8">
                     {/* Stats */}
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         <StatCard
                             icon={<FileText className="w-5 h-5 text-white" />}
                             iconBg="from-[#63A6B2] to-[#4d8b96]"
@@ -991,33 +1024,52 @@ export default function AdminStories() {
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
                         {/* Story Carousel */}
-                        <div className="relative h-72 w-full bg-gray-900 group">
+                        <div 
+                            className="relative h-80 w-full bg-gray-900 overflow-hidden group"
+                            onMouseEnter={() => setIsPaused(true)}
+                            onMouseLeave={() => setIsPaused(false)}
+                        >
                             {viewingStory.images && viewingStory.images.length > 0 ? (
                                 <>
+                                    {/* Blurred Background Layer */}
+                                    <div className="absolute inset-0 scale-110 blur-3xl opacity-30 transition-opacity duration-1000">
+                                        <img 
+                                            src={`http://127.0.0.1:5000${viewingStory.images[currentImageIndex].image_file}`} 
+                                            alt="Blurred Backdrop" 
+                                            className="w-full h-full object-cover" 
+                                        />
+                                    </div>
+
+                                    {/* Main Image */}
                                     <img 
-                                        src={`http://localhost:5000${viewingStory.images[currentImageIndex].image_file}`} 
+                                        src={`http://127.0.0.1:5000${viewingStory.images[currentImageIndex].image_file}`} 
                                         alt={viewingStory.title} 
-                                        className="w-full h-full object-contain" 
+                                        className="relative z-10 w-full h-full object-contain transition-all duration-700 ease-in-out" 
                                     />
+
                                     {viewingStory.images.length > 1 && (
                                         <>
+                                            {/* Navigation Buttons */}
                                             <button 
-                                                onClick={() => setCurrentImageIndex(prev => (prev - 1 + viewingStory.images.length) % viewingStory.images.length)}
-                                                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => { setCurrentImageIndex(prev => (prev - 1 + viewingStory.images.length) % viewingStory.images.length); setProgress(0); }}
+                                                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 backdrop-blur-md text-white p-2.5 rounded-full border border-white/20 opacity-0 group-hover:opacity-100 transition-all hover:bg-white/20"
                                             >
                                                 <ChevronDown className="w-6 h-6 rotate-90" />
                                             </button>
                                             <button 
-                                                onClick={() => setCurrentImageIndex(prev => (prev + 1) % viewingStory.images.length)}
-                                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => { setCurrentImageIndex(prev => (prev + 1) % viewingStory.images.length); setProgress(0); }}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 backdrop-blur-md text-white p-2.5 rounded-full border border-white/20 opacity-0 group-hover:opacity-100 transition-all hover:bg-white/20"
                                             >
                                                 <ChevronDown className="w-6 h-6 -rotate-90" />
                                             </button>
-                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+
+                                            {/* Indicators */}
+                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
                                                 {viewingStory.images.map((_, idx) => (
-                                                    <div 
+                                                    <button 
                                                         key={idx} 
-                                                        className={`h-1.5 rounded-full transition-all ${idx === currentImageIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`} 
+                                                        onClick={() => { setCurrentImageIndex(idx); setProgress(0); }}
+                                                        className={`h-1.5 rounded-full shadow-lg transition-all duration-500 ${idx === currentImageIndex ? 'w-8 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/70'}`} 
                                                     />
                                                 ))}
                                             </div>
@@ -1025,10 +1077,7 @@ export default function AdminStories() {
                                     )}
                                 </>
                             ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center text-white/30">
-                                    <ImageIcon className="w-16 h-16 mb-2" />
-                                    <p className="text-sm">No images uploaded</p>
-                                </div>
+                                <div className="w-full h-full bg-gray-900" />
                             )}
                         </div>
                         
@@ -1213,7 +1262,7 @@ function StoryCard({ story, onEdit, onDelete, onView, onToggleStatus, formatDate
                                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
                                 <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20">
                                     <button
-                                        onClick={() => { onView(story); setShowMenu(false); }}
+                                        onClick={() => { setViewingStory(story); setShowViewModal(true); setCurrentImageIndex(0); setProgress(0); setShowMenu(false); }}
                                         className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-700"
                                     >
                                         <Eye className="w-4 h-4" />

@@ -1185,8 +1185,8 @@ function ProfileReceiptModal({ data: d, handleClose }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden">
-            <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[95vh]">
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden animate-in fade-in duration-300">
+            <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col h-[90vh] animate-in zoom-in-95 duration-300">
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
                     <div className="flex flex-col">
                         <h3 className="font-bold text-gray-800 flex items-center gap-2">
@@ -1203,7 +1203,7 @@ function ProfileReceiptModal({ data: d, handleClose }) {
                                 rel="noopener noreferrer"
                                 className="bg-[#63A6B2] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#4d8b96] transition shadow-sm"
                             >
-                                <Download className="w-4 h-4" /> View Full Image
+                                <Download className="w-4 h-4" /> {d.receipt_upload.toLowerCase().endsWith('.pdf') ? 'Download PDF' : 'View Full Image'}
                             </a>
                         ) : (
                             <button
@@ -1219,23 +1219,46 @@ function ProfileReceiptModal({ data: d, handleClose }) {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-100/50">
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 flex flex-col h-full">
                     {d.receipt_upload ? (
-                        <div className="max-w-3xl mx-auto">
-                            <div className="bg-white p-4 rounded-2xl shadow-xl border border-gray-200 flex flex-col items-center">
-                                <div className="w-full mb-4 flex justify-between items-center border-b pb-2">
-                                    <p className="text-sm font-bold text-gray-600">Reference: <span className="font-mono text-[#63A6B2]">{d.payment_reference || `#${d.donation_id}`}</span></p>
+                        <div className="mx-auto w-full h-full flex flex-col flex-1">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center w-full h-full flex-1">
+                                <div className="w-full mb-4 flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100 shrink-0">
+                                    <p className="text-sm font-bold text-gray-500">
+                                        REFERENCE: <span className="font-mono text-[#63A6B2] bg-white px-2 py-0.5 rounded border border-[#63A6B2]/20">{d.payment_reference || `#${d.donation_id}`}</span>
+                                    </p>
+                                    <p className="text-sm font-bold text-gray-500 uppercase tracking-tighter">
+                                        DONOR: <span className="text-gray-900">{d.donor_name}</span>
+                                    </p>
                                 </div>
-                                <img
-                                    src={`http://localhost:5000${d.receipt_upload}`}
-                                    alt="Uploaded Receipt"
-                                    className="max-w-full rounded-xl shadow-inner border border-gray-100 cursor-zoom-in"
-                                    onClick={() => window.open(`http://localhost:5000${d.receipt_upload}`, '_blank')}
-                                />
-                                <div className="mt-6 w-full p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                    <p className="text-center text-xs text-gray-500 font-medium italic">
-                                        This is the proof of payment uploaded for this donation.
-                                        Click the image to view the full-size original file.
+                                
+                                {d.receipt_upload.toLowerCase().endsWith('.pdf') ? (
+                                    <div className="w-full h-full flex-1 bg-gray-900/5 rounded-xl overflow-hidden border border-gray-200 relative group min-h-[500px]">
+                                        <iframe
+                                            src={`http://localhost:5000${d.receipt_upload}`}
+                                            className="w-full h-full border-none block"
+                                            title="Receipt PDF"
+                                        />
+                                        <div className="absolute top-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                            <p className="text-white font-bold bg-[#63A6B2] px-6 py-2 rounded-full shadow-2xl shadow-[#63A6B2]/40 text-sm whitespace-nowrap">Viewing Secure PDF Receipt</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="w-full flex-1 flex flex-col items-center justify-center overflow-hidden">
+                                        <img
+                                            src={`http://localhost:5000${d.receipt_upload}`}
+                                            alt="Uploaded Receipt"
+                                            className="max-h-full max-w-full rounded-xl shadow-inner border border-gray-100 cursor-zoom-in object-contain shadow-2xl"
+                                            onClick={() => window.open(`http://localhost:5000${d.receipt_upload}`, '_blank')}
+                                        />
+                                    </div>
+                                )}
+                                
+                                <div className="mt-4 w-full p-3 bg-gray-50/50 rounded-xl border border-dashed border-gray-200 shrink-0">
+                                    <p className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                        {d.receipt_upload.toLowerCase().endsWith('.pdf') 
+                                            ? 'Interactive PDF Viewer | Secure Authorized Document' 
+                                            : 'Official Document Upload | Click to View Full Image'}
                                     </p>
                                 </div>
                             </div>
