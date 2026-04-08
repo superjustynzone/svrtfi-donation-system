@@ -52,11 +52,12 @@ router.post("/", async (req, res) => {
 
         if (!is_anonymous) {
             let firstName = null, lastName = null, email = null, phone = null, address = null;
+            let addr2 = null, brgy = null, prov = null, cityVal = null, zip = null, tin = null, countryVal = null;
 
             if (user_id) {
                 // Logged-in: pull info from users / auth_users
                 const userInfo = await client.query(
-                    `SELECT u.first_name, u.last_name, u.contact_number, u.address, a.email
+                    `SELECT u.*, a.email
                      FROM users u
                      LEFT JOIN auth_users a ON u.user_id = a.user_id
                      WHERE u.user_id = $1`,
@@ -69,6 +70,13 @@ router.post("/", async (req, res) => {
                     email = ui.email;
                     phone = ui.contact_number;
                     address = ui.address;
+                    addr2 = ui.address2;
+                    brgy = ui.barangay;
+                    prov = ui.province;
+                    cityVal = ui.city;
+                    zip = ui.zip_code;
+                    tin = ui.tin_number;
+                    countryVal = ui.country;
                 }
             } else {
                 // Guest: split donor_name into first / last
@@ -78,6 +86,8 @@ router.post("/", async (req, res) => {
                 email = donor_email || null;
                 phone = donor_phone || null;
                 address = donor_address || null;
+                // Guests don't provide granular address in the basic form usually, 
+                // but we could map them if they were passed in req.body. For now, NULLs.
             }
 
             // For registered users: reuse existing donors row if email matches
@@ -90,18 +100,24 @@ router.post("/", async (req, res) => {
                     donorId = existing.rows[0].donor_id;
                     // Keep donor info up to date
                     await client.query(
-                        `UPDATE donors SET first_name=$1, last_name=$2, contact_number=$3, address=$4
-                         WHERE donor_id=$5`,
-                        [firstName, lastName, phone, address, donorId]
+                        `UPDATE donors SET 
+                           first_name=$1, last_name=$2, contact_number=$3, address=$4,
+                           address2=$5, barangay=$6, province=$7, city=$8, zip_code=$9,
+                           tin_number=$10, country=$11
+                         WHERE donor_id=$12`,
+                        [firstName, lastName, phone, address, addr2, brgy, prov, cityVal, zip, tin, countryVal, donorId]
                     );
                 }
             }
 
             if (!donorId) {
                 const donorResult = await client.query(
-                    `INSERT INTO donors (first_name, last_name, email, contact_number, address)
-                     VALUES ($1, $2, $3, $4, $5) RETURNING donor_id`,
-                    [firstName, lastName, email, phone, address]
+                    `INSERT INTO donors (
+                        first_name, last_name, email, contact_number, address,
+                        address2, barangay, province, city, zip_code, tin_number, country
+                    )
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING donor_id`,
+                    [firstName, lastName, email, phone, address, addr2, brgy, prov, cityVal, zip, tin, countryVal]
                 );
                 donorId = donorResult.rows[0].donor_id;
             }
@@ -520,7 +536,8 @@ router.get("/:id", async (req, res) => {
               f.foundation_name,
               pt.payment_reference, pt.payment_status, pt.receipt_upload,
               dn.first_name AS donor_first_name, dn.last_name AS donor_last_name,
-              dn.email AS donor_email, dn.contact_number AS donor_phone
+              dn.email AS donor_email, dn.contact_number AS donor_phone,
+              dn.tin_number, dn.address, dn.address2, dn.barangay, dn.province, dn.city, dn.zip_code, dn.country
              FROM donations d
              LEFT JOIN campaigns c ON d.campaign_id = c.campaign_id
              LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
@@ -582,11 +599,24 @@ router.patch("/:id/complete", async (req, res) => {
         // Send email receipt
         try {
             const details = await pool.query(
-                `SELECT d.*, c.campaign_name, dn.email, dn.first_name, dn.last_name, pt.receipt_upload
+                `SELECT 
+                    d.*, 
+                    c.campaign_name, 
+                    dn.email, 
+                    dn.first_name, 
+                    dn.last_name, 
+                    dn.contact_number AS donor_phone,
+                    dn.address, dn.address2, dn.barangay, dn.province, dn.city, dn.zip_code, dn.country,
+                    dn.tin_number,
+                    pt.receipt_upload,
+                    f.foundation_name,
+                    f.foundation_logo
                  FROM donations d
                  JOIN campaigns c ON d.campaign_id = c.campaign_id
                  LEFT JOIN donors dn ON d.donor_id = dn.donor_id
                  LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+                 LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
+                 LEFT JOIN foundations f ON fc.foundation_id = f.foundation_id
                  WHERE d.donation_id = $1
                  LIMIT 1`,
                 [req.params.id]
@@ -605,7 +635,18 @@ router.patch("/:id/complete", async (req, res) => {
                     date: new Date(),
                     frequency: data.frequency,
                     message: data.message,
-                    receipt_upload: data.receipt_upload || null
+                    receipt_upload: data.receipt_upload || null,
+                    donor_phone: data.donor_phone,
+                    address: data.address,
+                    address2: data.address2,
+                    barangay: data.barangay,
+                    province: data.province,
+                    city: data.city,
+                    zip_code: data.zip_code,
+                    country: data.country,
+                    tin_number: data.tin_number,
+                    foundation_name: data.foundation_name,
+                    foundation_logo: data.foundation_logo
                 });
 
                 // --- Auto-send Thank You Letter ---
@@ -639,7 +680,22 @@ router.patch("/:id/complete", async (req, res) => {
                                 personalizedSubject = personalizedSubject.replace(regex, val);
                                 personalizedHtml    = personalizedHtml.replace(regex, val);
                             });
-                            const finalHtml = `<div style="font-family: sans-serif; line-height: 1.6; color: #333;">${personalizedHtml}</div>`;
+                            const finalHtml = `
+                            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; padding: 40px 20px; text-align: center;">
+                                <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: left; border: 1px solid #eef2f6;">
+                                    <div style="background: linear-gradient(135deg, #63A6B2 0%, #4a8a95 100%); padding: 30px; text-align: center;">
+                                        <img src="https://svrtf.org/images/logo.png" alt="SVRTV Logo" style="width: 70px; height: 70px; border-radius: 50%; background: white; padding: 5px; object-fit: contain;">
+                                    </div>
+                                    <div style="padding: 40px; color: #334155; line-height: 1.8; font-size: 15px; overflow-wrap: break-word;">
+                                        ${personalizedHtml}
+                                    </div>
+                                    <div style="background-color: #f8fafc; padding: 25px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+                                        <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #63A6B2;">Shepherd's Voice Radio and Television Foundation, Inc.</p>
+                                        <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;">456 Faith Avenue, Manila, Metro Manila 1003<br>
+                                        © 2026 SVRTF. All rights reserved.</p>
+                                    </div>
+                                </div>
+                            </div>`;
                             await sendEmail(donor_email, personalizedSubject, finalHtml, tpl.from_email || null, tpl.cc_email || null);
                             console.log(`✅ Auto Thank You Letter sent to ${donor_email}`);
                         }

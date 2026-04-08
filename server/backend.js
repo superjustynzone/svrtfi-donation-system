@@ -96,15 +96,25 @@ app.get("/api/admin/email-logs", async (req, res) => {
 });
 
 app.get("/api/admin/subscribers", async (req, res) => {
+  const { campaign_id } = req.query;
   try {
-    const result = await pool.query(`
+    let query = `
             SELECT s.*, 
                    COALESCE(s.first_name, u.first_name) as first_name, 
-                   COALESCE(s.last_name, u.last_name) as last_name
+                   COALESCE(s.last_name, u.last_name) as last_name,
+                   c.campaign_name
             FROM subscribers s 
             LEFT JOIN users u ON s.user_id = u.user_id 
-            ORDER BY subscribed_at DESC
-        `);
+            LEFT JOIN campaigns c ON s.campaign_id = c.campaign_id
+        `;
+    const params = [];
+    if (campaign_id && campaign_id !== 'all' && campaign_id !== 'global') {
+      query += ` WHERE s.campaign_id = $1`;
+      params.push(campaign_id);
+    }
+    query += ` ORDER BY subscribed_at DESC`;
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error("❌ Error fetching subscribers:", err.message);
@@ -114,22 +124,24 @@ app.get("/api/admin/subscribers", async (req, res) => {
 
 app.post("/api/admin/subscribers", async (req, res) => {
   console.log("📬 Mailing API Hit: POST /api/admin/subscribers", req.body);
-  const { email, first_name, last_name, newsletter } = req.body;
+    const { email, first_name, last_name, newsletter, campaign_id } = req.body;
 
-  if (!email) {
-    return res.status(400).json({ message: "Email is required" });
-  }
-
-  try {
-    const existing = await pool.query("SELECT * FROM subscribers WHERE email = $1", [email]);
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ message: "Email already exists in mailing list" });
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
     }
 
-    const result = await pool.query(
-      "INSERT INTO subscribers (email, first_name, last_name, full_name, newsletters_opt_in) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [email, first_name, last_name, `${first_name} ${last_name}`.trim(), newsletter || false]
-    );
+    try {
+      const existing = await pool.query("SELECT * FROM subscribers WHERE email = $1", [email]);
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ message: "Email already exists in mailing list" });
+      }
+
+      const campaignId = (campaign_id && campaign_id !== 'global' && campaign_id !== '') ? campaign_id : null;
+
+      const result = await pool.query(
+        "INSERT INTO subscribers (email, first_name, last_name, full_name, newsletters_opt_in, campaign_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+        [email, first_name, last_name, `${first_name} ${last_name}`.trim(), newsletter || false, campaignId]
+      );
     res.json({ message: "Subscriber added successfully", subscriber: result.rows[0] });
   } catch (err) {
     console.error("❌ Subscriber addition error:", err.message);
@@ -292,11 +304,13 @@ app.get("/api/admin/subscribers/template", (req, res) => {
 
 // Import CSV for Mailing List
 app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res) => {
+  const { campaign_id } = req.body;
   if (!req.file) {
     return res.status(400).json({ message: "No file uploaded" });
   }
 
   try {
+    const campaignId = (campaign_id && campaign_id !== 'all' && campaign_id !== 'global' && campaign_id !== '') ? campaign_id : null;
     const filePath = req.file.path;
     const fileContent = fs.readFileSync(filePath, "utf8");
     const rows = fileContent.split(/\r?\n/).filter(row => row.trim() !== "");
@@ -333,8 +347,8 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
         const existing = await pool.query("SELECT email FROM subscribers WHERE email = $1", [email]);
         if (existing.rows.length === 0) {
           await pool.query(
-            "INSERT INTO subscribers (email, first_name, last_name, full_name, receipts_opt_in) VALUES ($1, $2, $3, $4, TRUE)",
-            [email, firstName, lastName, `${firstName} ${lastName}`.trim()]
+            "INSERT INTO subscribers (email, first_name, last_name, full_name, receipts_opt_in, campaign_id) VALUES ($1, $2, $3, $4, TRUE, $5)",
+            [email, firstName, lastName, `${firstName} ${lastName}`.trim(), campaignId]
           );
           successCount++;
         } else {
@@ -819,6 +833,7 @@ const initDB = async () => {
         CREATE TABLE IF NOT EXISTS subscribers (
           subscriber_id SERIAL PRIMARY KEY,
           user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
+          campaign_id BIGINT REFERENCES campaigns(campaign_id) ON DELETE SET NULL,
           email VARCHAR(255) UNIQUE NOT NULL,
           first_name VARCHAR(100),
           last_name VARCHAR(100),
@@ -833,6 +848,7 @@ const initDB = async () => {
       // Ensure existing tables see the new columns if necessary
       await pool.query(`ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS first_name VARCHAR(100)`);
       await pool.query(`ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS last_name VARCHAR(100)`);
+      await pool.query(`ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS campaign_id BIGINT REFERENCES campaigns(campaign_id) ON DELETE SET NULL`);
 
       console.log("✅ Subscribers table verified");
 
@@ -1118,9 +1134,22 @@ app.post("/api/admin/bulk-send-emails", async (req, res) => {
       });
 
       // Wrap in standard container - Trusting Quill HTML
-      const finalHtml = `<div style="font-family: sans-serif; line-height: 1.6; color: #333;">
-                ${personalizedHtml}
-            </div>`;
+      const finalHtml = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; padding: 40px 20px; text-align: center;">
+          <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: left; border: 1px solid #eef2f6;">
+              <div style="background: linear-gradient(135deg, #63A6B2 0%, #4a8a95 100%); padding: 30px; text-align: center;">
+                  <img src="https://svrtf.org/images/logo.png" alt="SVRTV Logo" style="width: 70px; height: 70px; border-radius: 50%; background: white; padding: 5px; object-fit: contain;">
+              </div>
+              <div style="padding: 40px; color: #334155; line-height: 1.8; font-size: 15px; overflow-wrap: break-word;">
+                  ${personalizedHtml}
+              </div>
+              <div style="background-color: #f8fafc; padding: 25px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #63A6B2;">Shepherd's Voice Radio and Television Foundation, Inc.</p>
+                  <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;">456 Faith Avenue, Manila, Metro Manila 1003<br>
+                  © 2026 SVRTF. All rights reserved.</p>
+              </div>
+          </div>
+      </div>`;
 
       const result = await sendEmail(emailAddr, personalizedSubject, finalHtml, from_email, cc);
       if (result.success) successCount++;
@@ -1204,6 +1233,13 @@ app.get("/api/user/profile/:id", async (req, res) => {
         u.notes,
         u.profile_image,
         u.created_at,
+        u.address2,
+        u.barangay,
+        u.province,
+        u.city,
+        u.zip_code,
+        u.tin_number,
+        u.country,
         a.email
       FROM users u
       LEFT JOIN auth_users a ON u.user_id = a.user_id
@@ -1354,18 +1390,29 @@ app.post("/api/user/profile/upload-image", upload.single('image'), async (req, r
 // UPDATE USER PROFILE
 app.put("/api/user/profile/:id", async (req, res) => {
   const userId = req.params.id;
-  const { firstName, lastName, phone, address, province, city, zipCode, tinNumber, profileImage } = req.body;
+  const { 
+    firstName, lastName, phone, address, 
+    address2, barangay, province, city, 
+    zipCode, tinNumber, profileImage, country 
+  } = req.body;
 
   try {
     const updateQuery = `
       UPDATE users 
       SET 
-        first_name = COALESCE($1, first_name),
-        last_name = COALESCE($2, last_name),
-        contact_number = COALESCE($3, contact_number),
-        address = COALESCE($4, address),
-        profile_image = COALESCE($5, profile_image)
-      WHERE user_id = $6
+        first_name = $1,
+        last_name = $2,
+        contact_number = $3,
+        address = $4,
+        address2 = $5,
+        barangay = $6,
+        province = $7,
+        city = $8,
+        zip_code = $9,
+        tin_number = $10,
+        country = $11,
+        profile_image = COALESCE($12, profile_image)
+      WHERE user_id = $13
       RETURNING *
     `;
 
@@ -1374,6 +1421,13 @@ app.put("/api/user/profile/:id", async (req, res) => {
       lastName,
       phone,
       address,
+      address2,
+      barangay,
+      province,
+      city,
+      zipCode,
+      tinNumber,
+      country || 'Philippines',
       profileImage,
       userId
     ]);
@@ -1407,8 +1461,7 @@ app.put("/api/user/profile/:id", async (req, res) => {
 const chatbotRoutes = require("./ChatbotBackend");
 app.use("/api/chatbot", chatbotRoutes);
 
-// Start server - MUST be at the end after all routes are defined
-// Start server - Explicitly listen on 127.0.0.1 to avoid IPv6 confusion
-app.listen(5000, '127.0.0.1', () => {
-  console.log("Nagana na yah! Running on http://127.0.0.1:5000");
+// Start server - Listen on port 5000 (standard for this project)
+app.listen(5000, () => {
+  console.log("Nagana na yah! Running on http://localhost:5000");
 });

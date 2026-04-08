@@ -24,7 +24,10 @@ const getTransporter = async () => {
                 },
                 tls: {
                     rejectUnauthorized: false // Helps with some shared hosting
-                }
+                },
+                connectionTimeout: 60000,
+                socketTimeout: 60000,
+                greetingTimeout: 30000
             });
         }
     } catch (err) {
@@ -38,6 +41,9 @@ const getTransporter = async () => {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS,
         },
+        connectionTimeout: 60000,
+        socketTimeout: 60000,
+        greetingTimeout: 30000
     });
 };
 
@@ -48,19 +54,34 @@ const sendEmail = async (to, subject, html, customFrom = null, ccEmail = null, a
         const res = await pool.query("SELECT user_email FROM smtp_settings LIMIT 1");
         const fromEmail = res.rows.length > 0 && res.rows[0].user_email ? res.rows[0].user_email : process.env.EMAIL_USER;
 
+        let processedHtml = html || "";
+        let finalAttachments = attachments ? [...attachments] : [];
+        let cidCounter = 1;
+
+        processedHtml = processedHtml.replace(/<img([^>]*)src=["']data:image\/([^;]+);base64,([^"']+)["']([^>]*)>/gi, (match, pre, ext, base64Data, post) => {
+            const cid = `img_${Date.now()}_${cidCounter++}@svrtfi`;
+            finalAttachments.push({
+                filename: `image_${cidCounter}.${ext}`,
+                content: Buffer.from(base64Data, 'base64'),
+                contentType: `image/${ext}`,
+                cid: cid
+            });
+            return `<img${pre}src="cid:${cid}"${post}>`;
+        });
+
         const mailOptions = {
             from: customFrom || `"SVRTV Donation System" <${fromEmail}>`,
             to,
             subject,
-            html,
+            html: processedHtml,
         };
         
         if (ccEmail) {
             mailOptions.cc = ccEmail;
         }
 
-        if (attachments && attachments.length > 0) {
-            mailOptions.attachments = attachments;
+        if (finalAttachments.length > 0) {
+            mailOptions.attachments = finalAttachments;
         }
 
         const info = await transporter.sendMail(mailOptions);
@@ -91,7 +112,7 @@ const sendDonationReceipt = async (donationData) => {
         console.error("❌ No donation data provided to sendDonationReceipt");
         return { success: false, error: "Missing donation data" };
     }
-    const { donor_name, donor_email, amount, campaign_name, donation_id, payment_method, date, frequency, donor_phone, message, receipt_upload } = donationData;
+    const { donor_name, donor_email, amount, campaign_name, donation_id, payment_method, date, frequency, donor_phone, message, receipt_upload, address, foundation_name, foundation_logo } = donationData;
 
     // Fetch user-configured template from DB
     let templateTitle = `Official Donation Receipt - RCP-${donation_id}`;
@@ -115,8 +136,8 @@ const sendDonationReceipt = async (donationData) => {
                 '{{campaign_name}}':   campaign_name || '',
                 '{{donation_amount}}': `₱${parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
                 '{{donation_id}}':     String(donation_id),
-                '{{address}}':         '',
-                '{{foundation_name}}': '',
+                '{{address}}':         address || '',
+                '{{foundation_name}}': foundation_name || '',
                 '${donation_id}':      String(donation_id),
                 '${campaign_name}':    campaign_name || '',
                 '${donor_name}':       donor_name || '',
@@ -136,7 +157,7 @@ const sendDonationReceipt = async (donationData) => {
                     const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
                     body = body.replace(regex, val);
                 });
-                customMessagePrefix = `<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 20px auto 0; padding: 28px 32px; background: #fff; border-radius: 16px 16px 0 0; border: 1px solid #eef2f6; border-bottom: none; color: #333; line-height: 1.7;">${body}</div>`;
+                customMessagePrefix = body;
             } else {
                 thankYouMsg = config.message || thankYouMsg;
             }
@@ -171,20 +192,45 @@ const sendDonationReceipt = async (donationData) => {
         return methods[method] || method;
     };
 
+    const messageCard = customMessagePrefix ? `
+        <!-- Message Card Section -->
+        <div style="max-width: 650px; margin: 0 auto 25px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eef2f6; border-top: 4px solid #63A6B2;">
+            <div style="padding: 40px; color: #334155; line-height: 1.8; font-size: 15px; text-align: left; overflow-wrap: break-word;">
+                <h3 style="margin: 0 0 15px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #63A6B2; font-weight: 700;">A Message From Us</h3>
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+                    ${customMessagePrefix}
+                </div>
+            </div>
+        </div>
+    ` : '';
+
     const receiptHtml = `
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 20px auto; background-color: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #eef2f6;">
+        <!-- Official Receipt Section -->
+        <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #eef2f6;">
             <!-- Header Gradient -->
             <div style="background: linear-gradient(135deg, #63A6B2 0%, #4a8a95 100%); padding: 35px 30px; color: white;">
                 <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                         <td width="70%">
                             <div style="display: flex; align-items: center;">
+                                <!-- SVRTV Logo -->
                                 <div style="background: white; width: 70px; height: 70px; border-radius: 50%; padding: 5px; display: inline-block; vertical-align: middle;">
                                     <img src="https://svrtf.org/images/logo.png" alt="SVRTV Logo" style="width: 100%; height: 100%; border-radius: 50%; object-fit: contain;">
                                 </div>
-                                <div style="display: inline-block; vertical-align: middle; margin-left: 20px;">
-                                    <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">OFFICIAL RECEIPT</h1>
-                                    <p style="margin: 4px 0 0 0; font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500;">Tax Deductible Donation</p>
+                                
+                                <!-- Divider -->
+                                <div style="display: inline-block; height: 40px; width: 1px; background-color: rgba(255,255,255,0.3); vertical-align: middle; margin: 0 15px;"></div>
+
+                                <!-- Foundation Logo -->
+                                ${foundation_logo ? `
+                                <div style="background: white; width: 70px; height: 70px; border-radius: 50%; padding: 5px; display: inline-block; vertical-align: middle;">
+                                    <img src="http://localhost:5000${foundation_logo}" alt="Foundation Logo" style="width: 100%; height: 100%; border-radius: 50%; object-fit: contain;">
+                                </div>
+                                ` : ''}
+
+                                <div style="display: inline-block; vertical-align: middle; margin-left: ${foundation_logo ? '15px' : '0px'};">
+                                    <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">OFFICIAL RECEIPT</h1>
+                                    <p style="margin: 2px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.85); font-weight: 500;">Tax Deductible Donation</p>
                                 </div>
                             </div>
                         </td>
@@ -202,7 +248,7 @@ const sendDonationReceipt = async (donationData) => {
                 <!-- Org Info -->
                 <div style="margin-bottom: 30px; border-bottom: 2px solid #f0f4f8; padding-bottom: 20px;">
                     <h2 style="margin: 0 0 12px 0; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 700;">Organization Information</h2>
-                    <p style="margin: 0; font-size: 17px; color: #63A6B2; font-weight: 800;">Shepherd's Voice Radio and Television Foundation, Inc.</p>
+                    <p style="margin: 0; font-size: 17px; color: #63A6B2; font-weight: 800;">${foundation_name || "Shepherd's Voice Radio and Television Foundation, Inc."}</p>
                     <p style="margin: 6px 0 0 0; font-size: 14px; color: #64748b; line-height: 1.5;">456 Faith Avenue, Manila, Metro Manila 1003<br>
                     Phone: (02) 8123-4567 | Website: <a href="https://svrtf.org" style="color: #63A6B2; text-decoration: none; font-weight: 600;">www.svrtf.org</a></p>
                 </div>
@@ -212,13 +258,29 @@ const sendDonationReceipt = async (donationData) => {
                     <h2 style="margin: 0 0 12px 0; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 700;">Donor Information</h2>
                     <table width="100%" cellpadding="0" cellspacing="0">
                         <tr>
-                            <td width="50%">
+                            <td width="50%" style="padding-bottom: 15px;">
                                 <p style="margin: 0; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Full Name</p>
                                 <p style="margin: 4px 0 0 0; font-size: 15px; color: #1e293b; font-weight: 700;">${donor_name || 'Anonymous Donor'}</p>
                             </td>
-                            <td width="50%">
+                            <td width="50%" style="padding-bottom: 15px;">
                                 <p style="margin: 0; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Email Address</p>
                                 <p style="margin: 4px 0 0 0; font-size: 15px; color: #1e293b; font-weight: 700;">${donor_email || '—'}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td width="50%" style="padding-bottom: 15px;">
+                                <p style="margin: 0; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Contact Number</p>
+                                <p style="margin: 4px 0 0 0; font-size: 15px; color: #1e293b; font-weight: 700;">${donor_phone || '—'}</p>
+                            </td>
+                            <td width="50%" style="padding-bottom: 15px;">
+                                <p style="margin: 0; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Tax ID / TIN</p>
+                                <p style="margin: 4px 0 0 0; font-size: 15px; color: #1e293b; font-weight: 700;">${tin_number || '—'}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <p style="margin: 0; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Address</p>
+                                <p style="margin: 4px 0 0 0; font-size: 15px; color: #1e293b; font-weight: 700;">${address || '—'}</p>
                             </td>
                         </tr>
                     </table>
@@ -302,17 +364,19 @@ const sendDonationReceipt = async (donationData) => {
 
             <!-- Bottom Footer -->
             <div style="background-color: #f8fafc; padding: 25px; text-align: center; border-top: 1px solid #e2e8f0;">
-                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #63A6B2;">${thankYouMsg}</p>
+                ${customMessagePrefix ? '' : `<p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #63A6B2;">${thankYouMsg}</p>`}
                 <p style="margin: 0; font-size: 11px; color: #94a3b8;">This is a computer-generated receipt and is valid without signature.<br>
                 © 2026 Shepherd's Voice Radio and Television Foundation, Inc.</p>
             </div>
         </div>
     `;
 
-    // Combine custom message (if any) with the standard receipt — one single email
-    const finalBody = customMessagePrefix
-        ? `${customMessagePrefix}${receiptHtml}`
-        : receiptHtml;
+    const finalBody = `
+        <div style="background-color: #f4f6f8; padding: 40px 20px;">
+            ${messageCard}
+            ${receiptHtml}
+        </div>
+    `;
 
     return await sendEmail(donor_email, templateTitle, finalBody);
 

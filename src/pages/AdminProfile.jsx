@@ -18,19 +18,19 @@ export default function AdminProfile() {
         try { return JSON.parse(localStorage.getItem('user')) || {}; } catch { return {}; }
     });
     const [profileForm, setProfileForm] = useState({
-        firstName: user.first_name || '',
-        lastName: user.last_name || '',
+        firstName: (user.firstName || user.first_name) || '',
+        lastName: (user.lastName || user.last_name) || '',
         email: user.email || '',
-        phone: user.contact_number || user.phone || '',
-        addressLine1: user.address_line1 || '',
-        addressLine2: user.address_line2 || '',
+        phone: (user.phone || user.contact_number) || '',
+        addressLine1: (user.personalAddress || user.address || user.address1) || '',
+        addressLine2: user.address2 || '',
         barangay: user.barangay || '',
         province: user.province || '',
         city: user.city || '',
         country: user.country || 'Philippines',
-        zipCode: user.zip_code || '',
-        avatarImage: user.avatarImage || user.profileImage || null,
-        address: user.address || ''
+        zipCode: (user.zipCode || user.zip_code) || '',
+        tinNumber: (user.tinNumber || user.tin_number) || '',
+        avatarImage: user.avatarImage || user.profileImage || null
     });
     const [isSaving, setIsSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -44,19 +44,19 @@ export default function AdminProfile() {
         const stored = JSON.parse(localStorage.getItem('user')) || {};
         setUser(stored);
         setProfileForm({
-            firstName: stored.first_name || '',
-            lastName: stored.last_name || '',
+            firstName: (stored.firstName || stored.first_name) || '',
+            lastName: (stored.lastName || stored.last_name) || '',
             email: stored.email || '',
-            phone: stored.contact_number || stored.phone || '',
-            addressLine1: stored.address_line1 || '',
-            addressLine2: stored.address_line2 || '',
+            phone: (stored.phone || stored.contact_number) || '',
+            addressLine1: (stored.personalAddress || stored.address || stored.address1) || '',
+            addressLine2: stored.address2 || '',
             barangay: stored.barangay || '',
             province: stored.province || '',
             city: stored.city || '',
             country: stored.country || 'Philippines',
-            zipCode: stored.zip_code || '',
-            avatarImage: stored.avatarImage || stored.profileImage || null,
-            address: stored.address || ''
+            zipCode: (stored.zipCode || stored.zip_code) || '',
+            tinNumber: (stored.tinNumber || stored.tin_number) || '',
+            avatarImage: stored.avatarImage || stored.profileImage || null
         });
     }, []);
 
@@ -138,49 +138,46 @@ export default function AdminProfile() {
         }
         setIsSaving(true);
         try {
-            const fullAddress = [
-                profileForm.addressLine1,
-                profileForm.addressLine2,
-                profileForm.barangay,
-                profileForm.city,
-                profileForm.province,
-                profileForm.zipCode,
-                profileForm.country,
-            ].filter(Boolean).join(', ');
-
             const response = await fetch(`http://localhost:5000/api/user/profile/${user.user_id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     firstName: profileForm.firstName.trim(),
                     lastName: profileForm.lastName.trim(),
-                    contactNumber: profileForm.phone.trim(),
-                    address: fullAddress,
-                    addressLine1: profileForm.addressLine1.trim(),
-                    addressLine2: profileForm.addressLine2.trim(),
+                    phone: profileForm.phone.trim(),
+                    address: profileForm.addressLine1.trim(),
+                    address2: profileForm.addressLine2.trim(),
                     barangay: profileForm.barangay.trim(),
                     province: profileForm.province,
                     city: profileForm.city,
                     country: profileForm.country,
                     zipCode: profileForm.zipCode.trim(),
+                    tinNumber: profileForm.tinNumber?.trim() || '',
+                    profileImage: profileForm.avatarImage
                 }),
             });
             if (response.ok) {
                 const updatedUser = {
                     ...user,
+                    firstName: profileForm.firstName.trim(),
                     first_name: profileForm.firstName.trim(),
+                    lastName: profileForm.lastName.trim(),
                     last_name: profileForm.lastName.trim(),
+                    phone: profileForm.phone.trim(),
                     contact_number: profileForm.phone.trim(),
-                    address: fullAddress,
-                    avatarImage: profileForm.avatarImage,
-                    profileImage: profileForm.avatarImage,
-                    address_line1: profileForm.addressLine1.trim(),
-                    address_line2: profileForm.addressLine2.trim(),
+                    address1: profileForm.addressLine1.trim(),
+                    address: profileForm.addressLine1.trim(),
+                    address2: profileForm.addressLine2.trim(),
                     barangay: profileForm.barangay.trim(),
                     province: profileForm.province,
                     city: profileForm.city,
                     country: profileForm.country,
+                    zipCode: profileForm.zipCode.trim(),
                     zip_code: profileForm.zipCode.trim(),
+                    tinNumber: profileForm.tinNumber?.trim() || '',
+                    tin_number: profileForm.tinNumber?.trim() || '',
+                    profileImage: profileForm.avatarImage,
+                    avatarImage: profileForm.avatarImage,
                 };
                 localStorage.setItem('user', JSON.stringify(updatedUser));
                 setUser(updatedUser);
@@ -249,7 +246,7 @@ export default function AdminProfile() {
                 />
 
                 {/* ── Page content ── */}
-                <div className="px-6 lg:px-10 py-8 max-w-5xl mx-auto space-y-6">
+                <div className="px-6 lg:px-10 py-8 w-full max-w-full space-y-6">
 
                     {/* ① ADMIN PROFILE ─────────────────────────────── */}
                     <section className="bg-white rounded-2xl border border-gray-100 shadow-sm">
@@ -392,6 +389,15 @@ export default function AdminProfile() {
                                         onChange={e => setProfileForm(p => ({ ...p, zipCode: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
                                         className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/15 transition-all"
                                         placeholder="e.g. 1600" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                                        <span className="inline-flex items-center gap-1">TIN Number</span>
+                                    </label>
+                                    <input type="text" value={profileForm.tinNumber}
+                                        onChange={e => setProfileForm(p => ({ ...p, tinNumber: e.target.value }))}
+                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/15 transition-all"
+                                        placeholder="123-456-789-000" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">

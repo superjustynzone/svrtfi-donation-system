@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { MessageCircle, X, Send, Bot, ChevronDown, Minimize2 } from 'lucide-react';
 import './ChatBot.css';
 
@@ -30,6 +31,9 @@ function formatBotText(text) {
 }
 
 export default function ChatBot() {
+  const location = useLocation();
+  const isAdminPage = location.pathname.startsWith('/admin_');
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
@@ -42,6 +46,9 @@ export default function ChatBot() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const chatWindowRef = useRef(null);
+
+  // If we are on an admin page, do not render the chatbot at all
+  if (isAdminPage) return null;
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -94,7 +101,7 @@ export default function ChatBot() {
       .map(m => ({ role: m.role, text: m.text }));
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/chatbot/message', {
+      const response = await fetch('http://localhost:5000/api/chatbot/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userText, history }),

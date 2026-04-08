@@ -167,7 +167,7 @@ export default function AdminStories() {
 
     const fetchStories = async () => {
         try {
-            const response = await fetch('http://127.0.0.1:5000/api/stories/all');
+            const response = await fetch('http://localhost:5000/api/stories/all');
             const data = await response.json();
             if (Array.isArray(data)) {
                 setStories(data);
@@ -183,7 +183,7 @@ export default function AdminStories() {
 
     const fetchFoundations = async () => {
         try {
-            const response = await fetch('http://127.0.0.1:5000/api/foundations/all');
+            const response = await fetch('http://localhost:5000/api/foundations/all');
             const data = await response.json();
             if (Array.isArray(data)) {
                 setFoundations(data);
@@ -199,7 +199,7 @@ export default function AdminStories() {
 
     const fetchStoryCategories = async () => {
         try {
-            const response = await fetch('http://127.0.0.1:5000/api/admin/story-categories');
+            const response = await fetch('http://localhost:5000/api/admin/story-categories');
             const data = await response.json();
             if (Array.isArray(data)) setCategories(data);
         } catch (error) {
@@ -210,7 +210,7 @@ export default function AdminStories() {
     const handleAddCategory = async () => {
         if (!newCategoryName.trim()) return;
         try {
-            const response = await fetch('http://127.0.0.1:5000/api/admin/story-categories', {
+            const response = await fetch('http://localhost:5000/api/admin/story-categories', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: newCategoryName })
@@ -231,7 +231,7 @@ export default function AdminStories() {
     const handleUpdateCategory = async (id) => {
         if (!newCategoryName.trim()) return;
         try {
-            const response = await fetch(`http://127.0.0.1:5000/api/admin/story-categories/${id}`, {
+            const response = await fetch(`http://localhost:5000/api/admin/story-categories/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: newCategoryName })
@@ -248,7 +248,7 @@ export default function AdminStories() {
     const handleDeleteCategory = async (id) => {
         if (!confirm('Are you sure? This will remove the category option.')) return;
         try {
-            const response = await fetch(`http://127.0.0.1:5000/api/admin/story-categories/${id}`, {
+            const response = await fetch(`http://localhost:5000/api/admin/story-categories/${id}`, {
                 method: 'DELETE'
             });
             if (response.ok) {
@@ -336,8 +336,8 @@ export default function AdminStories() {
             setIsLoading(true);
 
             const url = editingStory
-                ? `http://127.0.0.1:5000/api/stories/update/${editingStory.story_id}`
-                : 'http://127.0.0.1:5000/api/stories/create';
+                ? `http://localhost:5000/api/stories/update/${editingStory.story_id}`
+                : 'http://localhost:5000/api/stories/create';
 
             const method = editingStory ? 'PUT' : 'POST';
 
@@ -393,7 +393,7 @@ export default function AdminStories() {
         const newStatus = !currentStatus;
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const response = await fetch(`http://127.0.0.1:5000/api/stories/status/${storyId}`, {
+            const response = await fetch(`http://localhost:5000/api/stories/status/${storyId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -419,7 +419,7 @@ export default function AdminStories() {
         const isPublished = newValue === 'published';
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const response = await fetch(`http://127.0.0.1:5000/api/stories/status/${storyId}`, {
+            const response = await fetch(`http://localhost:5000/api/stories/status/${storyId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ is_published: isPublished, userId: user.user_id || null })
@@ -446,7 +446,7 @@ export default function AdminStories() {
                     toast.error('Please select a scheduled date and time.');
                     return;
                 }
-                await fetch(`http://127.0.0.1:5000/api/stories/schedule/${storyId}`, {
+                await fetch(`http://localhost:5000/api/stories/schedule/${storyId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ scheduled_publish_at: statusModalScheduleDate, userId: user.user_id || null })
@@ -468,7 +468,7 @@ export default function AdminStories() {
         if (!storyToDelete) return;
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const response = await fetch(`http://127.0.0.1:5000/api/stories/delete/${storyToDelete}`, {
+            const response = await fetch(`http://localhost:5000/api/stories/delete/${storyToDelete}`, {
                 method: 'DELETE',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -1269,7 +1269,7 @@ export default function AdminStories() {
                                     {/* Blurred Background Layer */}
                                     <div className="absolute inset-0 scale-110 blur-3xl opacity-30 transition-opacity duration-1000">
                                         <img 
-                                            src={`http://127.0.0.1:5000${viewingStory.images[currentImageIndex].image_file}`} 
+                                            src={`http://localhost:5000${viewingStory.images[currentImageIndex].image_file}`} 
                                             alt="Blurred Backdrop" 
                                             className="w-full h-full object-cover" 
                                         />
@@ -1277,7 +1277,7 @@ export default function AdminStories() {
 
                                     {/* Main Image */}
                                     <img 
-                                        src={`http://127.0.0.1:5000${viewingStory.images[currentImageIndex].image_file}`} 
+                                        src={`http://localhost:5000${viewingStory.images[currentImageIndex].image_file}`} 
                                         alt={viewingStory.title} 
                                         className="relative z-10 w-full h-full object-contain transition-all duration-700 ease-in-out" 
                                     />

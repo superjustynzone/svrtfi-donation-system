@@ -142,6 +142,9 @@ export default function Profile() {
     };
 
     const handleSaveProfile = async () => {
+        const storedUser = JSON.parse(localStorage.getItem('user'));
+        if (!storedUser) return;
+
         try {
             // Validation
             if (!editedData.firstName || !editedData.lastName) {
@@ -149,31 +152,75 @@ export default function Profile() {
                 return;
             }
 
-
             if (!editedData.email) {
                 toast.error('Email is required');
                 return;
             }
-
 
             if (editedData.phone && editedData.phone.length !== 10) {
                 toast.error('Phone number must be exactly 10 digits (excluding +63)');
                 return;
             }
 
+            const response = await fetch(`http://localhost:5000/api/user/profile/${storedUser.user_id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    firstName: editedData.firstName,
+                    lastName: editedData.lastName,
+                    phone: editedData.phone,
+                    address: editedData.address1,
+                    address2: editedData.address2,
+                    barangay: editedData.barangay,
+                    province: editedData.province,
+                    city: editedData.city,
+                    zipCode: editedData.zipCode,
+                    tinNumber: editedData.tinNumber,
+                    country: editedData.country,
+                    profileImage: editedData.profileImage
+                })
+            });
 
-            // TODO: Add backend API call here
-            // const response = await axios.put('/api/users/profile', editedData);
+            const data = await response.json();
 
+            if (response.ok) {
+                toast.success('Profile updated successfully!');
+                setIsEditMode(false);
+                setUserData({
+                    ...editedData,
+                    totalDonations: userData.totalDonations,
+                    totalAmount: userData.totalAmount,
+                    lastDonation: userData.lastDonation,
+                    memberSince: userData.memberSince
+                });
 
-            // Simulate API call
-            toast.success('Profile updated successfully!');
-            setIsEditMode(false);
-
-
-            // TODO: Update userData with editedData after successful API call
-            // setUserData(editedData);
+                // Sync localStorage with everything
+                const updatedUser = {
+                    ...storedUser,
+                    firstName: editedData.firstName,
+                    lastName: editedData.lastName,
+                    phone: editedData.phone,
+                    address1: editedData.address1,
+                    address: editedData.address1,
+                    address2: editedData.address2,
+                    barangay: editedData.barangay,
+                    province: editedData.province,
+                    city: editedData.city,
+                    zipCode: editedData.zipCode,
+                    zip_code: editedData.zipCode,
+                    tinNumber: editedData.tinNumber,
+                    tin_number: editedData.tinNumber,
+                    country: editedData.country,
+                    profileImage: editedData.profileImage || userData.profileImage,
+                    memberSince: userData.memberSince
+                };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                window.dispatchEvent(new Event('userProfileUpdated'));
+            } else {
+                toast.error(data.message || 'Failed to update profile');
+            }
         } catch (error) {
+            console.error('Update error:', error);
             toast.error('Failed to update profile. Please try again.');
         }
     };
@@ -434,7 +481,14 @@ export default function Profile() {
                         lastName: data.last_name || prev.lastName,
                         email: data.email || prev.email,
                         phone: data.contact_number || prev.phone,
-                        address: data.address || prev.address,
+                        address1: data.address || prev.address1,
+                        address2: data.address2 || prev.address2,
+                        barangay: data.barangay || prev.barangay,
+                        province: data.province || prev.province,
+                        city: data.city || prev.city,
+                        zipCode: data.zip_code || prev.zipCode,
+                        tinNumber: data.tin_number || prev.tinNumber,
+                        country: data.country || prev.country,
                         memberSince: memberSinceDate,
                         profileImage: profileImageUrl || prev.profileImage
                     };
@@ -682,7 +736,50 @@ export default function Profile() {
                                     </div>
 
 
-                                    <div className="grid md:grid-cols-2 gap-6">
+                                    {!isEditMode && (
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 transition hover:bg-white hover:shadow-sm">
+                                                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Primary Address</p>
+                                                <p className="text-sm text-gray-800 font-medium">
+                                                    {(userData.address1 || userData.address) || "No primary address set"}
+                                                </p>
+                                                {userData.address2 && <p className="text-xs text-gray-500 mt-1">{userData.address2}</p>}
+                                                {(userData.barangay || userData.city) && (
+                                                    <p className="text-[11px] text-gray-500 mt-0.5 font-medium">
+                                                        {[userData.barangay, userData.city, userData.province].filter(Boolean).join(', ')}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 transition hover:bg-white hover:shadow-sm">
+                                                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Identification</p>
+                                                <div className="space-y-2">
+                                                    <div>
+                                                        <p className="text-[10px] text-gray-400">TIN Number</p>
+                                                        <p className="text-sm text-gray-800 font-bold tracking-tight">{userData.tinNumber || "Not Provided"}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] text-gray-400">Contact Number</p>
+                                                        <p className="text-sm text-gray-800 font-bold tracking-tight">{userData.phone ? `+63 ${userData.phone}` : "Not Provided"}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 transition hover:bg-white hover:shadow-sm">
+                                                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Location Context</p>
+                                                <div className="space-y-2">
+                                                    <div>
+                                                        <p className="text-[10px] text-gray-400">ZIP Code</p>
+                                                        <p className="text-sm text-gray-800 font-bold">{userData.zipCode || "N/A"}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] text-gray-400">Country</p>
+                                                        <p className="text-sm text-gray-800 font-bold">{userData.country || "Philippines"}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="grid md:grid-cols-2 gap-8">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">First Name <span className="text-red-500">*</span></label>
                                             <input

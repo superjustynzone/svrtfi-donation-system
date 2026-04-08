@@ -50,9 +50,10 @@ export default function AdminMailing() {
 
     // New Subscriber Modal State
     const [isAddSubscriberModalOpen, setIsAddSubscriberModalOpen] = useState(false);
-    const [subscriberForm, setSubscriberForm] = useState({ firstName: '', lastName: '', email: '' });
+    const [subscriberForm, setSubscriberForm] = useState({ firstName: '', lastName: '', email: '', campaign_id: '' });
     const [isAddingSubscriber, setIsAddingSubscriber] = useState(false);
     const [manageMenuId, setManageMenuId] = useState(null); // Track which user's manage menu is open
+    const [subscriberFilterCampaign, setSubscriberFilterCampaign] = useState('');
     const [isSubscriberDeleteModalOpen, setIsSubscriberDeleteModalOpen] = useState(false);
     const [subscriberToDelete, setSubscriberToDelete] = useState(null);
 
@@ -85,7 +86,7 @@ export default function AdminMailing() {
 
     useEffect(() => {
         if (tabFetchMap[activeTab]) tabFetchMap[activeTab]();
-    }, [activeTab, selectedCampaignId]);
+    }, [activeTab, selectedCampaignId, subscriberFilterCampaign]);
 
     const tabFetchMap = {
         'templates': () => fetchReceiptTemplate(),
@@ -98,7 +99,7 @@ export default function AdminMailing() {
 
     const fetchSmtpSettings = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/smtp-settings');
+            const res = await fetch('http://localhost:5000/api/admin/smtp-settings');
             const data = await res.json();
             if (res.ok && data) {
                 setSmtpSettings({
@@ -117,7 +118,7 @@ export default function AdminMailing() {
     const handleSaveSmtpSettings = async () => {
         setIsSavingSmtp(true);
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/smtp-settings', {
+            const res = await fetch('http://localhost:5000/api/admin/smtp-settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -142,12 +143,13 @@ export default function AdminMailing() {
 
     const fetchCampaigns = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/campaigns/all');
+            const res = await fetch('http://localhost:5000/api/campaigns/all');
             const data = await res.json();
             if (res.ok && Array.isArray(data)) {
                 setCampaigns(data);
-                if (data.length > 0 && !selectedCampaignId) {
-                    setSelectedCampaignId(data[0].campaign_id);
+                if (data.length > 0) {
+                    if (!selectedCampaignId) setSelectedCampaignId(data[0].campaign_id);
+                    if (!subscriberFilterCampaign) setSubscriberFilterCampaign(data[0].campaign_id);
                 }
             }
         } catch (err) { console.error('Error fetching campaigns:', err); }
@@ -155,7 +157,7 @@ export default function AdminMailing() {
 
     const fetchReceiptTemplate = async () => {
         try {
-            const res = await fetch(`http://127.0.0.1:5000/api/admin/receipt-template?campaign_id=${selectedCampaignId}`);
+            const res = await fetch(`http://localhost:5000/api/admin/receipt-template?campaign_id=${selectedCampaignId}`);
             const data = await res.json();
             if (res.ok && data) setReceiptTemplate({ title: data.title || '', message: data.message || '' });
             else setReceiptTemplate({ title: '', message: '' });
@@ -165,7 +167,7 @@ export default function AdminMailing() {
     const fetchEmailLogs = async () => {
         setIsLoadingLogs(true);
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/email-logs');
+            const res = await fetch('http://localhost:5000/api/admin/email-logs');
             const data = await res.json();
             if (res.ok) setEmailLogs(data);
         } catch (err) { console.error('Error fetching logs:', err); }
@@ -173,9 +175,10 @@ export default function AdminMailing() {
     };
 
     const fetchSubscribers = async () => {
+        if (!subscriberFilterCampaign) return; // Prevent empty fetch
         setIsLoadingSubscribers(true);
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/subscribers');
+            const res = await fetch(`http://localhost:5000/api/admin/subscribers?campaign_id=${subscriberFilterCampaign}`);
             const data = await res.json();
             if (res.ok) setSubscribers(data);
         } catch (err) { console.error('Error fetching subscribers:', err); }
@@ -185,7 +188,7 @@ export default function AdminMailing() {
     const fetchDonationReminders = async () => {
         setIsLoadingReminders(true);
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/donations/admin/reminders');
+            const res = await fetch('http://localhost:5000/api/donations/admin/reminders');
             const data = await res.json();
             if (res.ok) setDonationReminders(data);
         } catch (err) { console.error('Error fetching reminders:', err); }
@@ -195,7 +198,7 @@ export default function AdminMailing() {
     const handleSendReminder = async (reminderId) => {
         setSendingReminderId(reminderId);
         try {
-            const res = await fetch(`http://127.0.0.1:5000/api/donations/admin/reminders/${reminderId}/send`, {
+            const res = await fetch(`http://localhost:5000/api/donations/admin/reminders/${reminderId}/send`, {
                 method: 'POST'
             });
             const data = await res.json();
@@ -219,7 +222,7 @@ export default function AdminMailing() {
         }
         setIsSavingTemplate(true);
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/receipt-template', {
+            const res = await fetch('http://localhost:5000/api/admin/receipt-template', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...receiptTemplate, campaign_id: selectedCampaignId })
@@ -240,7 +243,7 @@ export default function AdminMailing() {
         }
         setIsSending(true);
         try {
-            const response = await fetch('http://127.0.0.1:5000/api/admin/send-email', {
+            const response = await fetch('http://localhost:5000/api/admin/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(testEmailForm)
@@ -258,7 +261,7 @@ export default function AdminMailing() {
 
     const fetchThankYouLetters = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/thank-you-letters');
+            const res = await fetch('http://localhost:5000/api/admin/thank-you-letters');
             const data = await res.json();
             if (res.ok) setThankYouLetters(data);
         } catch (err) { console.error('Error fetching letters:', err); }
@@ -272,7 +275,7 @@ export default function AdminMailing() {
         setIsSavingLetter(true);
         try {
             const method = letterForm.id ? 'PUT' : 'POST';
-            const url = letterForm.id ? `http://127.0.0.1:5000/api/admin/thank-you-letters/${letterForm.id}` : 'http://127.0.0.1:5000/api/admin/thank-you-letters';
+            const url = letterForm.id ? `http://localhost:5000/api/admin/thank-you-letters/${letterForm.id}` : 'http://localhost:5000/api/admin/thank-you-letters';
             const res = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
@@ -290,7 +293,7 @@ export default function AdminMailing() {
     const handleDeleteLetter = async (id) => {
         if (!confirm('Are you sure you want to delete this template?')) return;
         try {
-            const res = await fetch(`http://127.0.0.1:5000/api/admin/thank-you-letters/${id}`, { method: 'DELETE' });
+            const res = await fetch(`http://localhost:5000/api/admin/thank-you-letters/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 toast.success('Template deleted.');
                 fetchThankYouLetters();
@@ -306,7 +309,7 @@ export default function AdminMailing() {
 
     const fetchMailingDonors = async (campaignId) => {
         try {
-            const res = await fetch(`http://127.0.0.1:5000/api/admin/mailing-donors?campaign_id=${campaignId || 'global'}`);
+            const res = await fetch(`http://localhost:5000/api/admin/mailing-donors?campaign_id=${campaignId || 'global'}`);
             const data = await res.json();
             if (res.ok) {
                 setMailingDonors(data);
@@ -325,7 +328,7 @@ export default function AdminMailing() {
         const campaignName = campaign ? campaign.campaign_name : 'Our Campaign';
 
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/bulk-send-emails', {
+            const res = await fetch('http://localhost:5000/api/admin/bulk-send-emails', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -357,7 +360,7 @@ export default function AdminMailing() {
     const confirmDeleteSubscriber = async () => {
         if (!subscriberToDelete) return;
         try {
-            const res = await fetch(`http://127.0.0.1:5000/api/admin/subscribers/${subscriberToDelete.subscriber_id}`, { method: 'DELETE' });
+            const res = await fetch(`http://localhost:5000/api/admin/subscribers/${subscriberToDelete.subscriber_id}`, { method: 'DELETE' });
             if (res.ok) {
                 toast.success('Subscriber removed.');
                 setIsSubscriberDeleteModalOpen(false);
@@ -369,7 +372,7 @@ export default function AdminMailing() {
 
     const handleToggleReceipts = async (id) => {
         try {
-            const res = await fetch(`http://127.0.0.1:5000/api/admin/subscribers/${id}/toggle-receipts`, { method: 'PATCH' });
+            const res = await fetch(`http://localhost:5000/api/admin/subscribers/${id}/toggle-receipts`, { method: 'PATCH' });
             if (res.ok) {
                 toast.success('Preference updated.');
                 fetchSubscribers();
@@ -381,25 +384,26 @@ export default function AdminMailing() {
 
     const handleAddSubscriber = async (e) => {
         if (e) e.preventDefault();
-        if (!subscriberForm.email || !subscriberForm.firstName || !subscriberForm.lastName) {
-            toast.error('All fields are required.');
+        if (!subscriberForm.email || !subscriberForm.firstName || !subscriberForm.lastName || !subscriberForm.campaign_id) {
+            toast.error('All fields including campaign are required.');
             return;
         }
         setIsAddingSubscriber(true);
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/subscribers', {
+            const res = await fetch('http://localhost:5000/api/admin/subscribers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: subscriberForm.email,
                     first_name: subscriberForm.firstName,
-                    last_name: subscriberForm.lastName
+                    last_name: subscriberForm.lastName,
+                    campaign_id: subscriberForm.campaign_id
                 })
             });
             if (res.ok) {
                 toast.success('Subscriber added successfully!');
                 setIsAddSubscriberModalOpen(false);
-                setSubscriberForm({ firstName: '', lastName: '', email: '' });
+                setSubscriberForm({ firstName: '', lastName: '', email: '', campaign_id: '' });
                 fetchSubscribers();
             } else {
                 const contentType = res.headers.get('content-type');
@@ -427,10 +431,13 @@ export default function AdminMailing() {
 
         const formData = new FormData();
         formData.append('file', file);
+        if (subscriberFilterCampaign) {
+            formData.append('campaign_id', subscriberFilterCampaign);
+        }
 
         setIsImporting(true);
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/subscribers/import', {
+            const res = await fetch('http://localhost:5000/api/admin/subscribers/import', {
                 method: 'POST',
                 body: formData
             });
@@ -546,7 +553,7 @@ export default function AdminMailing() {
                                                             onClick={async () => {
                                                                 setSelectedCampaignId(c.campaign_id);
                                                                 try {
-                                                                    const res = await fetch(`http://127.0.0.1:5000/api/admin/receipt-template?campaign_id=${c.campaign_id}`);
+                                                                    const res = await fetch(`http://localhost:5000/api/admin/receipt-template?campaign_id=${c.campaign_id}`);
                                                                     const data = await res.json();
                                                                     if (res.ok && data) setReceiptTemplate({ title: data.title || '', message: data.message || '' });
                                                                     else setReceiptTemplate({ title: '', message: '' });
@@ -936,12 +943,26 @@ export default function AdminMailing() {
                                         <p className="text-xs text-gray-400 mt-0.5">Manage users who receive automated updates.</p>
                                     </div>
                                     <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2 mr-2">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Active Campaign:</span>
+                                            <select 
+                                                value={subscriberFilterCampaign} 
+                                                onChange={e => setSubscriberFilterCampaign(e.target.value)}
+                                                className="min-w-[180px] bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-bold text-[#63A6B2] shadow-sm outline-none focus:ring-1 focus:ring-[#63A6B2]"
+                                            >
+                                                {campaigns.map(c => (
+                                                    <option key={c.campaign_id} value={c.campaign_id}>{c.campaign_name}</option>
+                                                ))}
+                                                {campaigns.length === 0 && <option value="" disabled>No campaigns available</option>}
+                                            </select>
+                                        </div>
+
                                         <button onClick={fetchSubscribers} disabled={isLoadingSubscribers} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
                                             <RefreshCw className={`w-4 h-4 ${isLoadingSubscribers ? 'animate-spin' : ''}`} />
                                         </button>
 
                                         <button
-                                            onClick={() => window.open('http://127.0.0.1:5000/api/admin/subscribers/template')}
+                                            onClick={() => window.open('http://localhost:5000/api/admin/subscribers/template')}
                                             className="px-4 py-2 bg-gray-50 text-gray-600 border border-gray-200 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-gray-100"
                                             title="Download CSV Template"
                                         >
@@ -955,7 +976,10 @@ export default function AdminMailing() {
                                         </label>
 
                                         <button
-                                            onClick={() => setIsAddSubscriberModalOpen(true)}
+                                            onClick={() => {
+                                                setSubscriberForm(p => ({ ...p, campaign_id: subscriberFilterCampaign }));
+                                                setIsAddSubscriberModalOpen(true);
+                                            }}
                                             className="px-4 py-2 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-sm hover:bg-[#4a8a95] flex items-center gap-2"
                                         >
                                             <Users className="w-4 h-4" /> Add User
@@ -967,6 +991,7 @@ export default function AdminMailing() {
                                         <thead>
                                             <tr className="bg-gray-50">
                                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Subscriber</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Campaign</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center whitespace-nowrap">Receipt Pref</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Account Status</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
@@ -985,6 +1010,9 @@ export default function AdminMailing() {
                                                                 <div className="text-[10px] text-gray-400">{sub.email}</div>
                                                             </div>
                                                         </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-xs font-bold text-gray-500 uppercase tracking-tight">{sub.campaign_name || 'General Operations'}</div>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
                                                         <div className="flex justify-center items-center gap-2">
@@ -1247,7 +1275,7 @@ export default function AdminMailing() {
                                                 [{ 'header': [1, 2, 3, false] }],
                                                 ['bold', 'italic', 'underline', 'strike'],
                                                 [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                                ['link', 'clean']
+                                                ['link', 'image', 'clean']
                                             ]
                                         }}
                                     />
@@ -1393,6 +1421,20 @@ export default function AdminMailing() {
                                     placeholder="email@example.com"
                                 />
                             </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Campaign Association</label>
+                                <select 
+                                    value={subscriberForm.campaign_id} 
+                                    required
+                                    onChange={e => setSubscriberForm(p => ({ ...p, campaign_id: e.target.value }))}
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#63A6B2] outline-none bg-white font-bold text-[#63A6B2]"
+                                >
+                                    <option value="" disabled>Select a Campaign</option>
+                                    {campaigns.map(c => (
+                                        <option key={c.campaign_id} value={c.campaign_id}>{c.campaign_name}</option>
+                                    ))}
+                                </select>
+                            </div>
                             {/* Removed Newsletter Opt-in */}
 
                             <div className="pt-6 flex gap-3">
@@ -1459,7 +1501,7 @@ export default function AdminMailing() {
                                                 [{ 'header': [1, 2, 3, false] }],
                                                 ['bold', 'italic', 'underline', 'strike'],
                                                 [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                                ['link', 'clean']
+                                                ['link', 'image', 'clean']
                                             ]
                                         }}
                                     />

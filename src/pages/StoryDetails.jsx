@@ -105,7 +105,7 @@ export default function StoryDetails() {
                         {/* Blurred Background Layer */}
                         <div className="absolute inset-0 scale-110 blur-3xl opacity-40 transition-opacity duration-1000">
                              <img
-                                src={`http://127.0.0.1:5000${images[currentImageIndex].image_file}`}
+                                src={`http://localhost:5000${images[currentImageIndex].image_file}`}
                                 alt="Blurred Background"
                                 className="w-full h-full object-cover"
                             />
@@ -113,7 +113,7 @@ export default function StoryDetails() {
 
                         {/* Main Image */}
                         <img
-                            src={`http://127.0.0.1:5000${images[currentImageIndex].image_file}`}
+                            src={`http://localhost:5000${images[currentImageIndex].image_file}`}
                             alt={story.title}
                             className="relative z-10 w-full h-full object-contain transition-all duration-700 ease-in-out"
                         />

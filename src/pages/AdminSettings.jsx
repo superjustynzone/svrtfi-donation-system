@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import {
     Save, RefreshCw, CheckCircle,
-    LayoutTemplate, Upload, X, Server, ShieldCheck, FileText
+    LayoutTemplate, Upload, X, ShieldCheck, FileText
 } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
@@ -23,26 +23,6 @@ export default function AdminSettings() {
     });
     const [isSavingSite, setIsSavingSite] = useState(false);
     const [savedSite, setSavedSite] = useState(false);
-
-    // ─── SMTP Settings State ──────────────────────────────────────────
-    const [smtpForm, setSmtpForm] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('smtpSettings')) || {
-                host: '',
-                port: '',
-                user: '',
-                password: '',
-                fromEmail: '',
-                fromName: ''
-            };
-        } catch {
-            return {
-                host: '', port: '', user: '', password: '', fromEmail: '', fromName: ''
-            };
-        }
-    });
-    const [isSavingSmtp, setIsSavingSmtp] = useState(false);
-    const [savedSmtp, setSavedSmtp] = useState(false);
 
     // ─── Image helpers ────────────────────────────────────────────────
     const readImage = (file, onLoad) => {
@@ -70,21 +50,6 @@ export default function AdminSettings() {
         finally { setIsSavingSite(false); }
     };
 
-    // ─── Save: SMTP ───────────────────────────────────────────────────
-    const handleSaveSmtp = () => {
-        setIsSavingSmtp(true);
-        try {
-            localStorage.setItem('smtpSettings', JSON.stringify(smtpForm));
-            setSavedSmtp(true);
-            toast.success('SMTP Configuration saved!');
-            setTimeout(() => setSavedSmtp(false), 3000);
-        } catch {
-            toast.error('Failed to save SMTP settings.');
-        } finally {
-            setIsSavingSmtp(false);
-        }
-    };
-
     // ─── Legal Settings State ─────────────────────────────────────────
     const [terms, setTerms] = useState('<p></p>');
     const [privacy, setPrivacy] = useState('<p></p>');
@@ -99,7 +64,7 @@ export default function AdminSettings() {
 
     const fetchSiteSettings = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/site-settings');
+            const res = await fetch('http://localhost:5000/api/admin/site-settings');
             const data = await res.json();
             if (res.ok) {
                 if (data.terms_and_conditions) setTerms(data.terms_and_conditions);
@@ -113,7 +78,7 @@ export default function AdminSettings() {
     const handleSavePolicy = async (key, value, setSaving, setSaved) => {
         setSaving(true);
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/admin/site-settings', {
+            const res = await fetch('http://localhost:5000/api/admin/site-settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ setting_key: key, setting_value: value })
@@ -240,87 +205,7 @@ export default function AdminSettings() {
                         </div>
                     </section>
 
-                    {/* ② SMTP CONFIGURATION ────────────────────────── */}
-                    <section className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-                        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-                            <div className="flex items-center gap-2">
-                                <Server className="w-4 h-4 text-[#63A6B2]" />
-                                <h2 className="text-base font-bold text-gray-900">SMTP Configuration</h2>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-0.5">Set up your mail server credentials for system notifications.</p>
-                        </div>
-
-                        <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div className="md:col-span-2">
-                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-1">Server Details</h3>
-                                </div>
-                                
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">SMTP Host</label>
-                                    <input type="text" value={smtpForm.host}
-                                        onChange={e => setSmtpForm(p => ({ ...p, host: e.target.value }))}
-                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/15 transition-all"
-                                        placeholder="smtp.example.com" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">SMTP Port</label>
-                                    <input type="text" value={smtpForm.port}
-                                        onChange={e => setSmtpForm(p => ({ ...p, port: e.target.value }))}
-                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/15 transition-all"
-                                        placeholder="587, 465, or 25" />
-                                </div>
-                                
-                                <div className="md:col-span-2 mt-2">
-                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-1">Authentication</h3>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Username</label>
-                                    <input type="text" value={smtpForm.user}
-                                        onChange={e => setSmtpForm(p => ({ ...p, user: e.target.value }))}
-                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/15 transition-all"
-                                        placeholder="your-email@example.com" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Password</label>
-                                    <input type="password" value={smtpForm.password}
-                                        onChange={e => setSmtpForm(p => ({ ...p, password: e.target.value }))}
-                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/15 transition-all"
-                                        placeholder="••••••••••••••••" />
-                                </div>
-
-                                <div className="md:col-span-2 mt-2">
-                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-1">Sender Details</h3>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">From Name</label>
-                                    <input type="text" value={smtpForm.fromName}
-                                        onChange={e => setSmtpForm(p => ({ ...p, fromName: e.target.value }))}
-                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/15 transition-all"
-                                        placeholder="e.g. SVRTFI Donations" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">From Email</label>
-                                    <input type="email" value={smtpForm.fromEmail}
-                                        onChange={e => setSmtpForm(p => ({ ...p, fromEmail: e.target.value }))}
-                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/15 transition-all"
-                                        placeholder="e.g. no-reply@svrtfi.org" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
-                            <button onClick={handleSaveSmtp} disabled={isSavingSmtp} className={saveBtnClass(savedSmtp)}>
-                                {isSavingSmtp ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</>
-                                    : savedSmtp ? <><CheckCircle className="w-4 h-4" /> Saved!</>
-                                        : <><Save className="w-4 h-4" /> Save Configuration</>}
-                            </button>
-                        </div>
-                    </section>
-
-                    {/* ③ TERMS & CONDITIONS ────────────────────────── */}
+                    {/* ② TERMS & CONDITIONS ────────────────────────── */}
                     <section className="bg-white rounded-2xl border border-gray-100 shadow-sm">
                         <div className="px-6 pt-6 pb-4 border-b border-gray-100">
                             <div className="flex items-center gap-2">
@@ -341,7 +226,7 @@ export default function AdminSettings() {
                         </div>
                     </section>
 
-                    {/* ④ PRIVACY POLICY ───────────────────────────── */}
+                    {/* ③ PRIVACY POLICY ───────────────────────────── */}
                     <section className="bg-white rounded-2xl border border-gray-100 shadow-sm pb-8">
                         <div className="px-6 pt-6 pb-4 border-b border-gray-100">
                             <div className="flex items-center gap-2">
