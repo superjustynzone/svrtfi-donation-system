@@ -1401,6 +1401,12 @@ app.put("/api/user/profile/:id", async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────
+// Chatbot Route (SVRTV Assistant)
+// ─────────────────────────────────────────────
+const chatbotRoutes = require("./ChatbotBackend");
+app.use("/api/chatbot", chatbotRoutes);
+
 // Start server - MUST be at the end after all routes are defined
 // Start server - Explicitly listen on 127.0.0.1 to avoid IPv6 confusion
 app.listen(5000, '127.0.0.1', () => {

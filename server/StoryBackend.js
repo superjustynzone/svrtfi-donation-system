@@ -257,6 +257,43 @@ router.patch("/status/:id", async (req, res) => {
   }
 });
 
+// SCHEDULE STORY
+router.patch("/schedule/:id", async (req, res) => {
+  const storyId = req.params.id;
+  const { scheduled_publish_at } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE stories 
+       SET is_published = false, 
+           published_at = NULL, 
+           scheduled_publish_at = $1, 
+           updated_at = NOW() 
+       WHERE story_id = $2 
+       RETURNING story_id`,
+      [scheduled_publish_at, storyId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Story not found" });
+    }
+
+    if (req.app.locals.logAudit) {
+      await req.app.locals.logAudit({
+        userId: req.body.userId || null,
+        action: "Story: Scheduled",
+        details: `Story ID ${storyId} scheduled for ${scheduled_publish_at}`
+      });
+    }
+
+    return res.json({ message: `Story scheduled successfully!` });
+
+  } catch (err) {
+    console.error("SCHEDULE STORY ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // UPDATE STORY
 router.put("/update/:id", upload.array("images", 10), async (req, res) => {
   const storyId = req.params.id;

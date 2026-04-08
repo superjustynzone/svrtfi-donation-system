@@ -32,6 +32,7 @@ import AdminReports from './pages/AdminReports';
 import AdminMailing from './pages/AdminMailing';
 import Profile from './pages/Profile';
 import DonationNotification from './components/DonationNotification';
+import ChatBot from './components/ChatBot/ChatBot';
 
 // Global CSS imports
 import './index.css';
@@ -61,6 +62,7 @@ function App() {
     <GoogleReCaptchaProvider reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}>
       <Router>
         <DonationNotification />
+        <ChatBot />
         <Routes>
 
           {/* Redirect root to correct dashboard */}

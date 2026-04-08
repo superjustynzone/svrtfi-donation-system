@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     DollarSign, Search, Menu, Download,
-    RefreshCw, Eye, X, CheckCircle, Clock,
+    RefreshCw, Eye, EyeOff, X, CheckCircle, Clock,
     TrendingUp, Users, CreditCard, BarChart3, XCircle, FileText,
     MessageSquare, Pencil, Trash2
 } from 'lucide-react';
@@ -35,6 +35,24 @@ const STATUS_STYLES = {
     pending_cancellation: 'bg-orange-100 text-orange-700',
 };
 
+const maskEmail = (email) => {
+    if (!email) return '';
+    const parts = email.split('@');
+    if (parts.length !== 2) return email;
+    const name = parts[0];
+    const domain = parts[1];
+    
+    let maskedName = name;
+    if (name.length > 2) {
+        maskedName = name[0] + '*'.repeat(name.length - 2) + name[name.length - 1];
+    } else if (name.length === 2) {
+        maskedName = name[0] + '*';
+    } else if (name.length === 1) {
+        maskedName = '*';
+    }
+    return `${maskedName}@${domain}`;
+};
+
 export default function AdminDonations() {
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -58,6 +76,17 @@ export default function AdminDonations() {
         unique_donors: 0,
         avg_donation: 0,
     });
+
+    // email masking
+    const [revealedEmails, setRevealedEmails] = useState(new Set());
+    const toggleEmail = (id) => {
+        setRevealedEmails(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
 
 
@@ -212,10 +241,11 @@ export default function AdminDonations() {
             doc.setTextColor(100);
             doc.text(`Generated: ${new Date().toLocaleDateString()}   Total: ${filteredDonations.length} records   Amount: PHP ${Number(stats.total_amount).toLocaleString()}`, 14, 25);
             autoTable(doc, {
-                head: [["#", "Donor", "Campaign", "Amount", "Method", "Frequency", "Status", "Date"]],
+                head: [["#", "Donor", "Email", "Campaign", "Amount", "Method", "Frequency", "Status", "Date"]],
                 body: filteredDonations.map((d, i) => [
                     i + 1,
                     d.first_name ? `${d.first_name} ${d.last_name}` : 'Anonymous',
+                    d.donor_email || 'N/A',
                     d.campaign_name || 'N/A',
                     `PHP ${Number(d.amount || 0).toLocaleString()}`,
                     d.payment_method || 'N/A',
@@ -357,6 +387,7 @@ export default function AdminDonations() {
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
                                         <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Donor</th>
+                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Email Address</th>
                                         <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Campaign</th>
                                         <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Amount</th>
                                         <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Method</th>
@@ -369,7 +400,7 @@ export default function AdminDonations() {
                                 <tbody className="divide-y divide-gray-100">
                                     {paginated.length === 0 ? (
                                         <tr>
-                                            <td colSpan="8" className="py-12 text-center">
+                                            <td colSpan="9" className="py-12 text-center">
                                                 <CreditCard className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                                                 <p className="text-gray-500 font-semibold">No donations found</p>
                                                 <p className="text-sm text-gray-400">Try adjusting your search or filters</p>
@@ -384,6 +415,26 @@ export default function AdminDonations() {
                                                     <td className="py-4 px-6">
                                                         <p className="font-semibold text-gray-900 text-sm">{donorName}</p>
                                                         <p className="text-xs text-gray-400 font-mono">{d.payment_reference || `#${d.donation_id}`}</p>
+                                                    </td>
+                                                    <td className="py-4 px-6 text-sm text-gray-600 max-w-[180px]">
+                                                        {d.donor_email ? (
+                                                            !d.first_name ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="truncate">{revealedEmails.has(d.donation_id) ? d.donor_email : maskEmail(d.donor_email)}</span>
+                                                                    <button 
+                                                                        onClick={() => toggleEmail(d.donation_id)}
+                                                                        className={`shrink-0 p-1 rounded transition ${revealedEmails.has(d.donation_id) ? 'text-[#63A6B2] hover:bg-[#63A6B2]/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                                                        title={revealedEmails.has(d.donation_id) ? "Hide Email" : "Reveal Email"}
+                                                                    >
+                                                                        {revealedEmails.has(d.donation_id) ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="truncate block">{d.donor_email}</span>
+                                                            )
+                                                        ) : (
+                                                            <span className="italic text-gray-400">N/A</span>
+                                                        )}
                                                     </td>
                                                     <td className="py-4 px-6 text-sm text-gray-700 max-w-[160px] truncate">{d.campaign_name || 'N/A'}</td>
                                                     <td className="py-4 px-6 font-bold text-gray-900">{formatCurrency(d.amount)}</td>
