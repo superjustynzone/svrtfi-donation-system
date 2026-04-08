@@ -11,7 +11,7 @@ export default function DonationNotification() {
     // 1. Check if we're on an admin page
     const isAdminRoute = location.pathname.startsWith('/admin_');
 
-    // 2. Fetch recent donations on mount
+    // 2. Fetch today's donations on mount and every 60 seconds
     useEffect(() => {
         if (isAdminRoute) return;
 
@@ -22,6 +22,9 @@ export default function DonationNotification() {
                     const data = await res.json();
                     if (data && data.length > 0) {
                         setDonations(data);
+                        setCurrentIndex(0); // reset to start whenever list refreshes
+                    } else {
+                        setDonations([]);
                     }
                 }
             } catch (error) {
@@ -30,13 +33,13 @@ export default function DonationNotification() {
         };
 
         fetchDonations();
-        
-        // Refresh the list every 2 minutes
-        const refreshInterval = setInterval(fetchDonations, 120000);
+
+        // Refresh every 60 seconds to pick up new donations made today
+        const refreshInterval = setInterval(fetchDonations, 60000);
         return () => clearInterval(refreshInterval);
     }, [isAdminRoute]);
 
-    // 3. Cycle through donations
+    // 3. Cycle through today's donations, looping back to start after the last one
     useEffect(() => {
         if (donations.length === 0 || isAdminRoute) {
             setIsVisible(false);
@@ -46,17 +49,14 @@ export default function DonationNotification() {
         // Show the current donation
         setIsVisible(true);
 
-        // Hide it after 4.5 seconds
+        // Hide after 4.5 seconds
         const hideTimer = setTimeout(() => {
             setIsVisible(false);
         }, 4500);
 
-        // Move to the next one after 5.5 seconds (giving 1 sec for hide animation/pause)
-        // Stop automatically if we've shown all donations
+        // Move to next (loop back to 0 after the last one) after 5.5 seconds
         const nextTimer = setTimeout(() => {
-            if (currentIndex < donations.length - 1) {
-                setCurrentIndex(prev => prev + 1);
-            }
+            setCurrentIndex(prev => (prev + 1) % donations.length);
         }, 5500);
 
         return () => {
@@ -68,14 +68,14 @@ export default function DonationNotification() {
     if (isAdminRoute || donations.length === 0) return null;
 
     const currentDonation = donations[currentIndex];
-    
+
     // Format name
-    const donorName = (currentDonation.first_name || currentDonation.last_name) 
-        ? `${currentDonation.first_name || ''} ${currentDonation.last_name || ''}`.trim() 
+    const donorName = (currentDonation.first_name || currentDonation.last_name)
+        ? `${currentDonation.first_name || ''} ${currentDonation.last_name || ''}`.trim()
         : 'Someone';
 
     return (
-        <div 
+        <div
             className={`fixed bottom-6 left-6 z-50 transition-all duration-500 transform ${
                 isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0 pointer-events-none'
             }`}

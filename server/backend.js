@@ -247,6 +247,41 @@ app.post("/api/admin/smtp-settings", async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────
+// Site Settings API (Terms & Privacy)
+// ─────────────────────────────────────────────
+
+app.get("/api/admin/site-settings", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT setting_key, setting_value FROM site_settings");
+    const settings = {};
+    result.rows.forEach(row => {
+      settings[row.setting_key] = row.setting_value;
+    });
+    res.json(settings);
+  } catch (err) {
+    console.error("Error fetching site settings:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/site-settings", async (req, res) => {
+  const { setting_key, setting_value } = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO site_settings (setting_key, setting_value) 
+       VALUES ($1, $2)
+       ON CONFLICT (setting_key) 
+       DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP`,
+      [setting_key, setting_value]
+    );
+    res.json({ message: "Setting updated successfully!" });
+  } catch (err) {
+    console.error("Error saving site setting:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Download CSV Template for Mailing List
 app.get("/api/admin/subscribers/template", (req, res) => {
   const csvContent = "first_name,last_name,email\nJohn,Doe,john@example.com\nJane,Smith,jane@example.com";

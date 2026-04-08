@@ -1,0 +1,38 @@
+[
+  {
+    "column_name": "reminder_id",
+    "data_type": "bigint"
+  },
+  {
+    "column_name": "donation_id",
+    "data_type": "bigint"
+  },
+  {
+    "column_name": "user_id",
+    "data_type": "bigint"
+  },
+  {
+    "column_name": "campaign_id",
+    "data_type": "bigint"
+  },
+  {
+    "column_name": "started_date",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "next_payment",
+    "data_type": "date"
+  },
+  {
+    "column_name": "is_active",
+    "data_type": "boolean"
+  },
+  {
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "updated_at",
+    "data_type": "timestamp without time zone"
+  }
+]

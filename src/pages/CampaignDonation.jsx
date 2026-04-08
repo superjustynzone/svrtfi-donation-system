@@ -13,6 +13,25 @@ export default function CampaignDonation() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+    const [siteSettings, setSiteSettings] = useState({ terms: '', privacy: '' });
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await fetch('http://localhost:5000/api/admin/site-settings');
+                const data = await res.json();
+                if (res.ok) {
+                    setSiteSettings({
+                        terms: data.terms_and_conditions || '<p>Terms and conditions content not available.</p>',
+                        privacy: data.privacy_policy || '<p>Privacy policy content not available.</p>'
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to fetch site settings:', err);
+            }
+        };
+        fetchSettings();
+    }, []);
     const [showPrivacyModal, setShowPrivacyModal] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
     const [isPrivacyScrolledToBottom, setIsPrivacyScrolledToBottom] = useState(false);
@@ -860,22 +879,10 @@ export default function CampaignDonation() {
                         {/* Scrollable Content */}
                         <div
                             onScroll={handlePrivacyScroll}
-                            className="overflow-y-auto overscroll-contain p-6 space-y-4 text-sm text-gray-700 leading-relaxed"
-                            style={{flex: '1 1 auto', minHeight: 0}}
+                            className="overflow-y-auto overflow-x-hidden overscroll-contain p-6 text-sm text-gray-700 leading-relaxed"
+                            style={{flex: '1 1 auto', minHeight: 0, wordBreak: 'break-word'}}
                         >
-                            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Effective Date: January 1, 2025</p>
-                            <h4 className="font-bold text-gray-900 text-base">1. Information We Collect</h4>
-                            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
-                            <h4 className="font-bold text-gray-900 text-base">2. How We Use Your Information</h4>
-                            <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
-                            <h4 className="font-bold text-gray-900 text-base">3. Data Sharing &amp; Disclosure</h4>
-                            <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.</p>
-                            <h4 className="font-bold text-gray-900 text-base">4. Data Security</h4>
-                            <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi.</p>
-                            <h4 className="font-bold text-gray-900 text-base">5. Your Rights</h4>
-                            <p>Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae.</p>
-                            <h4 className="font-bold text-gray-900 text-base">6. Contact Us</h4>
-                            <p>Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat. For privacy concerns, contact us at privacy@svrtv.org.</p>
+                            <div className="prose prose-sm w-full max-w-full break-words prose-p:text-gray-700 prose-ul:my-1 prose-headings:text-gray-900 prose-a:text-[#63A6B2] overflow-x-hidden" dangerouslySetInnerHTML={{ __html: siteSettings.privacy }} />
                         </div>
                         {/* Footer */}
                         <div className="p-6 border-t border-gray-200 flex-shrink-0">
@@ -917,22 +924,10 @@ export default function CampaignDonation() {
                         {/* Scrollable Content */}
                         <div
                             onScroll={handleTermsScroll}
-                            className="overflow-y-auto overscroll-contain p-6 space-y-4 text-sm text-gray-700 leading-relaxed"
-                            style={{flex: '1 1 auto', minHeight: 0}}
+                            className="overflow-y-auto overflow-x-hidden overscroll-contain p-6 text-sm text-gray-700 leading-relaxed"
+                            style={{flex: '1 1 auto', minHeight: 0, wordBreak: 'break-word'}}
                         >
-                            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Last Updated: January 1, 2025</p>
-                            <h4 className="font-bold text-gray-900 text-base">1. Acceptance of Terms</h4>
-                            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. By making a donation to SVRTV, you agree to be bound by these Terms and Conditions. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-                            <h4 className="font-bold text-gray-900 text-base">2. Donation Policy</h4>
-                            <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. All donations are considered final and non-refundable unless required by applicable law. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-                            <h4 className="font-bold text-gray-900 text-base">3. Use of Donated Funds</h4>
-                            <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium. SVRTV reserves the right to allocate donated funds where they are most needed to fulfill our mission. Totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
-                            <h4 className="font-bold text-gray-900 text-base">4. Recurring Donations</h4>
-                            <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. Monthly recurring donations will be automatically processed each month until you cancel. Sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. You may cancel your recurring donation at any time by contacting us.</p>
-                            <h4 className="font-bold text-gray-900 text-base">5. Tax Deductibility</h4>
-                            <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi. Donations may be tax-deductible to the extent allowed by law. Please consult your tax advisor for guidance specific to your situation.</p>
-                            <h4 className="font-bold text-gray-900 text-base">6. Amendments</h4>
-                            <p>Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur. SVRTV reserves the right to amend these terms at any time. Continued use of our donation platform constitutes acceptance of the updated terms. Contact us at terms@svrtv.org for questions.</p>
+                            <div className="prose prose-sm w-full max-w-full break-words prose-p:text-gray-700 prose-ul:my-1 prose-headings:text-gray-900 prose-a:text-[#63A6B2] overflow-x-hidden" dangerouslySetInnerHTML={{ __html: siteSettings.terms }} />
                         </div>
                         {/* Footer */}
                         <div className="p-6 border-t border-gray-200 flex-shrink-0">

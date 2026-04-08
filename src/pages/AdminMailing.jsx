@@ -479,7 +479,7 @@ export default function AdminMailing() {
                     onMobileMenuClick={() => setMobileMenuOpen(true)}
                 />
 
-                <div className="px-6 lg:px-10 py-6 max-w-6xl mx-auto">
+                <div className="px-6 lg:px-10 py-6 w-full">
                     {/* Tab Navigation */}
                     <div className="flex flex-wrap gap-2 mb-8 bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm w-fit">
                         {tabs.map((tab) => (
@@ -1047,7 +1047,10 @@ export default function AdminMailing() {
                             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[500px]">
                                 <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                                     <div>
-                                        <h2 className="text-base font-bold text-gray-900">Donation Deadlines</h2>
+                                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                                            Donation Deadlines
+                                            <span className="text-[10px] bg-indigo-100 text-indigo-700 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Auto-sends 5 days prior</span>
+                                        </h2>
                                         <p className="text-xs text-gray-400 mt-0.5">Subscribers who opted-in to donation reminders.</p>
                                     </div>
                                     <button onClick={fetchDonationReminders} disabled={isLoadingReminders} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">

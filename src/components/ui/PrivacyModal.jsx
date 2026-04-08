@@ -1,8 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 const PrivacyModal = ({ isOpen, onClose }) => {
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(false);
+  const [siteSettings, setSiteSettings] = useState({ privacy: '' });
+
+  useEffect(() => {
+    if (isOpen) {
+      fetch('http://localhost:5000/api/admin/site-settings')
+        .then(res => res.json())
+        .then(data => setSiteSettings({ privacy: data.privacy_policy || '<p>Privacy policy content not available.</p>' }))
+        .catch(err => console.log('Error fetching settings:', err));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -48,6 +58,8 @@ const PrivacyModal = ({ isOpen, onClose }) => {
           style={{
             flex: '1 1 0%',
             overflowY: 'auto',
+            overflowX: 'hidden',
+            wordBreak: 'break-word',
             overscrollBehavior: 'contain',
             padding: '1.5rem 2.5rem 2.5rem',
             color: '#4b5563',
@@ -59,64 +71,7 @@ const PrivacyModal = ({ isOpen, onClose }) => {
             Shepherd's Voice Radio and Television Foundation, Inc. respects your privacy and is committed to protecting your personal data.
           </p>
 
-          <div style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
-            <div>
-              <h3 style={{fontSize: '0.875rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem'}}>1. Information We Collect</h3>
-              <p style={{fontSize: '0.75rem', marginBottom: '0.5rem'}}>We collect the following types of information:</p>
-              <ul style={{listStyleType: 'disc', paddingLeft: '1.5rem', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem'}}>
-                <li><strong>Personal Information:</strong> Name, email address, contact details</li>
-                <li><strong>Donation Information:</strong> Payment details, donation history</li>
-                <li><strong>Usage Data:</strong> How you interact with our Platform</li>
-                <li><strong>Technical Data:</strong> IP address, browser type, device information</li>
-              </ul>
-            </div>
-            <div>
-              <h3 style={{fontSize: '0.875rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem'}}>2. How We Use Your Information</h3>
-              <p style={{fontSize: '0.75rem', marginBottom: '0.5rem'}}>We use your information to:</p>
-              <ul style={{listStyleType: 'disc', paddingLeft: '1.5rem', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem'}}>
-                <li>Process your donations and issue receipts</li>
-                <li>Send you updates about campaigns and our mission</li>
-                <li>Improve our Platform and services</li>
-                <li>Comply with legal obligations</li>
-                <li>Communicate with you about your account</li>
-              </ul>
-            </div>
-            <div>
-              <h3 style={{fontSize: '0.875rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem'}}>3. Data Security</h3>
-              <p style={{fontSize: '0.75rem'}}>We implement appropriate security measures including SSL/TLS encryption, secure payment gateways, and regular security audits to protect your personal information.</p>
-            </div>
-            <div>
-              <h3 style={{fontSize: '0.875rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem'}}>4. Sharing Your Information</h3>
-              <p style={{fontSize: '0.75rem', marginBottom: '0.5rem'}}>We do not sell your personal information. We may share your data with:</p>
-              <ul style={{listStyleType: 'disc', paddingLeft: '1.5rem', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem'}}>
-                <li>Payment processors (GCash, PayMaya, PayPal)</li>
-                <li>Email and SMS service providers</li>
-                <li>Legal authorities when required by law</li>
-              </ul>
-            </div>
-            <div>
-              <h3 style={{fontSize: '0.875rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem'}}>5. Your Rights</h3>
-              <p style={{fontSize: '0.75rem', marginBottom: '0.5rem'}}>You have the right to:</p>
-              <ul style={{listStyleType: 'disc', paddingLeft: '1.5rem', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem'}}>
-                <li>Access your personal data</li>
-                <li>Correct inaccurate data</li>
-                <li>Request deletion of your data</li>
-                <li>Opt-out of marketing communications</li>
-              </ul>
-            </div>
-            <div>
-              <h3 style={{fontSize: '0.875rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem'}}>6. Cookies and Tracking</h3>
-              <p style={{fontSize: '0.75rem'}}>We use cookies to enhance your experience and analyze platform usage.</p>
-            </div>
-            <div>
-              <h3 style={{fontSize: '0.875rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem'}}>7. Third-Party Links</h3>
-              <p style={{fontSize: '0.75rem'}}>Our Platform may contain links to third-party websites. We are not responsible for their privacy practices.</p>
-            </div>
-            <div>
-              <h3 style={{fontSize: '0.875rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem'}}>8. Contact Us</h3>
-              <p style={{fontSize: '0.75rem'}}>If you have questions, contact us at: privacy@shepherdsvoice.org</p>
-            </div>
-          </div>
+          <div className="prose prose-sm w-full max-w-full break-words prose-p:text-gray-700 prose-ul:my-1 prose-headings:text-gray-900 prose-a:text-[#63A6B2] overflow-x-hidden" dangerouslySetInnerHTML={{ __html: siteSettings.privacy }} />
         </div>
 
         {/* Footer */}

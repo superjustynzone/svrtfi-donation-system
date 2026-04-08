@@ -1,0 +1,71 @@
+[
+  {
+    "table_name": "auth_users"
+  },
+  {
+    "table_name": "campaigns"
+  },
+  {
+    "table_name": "donations"
+  },
+  {
+    "table_name": "donors"
+  },
+  {
+    "table_name": "email_campaigns"
+  },
+  {
+    "table_name": "donation_reminders"
+  },
+  {
+    "table_name": "email_logs"
+  },
+  {
+    "table_name": "email_templates"
+  },
+  {
+    "table_name": "foundation_campaigns"
+  },
+  {
+    "table_name": "audit_logs"
+  },
+  {
+    "table_name": "payment_transactions"
+  },
+  {
+    "table_name": "receipts"
+  },
+  {
+    "table_name": "roles"
+  },
+  {
+    "table_name": "smtp_settings"
+  },
+  {
+    "table_name": "story_categories"
+  },
+  {
+    "table_name": "subscribers"
+  },
+  {
+    "table_name": "user_roles"
+  },
+  {
+    "table_name": "story_images"
+  },
+  {
+    "table_name": "users"
+  },
+  {
+    "table_name": "campaign_media"
+  },
+  {
+    "table_name": "foundations"
+  },
+  {
+    "table_name": "foundation_media"
+  },
+  {
+    "table_name": "stories"
+  }
+]

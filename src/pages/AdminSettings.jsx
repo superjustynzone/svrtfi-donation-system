@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import {
     Save, RefreshCw, CheckCircle,
-    LayoutTemplate, Upload, X, Server
+    LayoutTemplate, Upload, X, Server, ShieldCheck, FileText
 } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 export default function AdminSettings() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -83,6 +85,53 @@ export default function AdminSettings() {
         }
     };
 
+    // ─── Legal Settings State ─────────────────────────────────────────
+    const [terms, setTerms] = useState('<p></p>');
+    const [privacy, setPrivacy] = useState('<p></p>');
+    const [isSavingTerms, setIsSavingTerms] = useState(false);
+    const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
+    const [savedTerms, setSavedTerms] = useState(false);
+    const [savedPrivacy, setSavedPrivacy] = useState(false);
+
+    useEffect(() => {
+        fetchSiteSettings();
+    }, []);
+
+    const fetchSiteSettings = async () => {
+        try {
+            const res = await fetch('http://127.0.0.1:5000/api/admin/site-settings');
+            const data = await res.json();
+            if (res.ok) {
+                if (data.terms_and_conditions) setTerms(data.terms_and_conditions);
+                if (data.privacy_policy) setPrivacy(data.privacy_policy);
+            }
+        } catch (err) {
+            console.error('Failed to fetch site settings', err);
+        }
+    };
+
+    const handleSavePolicy = async (key, value, setSaving, setSaved) => {
+        setSaving(true);
+        try {
+            const res = await fetch('http://127.0.0.1:5000/api/admin/site-settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setting_key: key, setting_value: value })
+            });
+            if (res.ok) {
+                toast.success('Successfully saved!');
+                setSaved(true);
+                setTimeout(() => setSaved(false), 3000);
+            } else {
+                toast.error('Failed to save settings.');
+            }
+        } catch (err) {
+            toast.error('Connection error.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     // ─── Shared button styles ─────────────────────────────────────────
     const saveBtnClass = (active) =>
         `flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm ${active
@@ -106,7 +155,7 @@ export default function AdminSettings() {
                 />
 
                 {/* ── Page content ── */}
-                <div className="px-6 lg:px-10 py-8 max-w-5xl mx-auto space-y-8">
+                <div className="px-6 lg:px-10 py-8 w-full space-y-8">
 
                     {/* ① WEBSITE BRANDING ──────────────────────────── */}
                     <section className="bg-white rounded-2xl border border-gray-100 shadow-sm">
@@ -267,6 +316,48 @@ export default function AdminSettings() {
                                 {isSavingSmtp ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</>
                                     : savedSmtp ? <><CheckCircle className="w-4 h-4" /> Saved!</>
                                         : <><Save className="w-4 h-4" /> Save Configuration</>}
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* ③ TERMS & CONDITIONS ────────────────────────── */}
+                    <section className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+                            <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-[#63A6B2]" />
+                                <h2 className="text-base font-bold text-gray-900">Terms & Conditions</h2>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">Edit the terms shown to users across the platform.</p>
+                        </div>
+                        <div className="p-6">
+                            <ReactQuill theme="snow" value={terms} onChange={setTerms} className="h-64 mb-12" />
+                        </div>
+                        <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+                            <button onClick={() => handleSavePolicy('terms_and_conditions', terms, setIsSavingTerms, setSavedTerms)} disabled={isSavingTerms} className={saveBtnClass(savedTerms)}>
+                                {isSavingTerms ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</>
+                                    : savedTerms ? <><CheckCircle className="w-4 h-4" /> Saved!</>
+                                        : <><Save className="w-4 h-4" /> Save Terms</>}
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* ④ PRIVACY POLICY ───────────────────────────── */}
+                    <section className="bg-white rounded-2xl border border-gray-100 shadow-sm pb-8">
+                        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-[#63A6B2]" />
+                                <h2 className="text-base font-bold text-gray-900">Privacy Policy</h2>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">Edit the privacy policy detailing data practices.</p>
+                        </div>
+                        <div className="p-6">
+                            <ReactQuill theme="snow" value={privacy} onChange={setPrivacy} className="h-64 mb-12" />
+                        </div>
+                        <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+                            <button onClick={() => handleSavePolicy('privacy_policy', privacy, setIsSavingPrivacy, setSavedPrivacy)} disabled={isSavingPrivacy} className={saveBtnClass(savedPrivacy)}>
+                                {isSavingPrivacy ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</>
+                                    : savedPrivacy ? <><CheckCircle className="w-4 h-4" /> Saved!</>
+                                        : <><Save className="w-4 h-4" /> Save Privacy</>}
                             </button>
                         </div>
                     </section>

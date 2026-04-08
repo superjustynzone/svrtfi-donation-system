@@ -282,7 +282,7 @@ router.get("/all", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// GET /api/donations/recent — Get recent completed donations for public notification
+// GET /api/donations/recent — Get today's completed donations for public notification
 // ─────────────────────────────────────────────
 router.get("/recent", async (req, res) => {
     try {
@@ -298,8 +298,8 @@ router.get("/recent", async (req, res) => {
              LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
              LEFT JOIN donors dn ON d.donor_id = dn.donor_id
              WHERE pt.payment_status = 'completed'
-             ORDER BY d.initiated_at DESC
-             LIMIT 10`
+               AND d.initiated_at::date = CURRENT_DATE
+             ORDER BY d.initiated_at DESC`
         );
         res.json(result.rows);
     } catch (err) {
@@ -497,6 +497,9 @@ router.post("/admin/reminders/:id/send", async (req, res) => {
         `;
 
         await sendEmail(rem.user_email, `Reminder: Your upcoming donation for ${campaignName}`, emailHtml);
+
+        // Update the database to reflect that a reminder was sent today
+        await pool.query("UPDATE donation_reminders SET last_reminder_date = CURRENT_DATE WHERE reminder_id = $1", [id]);
 
         res.json({ message: "Reminder email sent successfully!" });
     } catch (err) {
@@ -899,5 +902,88 @@ router.delete("/:id", async (req, res) => {
         if (client) client.release();
     }
 });
+
+// ─────────────────────────────────────────────
+// BACKGROUND JOB: Process automated donation reminders (5 Days Before Deadline)
+// ─────────────────────────────────────────────
+const processAutoReminders = async () => {
+    try {
+        const query = `
+            SELECT
+              dr.reminder_id, dr.next_payment,
+              d.amount, d.frequency,
+              c.campaign_name,
+              u.first_name, u.last_name, 
+              a.email AS user_email
+            FROM donation_reminders dr
+            INNER JOIN donations d ON dr.donation_id = d.donation_id
+            LEFT JOIN campaigns c ON dr.campaign_id = c.campaign_id
+            LEFT JOIN users u ON dr.user_id = u.user_id
+            LEFT JOIN auth_users a ON u.user_id = a.user_id
+            WHERE dr.is_active = TRUE
+              AND dr.next_payment = CURRENT_DATE + INTERVAL '5 days'
+              AND (dr.last_reminder_date IS NULL OR dr.last_reminder_date < CURRENT_DATE)
+        `;
+        const result = await pool.query(query);
+
+        if (result.rowCount > 0) {
+            console.log(`[Scheduler] Auto-sending ${result.rowCount} donation deadline reminders (5 days before)...`);
+            for (const rem of result.rows) {
+                const donorName = rem.first_name ? `${rem.first_name} ${rem.last_name || ""}`.trim() : "valued donor";
+                const campaignName = rem.campaign_name || "General Operations";
+                const nextPayment = rem.next_payment ? new Date(rem.next_payment).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" }) : "N/A";
+                const amountStr = `₱${parseFloat(rem.amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
+
+                const emailHtml = `
+                    <div style="font-family: sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; overflow: hidden;">
+                        <div style="background-color: #63A6B2; padding: 20px; text-align: center; color: white;">
+                            <h2 style="margin: 0;">Donation Reminder</h2>
+                        </div>
+                        <div style="padding: 30px;">
+                            <p>Dear ${donorName},</p>
+                            <p>We hope this email finds you well. This is a friendly reminder from <strong>SVRTFI</strong> regarding your next scheduled donation for the <strong>${campaignName}</strong> campaign, which is coming up in approximately 5 days.</p>
+                            
+                            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                                <table style="width: 100%;">
+                                    <tr>
+                                        <td style="color: #666; font-size: 14px;">Amount:</td>
+                                        <td style="font-weight: bold; text-align: right;">${amountStr}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #666; font-size: 14px;">Next Payment Date:</td>
+                                        <td style="font-weight: bold; text-align: right;">${nextPayment}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #666; font-size: 14px;">Frequency:</td>
+                                        <td style="font-weight: bold; text-align: right; text-transform: capitalize;">${rem.frequency}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <p>Your continuous support makes a huge difference in our ability to serve those in need. If you have any questions or need to update your preferences, please don't hesitate to contact us.</p>
+                            
+                            <p style="margin-top: 30px;">Warmly,<br/>The SVRTFI Team</p>
+                        </div>
+                        <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 12px; color: #999;">
+                            &copy; ${new Date().getFullYear()} SVRTFI Donation System. All rights reserved.
+                        </div>
+                    </div>
+                `;
+
+                await sendEmail(rem.user_email, `Reminder: Your upcoming donation for ${campaignName}`, emailHtml);
+                
+                // Track that reminder was sent
+                await pool.query("UPDATE donation_reminders SET last_reminder_date = CURRENT_DATE WHERE reminder_id = $1", [rem.reminder_id]);
+            }
+        }
+    } catch (err) {
+        console.error("[Scheduler] Error processing automatic reminders:", err);
+    }
+};
+
+// Check every hour (1000 * 60 * 60)
+setInterval(processAutoReminders, 60 * 60 * 1000);
+// Run once on startup
+processAutoReminders();
 
 module.exports = router;
