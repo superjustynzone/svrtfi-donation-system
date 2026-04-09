@@ -1099,6 +1099,63 @@ app.delete("/api/admin/thank-you-letters/:id", async (req, res) => {
   }
 });
 
+// --- EMAIL BLASTS ---
+// Get Email Blasts
+app.get("/api/admin/email-blasts", async (req, res) => {
+  try {
+    const result = await pool.query(`
+            SELECT e.*, c.campaign_name 
+            FROM email_campaigns e
+            LEFT JOIN campaigns c ON e.associated_campaign_id = c.campaign_id 
+            WHERE e.category = 'email_blast' 
+            ORDER BY e.updated_at DESC
+        `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create Email Blast
+app.post("/api/admin/email-blasts", async (req, res) => {
+  const { title, message, status, from, cc } = req.body;
+  try {
+    const result = await pool.query(
+      "INSERT INTO email_campaigns (title, message, category, status, associated_campaign_id, from_email, cc_email, auto_send) VALUES ($1, $2, 'email_blast', $3, NULL, $4, $5, FALSE) RETURNING *",
+      [title, message, status || 'draft', from || null, cc || null]
+    );
+    res.json({ message: "Email Blast created successfully!", letter: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Email Blast
+app.put("/api/admin/email-blasts/:id", async (req, res) => {
+  const { id } = req.params;
+  const { title, message, status, from, cc } = req.body;
+  try {
+    const result = await pool.query(
+      "UPDATE email_campaigns SET title = $1, message = $2, status = $3, associated_campaign_id = NULL, from_email = $4, cc_email = $5, updated_at = NOW() WHERE campaign_id = $6 RETURNING *",
+      [title, message, status, from || null, cc || null, id]
+    );
+    res.json({ message: "Email Blast updated successfully!", letter: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete Email Blast
+app.delete("/api/admin/email-blasts/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query("DELETE FROM email_campaigns WHERE campaign_id = $1", [id]);
+    res.json({ message: "Email Blast deleted successfully!" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Bulk Send Emails
 app.post("/api/admin/bulk-send-emails", async (req, res) => {
   const { recipients, subject, html, campaign_name, from_email, cc } = req.body;
@@ -1176,18 +1233,25 @@ app.get("/api/admin/mailing-donors", async (req, res) => {
 
   const { campaign_id } = req.query;
   try {
-    let query = `
-            SELECT DISTINCT dn.donor_id, dn.first_name, dn.last_name, dn.email, dn.address
-            FROM donors dn
-            INNER JOIN donations d ON dn.donor_id = d.donor_id
-            WHERE dn.email IS NOT NULL AND dn.email != ''
-        `;
     const params = [];
+    let filter = "";
     if (campaign_id && campaign_id !== 'global' && campaign_id !== 'null') {
-      query += ` AND d.campaign_id = $1`;
+      filter = ` AND d.campaign_id = $1`;
       params.push(campaign_id);
     }
-    query += ` ORDER BY dn.first_name`;
+
+    let query = `
+            SELECT * FROM (
+                SELECT DISTINCT ON (dn.email) 
+                  dn.donor_id, dn.first_name, dn.last_name, dn.email, dn.address
+                FROM donors dn
+                INNER JOIN donations d ON dn.donor_id = d.donor_id
+                WHERE dn.email IS NOT NULL AND dn.email != ''
+                ${filter}
+                ORDER BY dn.email, dn.donor_id DESC
+            ) t
+            ORDER BY first_name ASC NULLS LAST, last_name ASC NULLS LAST
+        `;
 
     const result = await pool.query(query, params);
     res.json(result.rows);
