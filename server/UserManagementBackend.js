@@ -263,7 +263,13 @@ router.delete("/users/:id", verifyAdmin, async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        // Delete user (cascade will handle auth_users and user_roles)
+        // detaching related records to avoid FK violations while preserving data
+        // set user_id to NULL in donations, subscribers, and audit_logs
+        await pool.query("UPDATE donations SET user_id = NULL WHERE user_id = $1", [userId]);
+        await pool.query("UPDATE subscribers SET user_id = NULL WHERE user_id = $1", [userId]);
+        await pool.query("UPDATE audit_logs SET user_id = NULL WHERE user_id = $1", [userId]);
+
+        // Delete user (cascade handles auth_users and user_roles if configured)
         await pool.query("DELETE FROM users WHERE user_id = $1", [userId]);
 
         // Log user deletion

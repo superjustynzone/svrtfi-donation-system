@@ -64,7 +64,7 @@ const upload = multer({
 // ─────────────────────────────────────────────
 // Mailing Routes (Priority)
 // ─────────────────────────────────────────────
-const { sendEmail } = require("./EmailService");
+const { sendEmail, sendVerificationCode } = require("./EmailService");
 
 app.post("/api/admin/send-email", async (req, res) => {
   const { to, subject, message } = req.body;
@@ -1317,21 +1317,34 @@ app.post("/api/auth_users/register", async (req, res) => {
 
     const userId = userResult.rows[0].user_id;
 
+    // 2.1 Set as Deactivated by default (until verified)
+    await pool.query("UPDATE users SET is_active = false WHERE user_id = $1", [userId]);
+
     // 3. Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4. Save auth_users record
+    // 3.1 Generate 4-digit verification code
+    const verificationCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // 4. Save auth_users record with verification code
     await pool.query(
-      `INSERT INTO auth_users (user_id, email, hash_password)
-       VALUES ($1, $2, $3)`,
-      [userId, email, hashedPassword]
+      `INSERT INTO auth_users (user_id, email, hash_password, verification_code)
+       VALUES ($1, $2, $3, $4)`,
+      [userId, email, hashedPassword, verificationCode]
     );
+
+    // 4.1 Send verification email
+    try {
+      await sendVerificationCode(email, firstName, verificationCode);
+    } catch (emailErr) {
+      console.error("Failed to send verification email:", emailErr);
+    }
 
     await pool.query(
       `INSERT INTO user_roles (user_id, role_id)
-      VALUES ($1, 4)`, // 7 = Viewer/User
+      VALUES ($1, 4)`, // 4 = Viewer/User role
       [userId]
-    )
+    );
 
     // 5. Add to subscribers mailing list
     try {
@@ -1351,6 +1364,44 @@ app.post("/api/auth_users/register", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
+  }
+});
+// VERIFY EMAIL CODE
+app.post("/api/auth_users/verify", async (req, res) => {
+  const { email, code } = req.body;
+
+  if (!email || !code) {
+    return res.status(400).json({ message: "Email and code are required." });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT user_id FROM auth_users WHERE email = $1 AND verification_code = $2",
+      [email, code]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid verification code." });
+    }
+
+    const userId = result.rows[0].user_id;
+
+    // Activate user and clear code
+    await pool.query("UPDATE users SET is_active = true WHERE user_id = $1", [userId]);
+    await pool.query("UPDATE auth_users SET verification_code = NULL WHERE user_id = $1", [userId]);
+
+    // Log the verification
+    await logAudit({
+      userId: userId,
+      action: "Email Verified",
+      details: `User ${email} successfully verified their email.`
+    });
+
+    res.json({ message: "Account verified successfully! You can now log in." });
+
+  } catch (err) {
+    console.error("Verification error:", err);
+    res.status(500).json({ message: "Server error during verification." });
   }
 });
 

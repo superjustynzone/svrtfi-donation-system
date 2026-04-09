@@ -382,4 +382,31 @@ const sendDonationReceipt = async (donationData) => {
 
 };
 
-module.exports = { sendEmail, sendDonationReceipt };
+const sendVerificationCode = async (email, username, code) => {
+    const subject = "Email Verification - Shepherd's Voice";
+    const html = `
+    <div style="background-color: #f4f7f6; padding: 40px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <div style="background-color: #63A6B2; padding: 30px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Welcome to SVRTV!</h1>
+            </div>
+            <div style="padding: 40px; text-align: center;">
+                <p style="color: #333333; font-size: 16px; margin-bottom: 25px;">Hi <strong>${username}</strong>,</p>
+                <p style="color: #666666; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">Thank you for joining Shepherd's Voice. To complete your registration, please use the 4-digit verification code below:</p>
+                
+                <div style="background-color: #f8f9fa; border: 2px dashed #63A6B2; border-radius: 8px; padding: 20px; display: inline-block; margin-bottom: 30px;">
+                    <span style="font-size: 42px; font-weight: 800; color: #63A6B2; letter-spacing: 10px;">${code}</span>
+                </div>
+                
+                <p style="color: #999999; font-size: 13px;">This code will expire in 15 minutes.</p>
+            </div>
+            <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+                <p style="color: #666666; font-size: 12px; margin: 0;">© 2026 Shepherd's Voice Radio and Television Foundation, Inc.</p>
+            </div>
+        </div>
+    </div>
+    `;
+    return await sendEmail(email, subject, html);
+};
+
+module.exports = { sendEmail, sendDonationReceipt, sendVerificationCode };

@@ -74,7 +74,7 @@ router.post("/login", async (req, res) => {
 
     // 3. Check if account is active
     if (user.is_active === false) {
-      return res.status(403).json({ message: "Account deactivated. Please contact administrator." });
+      return res.status(403).json({ message: "Account not verified or deactivated. Please verify your email first." });
     }
 
     // 3. Fetch user role
