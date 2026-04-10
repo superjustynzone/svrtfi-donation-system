@@ -124,4 +124,47 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// UPDATE PASSWORD
+router.post("/change-password", async (req, res) => {
+  const { user_id, currentPassword, newPassword } = req.body;
+
+  if (!user_id || !currentPassword || !newPassword) {
+    return res.status(400).json({ message: "All fields are required." });
+  }
+
+  try {
+    // 1. Get current hash
+    const userRes = await pool.query(
+      "SELECT hash_password FROM auth_users WHERE user_id = $1",
+      [user_id]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const { hash_password } = userRes.rows[0];
+
+    // 2. Validate current password
+    const isMatch = await bcrypt.compare(currentPassword, hash_password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Incorrect current password." });
+    }
+
+    // 3. Hash new password
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    // 4. Update
+    await pool.query(
+      "UPDATE auth_users SET hash_password = $1, updated_at = NOW() WHERE user_id = $2",
+      [newHash, user_id]
+    );
+
+    res.json({ message: "Password updated successfully!" });
+  } catch (err) {
+    console.error("CHANGE PASSWORD ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;

@@ -18,7 +18,7 @@ const UserSignUp = () => {
 
   useEffect(() => {
     fetchCsrfToken();
-
+ 
     // Show reCAPTCHA badge only on this page
     document.body.classList.add('show-captcha');
     return () => {
@@ -101,6 +101,9 @@ const UserSignUp = () => {
       });
 
       toast.success('Account created successfully! Please verify your email.');
+      
+      // Save email for verification page
+      sessionStorage.setItem('verifyEmail', data.email);
 
       setTimeout(() => {
         navigate('/verify-email');

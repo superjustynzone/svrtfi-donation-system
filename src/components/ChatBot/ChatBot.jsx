@@ -33,6 +33,7 @@ function formatBotText(text) {
 export default function ChatBot() {
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin_');
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
 
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -47,8 +48,8 @@ export default function ChatBot() {
   const inputRef = useRef(null);
   const chatWindowRef = useRef(null);
 
-  // If we are on an admin page, do not render the chatbot at all
-  if (isAdminPage) return null;
+  // If we are on an admin or auth page, do not render the chatbot at all
+  if (isAdminPage || isAuthPage) return null;
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {

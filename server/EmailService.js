@@ -112,7 +112,17 @@ const sendDonationReceipt = async (donationData) => {
         console.error("❌ No donation data provided to sendDonationReceipt");
         return { success: false, error: "Missing donation data" };
     }
-    const { donor_name, donor_email, amount, campaign_name, donation_id, payment_method, date, frequency, donor_phone, message, receipt_upload, address, foundation_name, foundation_logo } = donationData;
+    const { 
+        donor_name, donor_email, amount, campaign_name, donation_id, 
+        payment_method, date, frequency, donor_phone, message, 
+        receipt_upload, address, address2, barangay, province, city, 
+        zip_code, country, tin_number, foundation_name, foundation_logo 
+    } = donationData;
+
+    // Build a full address string
+    const fullAddress = [address, address2, barangay, city, province, zip_code, country]
+        .filter(part => part && String(part).trim() !== '')
+        .join(', ') || '—';
 
     // Fetch user-configured template from DB
     let templateTitle = `Official Donation Receipt - RCP-${donation_id}`;
@@ -280,7 +290,7 @@ const sendDonationReceipt = async (donationData) => {
                         <tr>
                             <td colspan="2">
                                 <p style="margin: 0; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Address</p>
-                                <p style="margin: 4px 0 0 0; font-size: 15px; color: #1e293b; font-weight: 700;">${address || '—'}</p>
+                                <p style="margin: 4px 0 0 0; font-size: 15px; color: #1e293b; font-weight: 700;">${fullAddress}</p>
                             </td>
                         </tr>
                     </table>
@@ -409,4 +419,133 @@ const sendVerificationCode = async (email, username, code) => {
     return await sendEmail(email, subject, html);
 };
 
-module.exports = { sendEmail, sendDonationReceipt, sendVerificationCode };
+/**
+ * processDonationCompletion
+ * Fetches data for a donation and triggers both the Official Receipt AND (optionally) the auto Thank You Letter.
+ */
+const processDonationCompletion = async (donationId) => {
+    console.log(`📧 Processing donation completion for ID: ${donationId}`);
+    try {
+        const details = await pool.query(
+            `SELECT 
+                d.*, 
+                c.campaign_name, 
+                dn.email, 
+                dn.first_name, 
+                dn.last_name, 
+                dn.contact_number AS donor_phone,
+                dn.address, dn.address2, dn.barangay, dn.province, dn.city, dn.zip_code, dn.country,
+                dn.tin_number,
+                pt.receipt_upload,
+                f.foundation_name,
+                f.image_logo AS foundation_logo
+             FROM donations d
+             JOIN campaigns c ON d.campaign_id = c.campaign_id
+             LEFT JOIN donors dn ON d.donor_id = dn.donor_id
+             LEFT JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+             LEFT JOIN foundation_campaigns fc ON c.campaign_id = fc.campaign_id
+             LEFT JOIN foundations f ON fc.foundation_id = f.foundation_id
+             WHERE d.donation_id = $1
+             LIMIT 1`,
+            [donationId]
+        );
+
+        if (details.rows.length === 0) return { success: false, error: "Donation details not found" };
+
+        const data = details.rows[0];
+        console.log(`🔍 Fetched donation data: donor_email=${data.email}, campaign=${data.campaign_name}`);
+        
+        // 1. Send Official Receipt
+        await sendDonationReceipt({
+            donor_name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Anonymous Donor',
+            donor_email: data.email,
+            amount: data.amount,
+            campaign_name: data.campaign_name,
+            campaign_id: data.campaign_id,
+            donation_id: data.donation_id,
+            payment_method: data.payment_method || 'N/A',
+            date: new Date(),
+            frequency: data.frequency,
+            message: data.message,
+            receipt_upload: data.receipt_upload || null,
+            donor_phone: data.donor_phone,
+            address: data.address,
+            address2: data.address2,
+            barangay: data.barangay,
+            province: data.province,
+            city: data.city,
+            zip_code: data.zip_code,
+            country: data.country,
+            tin_number: data.tin_number,
+            foundation_name: data.foundation_name,
+            foundation_logo: data.foundation_logo
+        });
+
+        // 2. Send Auto Thank You Letter (if configured)
+        try {
+            const tplRes = await pool.query(
+                `SELECT * FROM email_campaigns 
+                 WHERE category = 'thank_you_letter' 
+                   AND auto_send = TRUE 
+                   AND status = 'active'
+                   AND (associated_campaign_id = $1 OR associated_campaign_id IS NULL)
+                 ORDER BY associated_campaign_id DESC NULLS LAST
+                 LIMIT 1`,
+                [data.campaign_id]
+            );
+            
+            if (tplRes.rows.length > 0) {
+                const tpl = tplRes.rows[0];
+                const donor_email = data.email;
+                if (donor_email) {
+                    const replacements = {
+                        '{{firstname}}':       data.first_name || '',
+                        '{{lastname}}':        data.last_name  || '',
+                        '{{campaign_name}}':   data.campaign_name || '',
+                        '{{donation_amount}}': `₱${parseFloat(data.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})}`,
+                        '{{address}}':         data.address || '',
+                        '{{foundation_name}}': data.foundation_name || '',
+                    };
+                    
+                    let personalizedSubject = tpl.title;
+                    let personalizedHtml    = tpl.message;
+                    
+                    Object.entries(replacements).forEach(([key, val]) => {
+                        const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                        personalizedSubject = personalizedSubject.replace(regex, val);
+                        personalizedHtml    = personalizedHtml.replace(regex, val);
+                    });
+
+                    const finalHtml = `
+                    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; padding: 40px 20px; text-align: center;">
+                        <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: left; border: 1px solid #eef2f6;">
+                            <div style="background: linear-gradient(135deg, #63A6B2 0%, #4a8a95 100%); padding: 30px; text-align: center;">
+                                <img src="https://svrtf.org/images/logo.png" alt="SVRTV Logo" style="width: 70px; height: 70px; border-radius: 50%; background: white; padding: 5px; object-fit: contain;">
+                            </div>
+                            <div style="padding: 40px; color: #334155; line-height: 1.8; font-size: 15px; overflow-wrap: break-word;">
+                                ${personalizedHtml}
+                            </div>
+                            <div style="background-color: #f8fafc; padding: 25px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+                                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #63A6B2;">Shepherd's Voice Radio and Television Foundation, Inc.</p>
+                                <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;">456 Faith Avenue, Manila, Metro Manila 1003<br>
+                                © 2026 SVRTF. All rights reserved.</p>
+                            </div>
+                        </div>
+                    </div>`;
+
+                    await sendEmail(donor_email, personalizedSubject, finalHtml, tpl.from_email || null, tpl.cc_email || null);
+                    console.log(`✅ Auto Thank You Letter sent to ${donor_email}`);
+                }
+            }
+        } catch (tplErr) {
+            console.error("FAILED TO SEND AUTO THANK YOU LETTER:", tplErr);
+        }
+
+        return { success: true };
+    } catch (err) {
+        console.error("processDonationCompletion ERROR:", err);
+        return { success: false, error: err.message };
+    }
+};
+
+module.exports = { sendEmail, sendDonationReceipt, sendVerificationCode, processDonationCompletion };

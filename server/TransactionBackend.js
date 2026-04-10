@@ -2,6 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { Pool } = require("pg");
+const { processDonationCompletion } = require("./EmailService");
 const path = require("path");
 const multer = require("multer");
 const fs = require("fs");
@@ -173,7 +174,7 @@ router.patch("/:id/status", upload.single('receipt_image'), async (req, res) => 
     // but it has a 'completed_at' column.
     if (newStatus === 'completed') {
       await client.query(
-        `UPDATE donations SET completed_at = NOW() WHERE donation_id = (SELECT donation_id FROM payment_transactions WHERE payment_id = $1)`,
+        `UPDATE donations SET completed_at = NOW(), status = 'completed' WHERE donation_id = (SELECT donation_id FROM payment_transactions WHERE payment_id = $1)`,
         [id]
       );
     } else if (oldStatus === 'completed' && newStatus !== 'completed') {
@@ -203,6 +204,23 @@ router.patch("/:id/status", upload.single('receipt_image'), async (req, res) => 
     }
 
     await client.query("COMMIT");
+
+    // If marked as completed, trigger receipt and thank-you emails (Non-blocking)
+    if (newStatus === 'completed') {
+      try {
+        // Need to get the donation_id first to call processDonationCompletion
+        const donationRes = await pool.query(
+          "SELECT donation_id FROM payment_transactions WHERE payment_id = $1",
+          [id]
+        );
+        if (donationRes.rows.length > 0) {
+          processDonationCompletion(donationRes.rows[0].donation_id).catch(err => console.error("TXN EMAIL COMPLETION ERROR:", err));
+        }
+      } catch (emailErr) {
+        console.error("FAILED TO INITIATE RECEIPT FROM TXN UPDATE:", emailErr);
+      }
+    }
+
     res.json(result.rows[0]);
   } catch (err) {
     if (client) await client.query("ROLLBACK");

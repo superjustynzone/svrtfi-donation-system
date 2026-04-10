@@ -670,6 +670,7 @@ const initDB = async () => {
         { name: 'next_due_date', type: 'DATE' },
         { name: 'message', type: 'TEXT' },
         { name: 'cancellation_reason', type: 'TEXT' },
+        { name: 'status', type: "VARCHAR(50) DEFAULT 'pending'" },
         { name: 'campaign_id_cascade', type: 'CAMPAIGN_ID_CASCADE' }
       ];
 
@@ -689,6 +690,12 @@ const initDB = async () => {
           await pool.query(`ALTER TABLE donations ADD COLUMN IF NOT EXISTS ${col.name} ${col.type};`);
         }
       }
+
+      // CRITICAL: Ensure status default is always 'pending' (not 'active')
+      // and reset any stuck 'active' donations back to 'pending'
+      await pool.query(`ALTER TABLE donations ALTER COLUMN status SET DEFAULT 'pending'`);
+      await pool.query(`UPDATE donations SET status = 'pending' WHERE status = 'active'`);
+
       console.log("✅ Donations table verified");
       
       // 8.5. Donation Reminders table

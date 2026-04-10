@@ -31,6 +31,7 @@ import AdminTransactions from './pages/AdminTransactions';
 import AdminReports from './pages/AdminReports';
 import AdminMailing from './pages/AdminMailing';
 import Profile from './pages/Profile';
+import VerifyEmail from './pages/VerifyEmail';
 import DonationNotification from './components/DonationNotification';
 import ChatBot from './components/ChatBot/ChatBot';
 
@@ -72,6 +73,7 @@ function App() {
           {/* Auth */}
           <Route path="/login" element={<GuestRoute><UserLogin /></GuestRoute>} />
           <Route path="/signup" element={<GuestRoute><UserSignUp /></GuestRoute>} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
           {/* Public pages */}
           <Route path="/contact" element={<ContactUs />} />

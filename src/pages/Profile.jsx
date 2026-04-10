@@ -736,48 +736,6 @@ export default function Profile() {
                                     </div>
 
 
-                                    {!isEditMode && (
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 transition hover:bg-white hover:shadow-sm">
-                                                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Primary Address</p>
-                                                <p className="text-sm text-gray-800 font-medium">
-                                                    {(userData.address1 || userData.address) || "No primary address set"}
-                                                </p>
-                                                {userData.address2 && <p className="text-xs text-gray-500 mt-1">{userData.address2}</p>}
-                                                {(userData.barangay || userData.city) && (
-                                                    <p className="text-[11px] text-gray-500 mt-0.5 font-medium">
-                                                        {[userData.barangay, userData.city, userData.province].filter(Boolean).join(', ')}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 transition hover:bg-white hover:shadow-sm">
-                                                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Identification</p>
-                                                <div className="space-y-2">
-                                                    <div>
-                                                        <p className="text-[10px] text-gray-400">TIN Number</p>
-                                                        <p className="text-sm text-gray-800 font-bold tracking-tight">{userData.tinNumber || "Not Provided"}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] text-gray-400">Contact Number</p>
-                                                        <p className="text-sm text-gray-800 font-bold tracking-tight">{userData.phone ? `+63 ${userData.phone}` : "Not Provided"}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 transition hover:bg-white hover:shadow-sm">
-                                                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Location Context</p>
-                                                <div className="space-y-2">
-                                                    <div>
-                                                        <p className="text-[10px] text-gray-400">ZIP Code</p>
-                                                        <p className="text-sm text-gray-800 font-bold">{userData.zipCode || "N/A"}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] text-gray-400">Country</p>
-                                                        <p className="text-sm text-gray-800 font-bold">{userData.country || "Philippines"}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     <div className="grid md:grid-cols-2 gap-8">
                                         <div>

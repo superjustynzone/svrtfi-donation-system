@@ -20,6 +20,14 @@ export default function AdminMailing() {
     const [letterForm, setLetterForm] = useState({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '', from: '', cc: '', auto_send: false });
     const [isSavingLetter, setIsSavingLetter] = useState(false);
 
+    // Email Blasts State
+    const [emailBlasts, setEmailBlasts] = useState([]);
+    const [isBlastModalOpen, setIsBlastModalOpen] = useState(false);
+    const [blastForm, setBlastForm] = useState({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '', from: '', cc: '' });
+    const [isSavingBlast, setIsSavingBlast] = useState(false);
+    const [isBlastDeleteModalOpen, setIsBlastDeleteModalOpen] = useState(false);
+    const [blastToDelete, setBlastToDelete] = useState(null);
+
     // Send Modal State
     const [isSendModalOpen, setIsSendModalOpen] = useState(false);
     const [selectedTemplateForSend, setSelectedTemplateForSend] = useState(null);
@@ -56,6 +64,8 @@ export default function AdminMailing() {
     const [subscriberFilterCampaign, setSubscriberFilterCampaign] = useState('');
     const [isSubscriberDeleteModalOpen, setIsSubscriberDeleteModalOpen] = useState(false);
     const [subscriberToDelete, setSubscriberToDelete] = useState(null);
+    const [isLetterDeleteModalOpen, setIsLetterDeleteModalOpen] = useState(false);
+    const [letterToDelete, setLetterToDelete] = useState(null);
 
     // CSV Import State
     const [isImporting, setIsImporting] = useState(false);
@@ -82,6 +92,7 @@ export default function AdminMailing() {
     useEffect(() => {
         fetchCampaigns();
         fetchThankYouLetters();
+        fetchEmailBlasts();
     }, []);
 
     useEffect(() => {
@@ -89,7 +100,7 @@ export default function AdminMailing() {
     }, [activeTab, selectedCampaignId, subscriberFilterCampaign]);
 
     const tabFetchMap = {
-        'templates': () => fetchReceiptTemplate(),
+        'templates': () => { fetchReceiptTemplate(); fetchThankYouLetters(); fetchEmailBlasts(); },
         'letters': () => fetchThankYouLetters(),
         'logs': () => fetchEmailLogs(),
         'list': () => fetchSubscribers(),
@@ -290,12 +301,68 @@ export default function AdminMailing() {
         finally { setIsSavingLetter(false); }
     };
 
-    const handleDeleteLetter = async (id) => {
-        if (!confirm('Are you sure you want to delete this template?')) return;
+    const fetchEmailBlasts = async () => {
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/thank-you-letters/${id}`, { method: 'DELETE' });
+            const res = await fetch('http://localhost:5000/api/admin/email-blasts');
+            const data = await res.json();
+            if (res.ok) setEmailBlasts(data);
+        } catch (err) { console.error('Error fetching blasts:', err); }
+    };
+
+    const handleSaveBlast = async () => {
+        if (!blastForm.title || !blastForm.message) {
+            toast.error('Title and message are required.');
+            return;
+        }
+        setIsSavingBlast(true);
+        try {
+            const method = blastForm.id ? 'PUT' : 'POST';
+            const url = blastForm.id ? `http://localhost:5000/api/admin/email-blasts/${blastForm.id}` : 'http://localhost:5000/api/admin/email-blasts';
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(blastForm)
+            });
+            if (res.ok) {
+                toast.success('Email Blast template saved!');
+                setIsBlastModalOpen(false);
+                fetchEmailBlasts();
+            } else { toast.error('Failed to save blast template.'); }
+        } catch (err) { toast.error('Connection error.'); }
+        finally { setIsSavingBlast(false); }
+    };
+
+    const handleDeleteBlast = (blast) => {
+        setBlastToDelete(blast);
+        setIsBlastDeleteModalOpen(true);
+    };
+
+    const confirmDeleteBlast = async () => {
+        if (!blastToDelete) return;
+        try {
+            const res = await fetch(`http://localhost:5000/api/admin/email-blasts/${blastToDelete.campaign_id}`, { method: 'DELETE' });
+            if (res.ok) {
+                toast.success('Blast template deleted.');
+                setIsBlastDeleteModalOpen(false);
+                setBlastToDelete(null);
+                fetchEmailBlasts();
+            } else toast.error('Deletion failed.');
+        } catch (err) { toast.error('Connection error.'); }
+    };
+
+    const handleDeleteLetter = (letter) => {
+        setLetterToDelete(letter);
+        setIsLetterDeleteModalOpen(true);
+    };
+
+    const confirmDeleteLetter = async () => {
+        if (!letterToDelete) return;
+        try {
+            const res = await fetch(`http://localhost:5000/api/admin/thank-you-letters/${letterToDelete.campaign_id}`, { method: 'DELETE' });
             if (res.ok) {
                 toast.success('Template deleted.');
+                setIsLetterDeleteModalOpen(false);
+                setLetterToDelete(null);
                 fetchThankYouLetters();
             } else toast.error('Deletion failed.');
         } catch (err) { toast.error('Connection error.'); }
@@ -304,7 +371,30 @@ export default function AdminMailing() {
     const openSendModal = async (letter) => {
         setSelectedTemplateForSend(letter);
         setIsSendModalOpen(true);
-        fetchMailingDonors(letter.associated_campaign_id);
+        if (letter.category === 'email_blast') {
+            fetchMailingSubscribers('all');
+        } else {
+            fetchMailingDonors(letter.associated_campaign_id);
+        }
+    };
+
+    const fetchMailingSubscribers = async (campaignId) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/admin/subscribers?campaign_id=${campaignId === 'all' ? '' : campaignId}`);
+            const data = await res.json();
+            if (res.ok) {
+                // Normalize subscriber data to match donor structure for the modal table
+                const normalized = data.map(sub => ({
+                    id: sub.subscriber_id,
+                    first_name: sub.first_name,
+                    last_name: sub.last_name,
+                    email: sub.email,
+                    address: sub.address || ''
+                }));
+                setMailingDonors(normalized);
+                setSelectedDonors(normalized);
+            }
+        } catch (err) { console.error('Error fetching subscribers:', err); }
     };
 
     const fetchMailingDonors = async (campaignId) => {
@@ -312,8 +402,15 @@ export default function AdminMailing() {
             const res = await fetch(`http://localhost:5000/api/admin/mailing-donors?campaign_id=${campaignId || 'global'}`);
             const data = await res.json();
             if (res.ok) {
-                setMailingDonors(data);
-                setSelectedDonors(data); // Select all by default (full objects)
+                const normalized = data.map(donor => ({
+                    id: donor.donor_id,
+                    first_name: donor.first_name,
+                    last_name: donor.last_name,
+                    email: donor.email,
+                    address: donor.address
+                }));
+                setMailingDonors(normalized);
+                setSelectedDonors(normalized);
             }
         } catch (err) { console.error('Error fetching donors:', err); }
     };
@@ -668,7 +765,7 @@ export default function AdminMailing() {
                                                                 <Settings className="w-4 h-4" />
                                                             </button>
                                                             <button 
-                                                                onClick={() => handleDeleteLetter(letter.campaign_id)} 
+                                                                onClick={() => handleDeleteLetter(letter)} 
                                                                 className="p-1.5 hover:bg-red-50 text-red-500 bg-red-50 hover:text-red-700 rounded-lg transition-colors border border-transparent hover:border-red-100"
                                                                 title="Delete Template"
                                                             >
@@ -692,6 +789,104 @@ export default function AdminMailing() {
                                 </div>
                             </section>
                             
+                            {/* Email Blast Templates Section */}
+                            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[500px] mt-6">
+                                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-base font-bold text-gray-900">Email Blast Templates</h2>
+                                        <p className="text-xs text-gray-400 mt-0.5">Manage custom templates for mass email announcements and general blasts.</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={fetchEmailBlasts} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                                            <RefreshCw className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setBlastForm({ id: null, title: '', message: '', status: 'active', associated_campaign_id: '', from: '', cc: '' });
+                                                setIsBlastModalOpen(true);
+                                            }}
+                                            className="px-4 py-2 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-sm hover:bg-[#4a8a95] flex items-center gap-2"
+                                        >
+                                            <Send className="w-4 h-4" /> New Blast Template
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="bg-gray-50">
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Template Details</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center whitespace-nowrap">Status</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right whitespace-nowrap">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {emailBlasts.length > 0 ? emailBlasts.map((blast) => (
+                                                <tr key={blast.campaign_id} className="hover:bg-[#63A6B2]/5 transition-colors group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-[#63A6B2]/10 flex items-center justify-center text-[#63A6B2] shrink-0">
+                                                                <Send className="w-4 h-4" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-bold text-gray-900 leading-tight truncate max-w-[250px]">{blast.title}</div>
+                                                                <div className="text-[10px] text-gray-400 line-clamp-1 max-w-[250px] mt-0.5" dangerouslySetInnerHTML={{ __html: blast.message || 'No content...' }}></div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${blast.status === 'active' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{blast.status}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={() => openSendModal(blast)}
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-all shadow-sm"
+                                                            >
+                                                                <Send className="w-3 h-3" /> Blast
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setBlastForm({
+                                                                        id: blast.campaign_id,
+                                                                        title: blast.title,
+                                                                        message: blast.message,
+                                                                        status: blast.status,
+                                                                        associated_campaign_id: blast.associated_campaign_id || '',
+                                                                        from: blast.from_email || '',
+                                                                        cc: blast.cc_email || ''
+                                                                    });
+                                                                    setIsBlastModalOpen(true);
+                                                                }} 
+                                                                className="p-1.5 hover:bg-blue-50 text-[#63A6B2] bg-[#63A6B2]/10 hover:text-[#4a8a95] rounded-lg transition-colors border border-transparent hover:border-[#63A6B2]/20"
+                                                                title="Configure Template"
+                                                            >
+                                                                <Settings className="w-4 h-4" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDeleteBlast(blast)} 
+                                                                className="p-1.5 hover:bg-red-50 text-red-500 bg-red-50 hover:text-red-700 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                                title="Delete Template"
+                                                            >
+                                                                <X className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan="4" className="px-6 py-20 text-center">
+                                                        <div className="flex flex-col items-center text-gray-400">
+                                                            <Send className="w-10 h-10 mb-2 opacity-20" />
+                                                            <p className="text-sm font-medium">No blast templates created yet.</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
                             </>
                         )}
 
@@ -1316,8 +1511,27 @@ export default function AdminMailing() {
                             <button onClick={() => setIsSendModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X className="w-5 h-5" /></button>
                         </div>
                         <div className="flex-1 overflow-hidden flex flex-col">
-                            <div className="p-6 bg-gray-50 flex flex-col flex-1 overflow-hidden">
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Select Recipients ({selectedDonors.length} of {mailingDonors.length})</label>
+                            <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select Recipients ({selectedDonors.length} of {mailingDonors.length})</label>
+                                    
+                                    {selectedTemplateForSend?.category === 'email_blast' && (
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase">Filter By Category:</label>
+                                            <select 
+                                                onChange={(e) => fetchMailingSubscribers(e.target.value)}
+                                                className="text-[10px] font-bold text-[#63A6B2] bg-white border border-[#63A6B2]/20 rounded-lg px-2 py-1 focus:ring-1 focus:ring-[#63A6B2] outline-none"
+                                            >
+                                                <option value="all">Whole Mailing List</option>
+                                                {campaigns.map(c => (
+                                                    <option key={c.campaign_id} value={c.campaign_id}>{c.campaign_name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="p-6 bg-gray-50 flex flex-col flex-1 overflow-hidden pt-2">
                                 <div className="bg-white rounded-2xl border border-gray-200 overflow-y-auto flex-1">
                                     <table className="w-full text-left">
                                         <thead className="sticky top-0 bg-gray-50 border-b border-gray-100 z-10">
@@ -1335,25 +1549,25 @@ export default function AdminMailing() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-50">
-                                            {mailingDonors.map(donor => (
-                                                <tr key={donor.donor_id} className="hover:bg-gray-50 transition-colors">
+                                            {mailingDonors.map(recipient => (
+                                                <tr key={recipient.id} className="hover:bg-gray-50 transition-colors">
                                                     <td className="px-4 py-3">
                                                         <input
                                                             type="checkbox"
-                                                            checked={selectedDonors.some(sd => sd.donor_id === donor.donor_id)}
+                                                            checked={selectedDonors.some(sd => sd.id === recipient.id)}
                                                             onChange={(e) => {
-                                                                if (e.target.checked) setSelectedDonors(p => [...p, donor]);
-                                                                else setSelectedDonors(p => p.filter(sd => sd.donor_id !== donor.donor_id));
+                                                                if (e.target.checked) setSelectedDonors(p => [...p, recipient]);
+                                                                else setSelectedDonors(p => p.filter(sd => sd.id !== recipient.id));
                                                             }}
                                                             className="accent-[#63A6B2]"
                                                         />
                                                     </td>
-                                                    <td className="px-4 py-3 text-xs font-bold text-gray-700">{donor.first_name} {donor.last_name}</td>
-                                                    <td className="px-4 py-3 text-xs text-gray-500">{donor.email}</td>
+                                                    <td className="px-4 py-3 text-xs font-bold text-gray-700">{recipient.first_name} {recipient.last_name}</td>
+                                                    <td className="px-4 py-3 text-xs text-gray-500">{recipient.email}</td>
                                                 </tr>
                                             ))}
                                             {mailingDonors.length === 0 && (
-                                                <tr><td colSpan="3" className="py-10 text-center text-gray-400 text-xs italic">No donors found for this campaign.</td></tr>
+                                                <tr><td colSpan="3" className="py-10 text-center text-gray-400 text-xs italic">No recipients found for this category.</td></tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -1379,13 +1593,13 @@ export default function AdminMailing() {
 
             {/* Add Subscriber Modal */}
             {isAddSubscriberModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
                         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-gray-900">Add New Subscriber</h3>
-                            <button onClick={() => setIsAddSubscriberModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X className="w-5 h-5" /></button>
+                            <h3 className="text-lg font-bold text-gray-900">Add New User</h3>
+                            <button onClick={() => setIsAddSubscriberModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 transition-colors"><X className="w-5 h-5" /></button>
                         </div>
-                        <form onSubmit={handleAddSubscriber} className="p-6 space-y-4">
+                        <form onSubmit={handleAddSubscriber} className="p-6 space-y-5">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">First Name</label>
@@ -1435,8 +1649,6 @@ export default function AdminMailing() {
                                     ))}
                                 </select>
                             </div>
-                            {/* Removed Newsletter Opt-in */}
-
                             <div className="pt-6 flex gap-3">
                                 <button type="button" onClick={() => setIsAddSubscriberModalOpen(false)} className="flex-1 px-6 py-2.5 text-gray-500 font-bold text-sm hover:bg-gray-50 rounded-xl transition-all border border-gray-100">Cancel</button>
                                 <button type="submit" disabled={isAddingSubscriber} className="flex-1 px-8 py-2.5 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#63A6B2]/20 hover:bg-[#4a8a95] disabled:opacity-50 flex items-center justify-center gap-2">
@@ -1447,6 +1659,82 @@ export default function AdminMailing() {
                     </div>
                 </div>
             )}
+
+            {/* Email Blast Creation/Edit Modal */}
+            {isBlastModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+                        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-[#63A6B2]/10 rounded-xl text-[#63A6B2]">
+                                    <Send className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">{blastForm.id ? 'Edit Blast Template' : 'Create Blast Template'}</h3>
+                                    <p className="text-xs text-gray-400 mt-0.5">Define your general announcement or mass email message</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsBlastModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 transition-colors"><X className="w-5 h-5" /></button>
+                        </div>
+                        <div className="p-6 space-y-5 overflow-y-auto flex-1 custom-scrollbar">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">From Name/Email (Optional)</label>
+                                    <input type="text" value={blastForm.from} onChange={e => setBlastForm(p => ({ ...p, from: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#63A6B2] outline-none" placeholder="e.g. SVRTFI Team <info@svrtfi.org>" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">CC Email (Optional)</label>
+                                    <input type="text" value={blastForm.cc} onChange={e => setBlastForm(p => ({ ...p, cc: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#63A6B2] outline-none" placeholder="e.g. admin@svrtfi.org" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Subject</label>
+                                <input type="text" value={blastForm.title} onChange={e => setBlastForm(p => ({ ...p, title: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#63A6B2] outline-none" placeholder="e.g. Monthly Newsletter - April 2026" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Message Body (Rich HTML Editor)</label>
+                                <div className="quill-editor-container bg-white rounded-2xl overflow-hidden border border-gray-200">
+                                    <ReactQuill 
+                                        theme="snow"
+                                        value={blastForm.message}
+                                        onChange={content => setBlastForm(p => ({ ...p, message: content }))}
+                                        className="min-h-[250px] text-sm"
+                                        placeholder="Compose your blast email content..."
+                                        modules={{
+                                            toolbar: [
+                                                [{ 'header': [1, 2, 3, false] }],
+                                                ['bold', 'italic', 'underline', 'strike'],
+                                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                ['link', 'image', 'clean']
+                                            ]
+                                        }}
+                                    />
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <span className="text-[10px] font-bold text-[#63A6B2] uppercase tracking-wider">Shortcuts:</span>
+                                    {['{{firstname}}', '{{lastname}}', '{{campaign_name}}', '{{foundation_name}}', '{{address}}'].map(v => (
+                                        <button 
+                                            key={v}
+                                            type="button"
+                                            onClick={() => setBlastForm(p => ({ ...p, message: p.message + ' ' + v }))}
+                                            className="text-[10px] bg-[#63A6B2]/10 text-[#63A6B2] px-2 py-0.5 rounded-md font-bold border border-[#63A6B2]/20 hover:bg-[#63A6B2]/20 transition-all"
+                                        >
+                                            {v}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="px-6 py-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50">
+                            <button onClick={() => setIsBlastModalOpen(false)} className="px-6 py-2.5 text-gray-500 font-bold text-sm hover:bg-gray-100 hover:text-gray-700 rounded-xl border border-gray-200 bg-white transition-all shadow-sm">Cancel</button>
+                            <button onClick={handleSaveBlast} disabled={isSavingBlast} className="px-8 py-2.5 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#63A6B2]/20 hover:bg-[#4a8a95] disabled:opacity-50 flex items-center justify-center gap-2">
+                                {isSavingBlast ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</> : <><CheckCircle className="w-4 h-4" /> {blastForm.id ? 'Update Template' : 'Create Template'}</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Delete Subscriber Confirmation Modal */}
             {isSubscriberDeleteModalOpen && (
                 <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -1462,6 +1750,48 @@ export default function AdminMailing() {
                             <div className="flex gap-3">
                                 <button onClick={() => setIsSubscriberDeleteModalOpen(false)} className="flex-1 px-6 py-3 bg-gray-50 text-gray-600 font-bold text-sm rounded-xl hover:bg-gray-100 transition-all border border-gray-100">Cancel</button>
                                 <button onClick={confirmDeleteSubscriber} className="flex-1 px-6 py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Letter Template Confirmation Modal */}
+            {isLetterDeleteModalOpen && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center">
+                            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Mail className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Template?</h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Are you sure you want to delete the template <span className="font-bold text-gray-900">{letterToDelete?.title}</span>? This action cannot be undone.
+                            </p>
+                            <div className="flex gap-3">
+                                <button onClick={() => setIsLetterDeleteModalOpen(false)} className="flex-1 px-6 py-3 bg-gray-50 text-gray-600 font-bold text-sm rounded-xl hover:bg-gray-100 transition-all border border-gray-100">Cancel</button>
+                                <button onClick={confirmDeleteLetter} className="flex-1 px-6 py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Email Blast Confirmation Modal */}
+            {isBlastDeleteModalOpen && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center">
+                            <div className="w-16 h-16 bg-blue-50 text-[#63A6B2] rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Send className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Blast Template?</h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Are you sure you want to delete <span className="font-bold text-gray-900">{blastToDelete?.title}</span>? This template will be permanently removed.
+                            </p>
+                            <div className="flex gap-3">
+                                <button onClick={() => setIsBlastDeleteModalOpen(false)} className="flex-1 px-6 py-3 bg-gray-50 text-gray-600 font-bold text-sm rounded-xl hover:bg-gray-100 transition-all border border-gray-100">Cancel</button>
+                                <button onClick={confirmDeleteBlast} className="flex-1 px-6 py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20">Delete</button>
                             </div>
                         </div>
                     </div>
