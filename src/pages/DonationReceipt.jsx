@@ -157,18 +157,19 @@ export default function DonationReceipt() {
                             {/* Logos */}
                             <div className="flex items-center gap-6">
                                 {/* SVRTV Logo - Circle */}
-                                <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{width: '110px', height: '110px', borderRadius: '50%', padding: '8px'}}>
+                                <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{width: '110px', height: '110px', borderRadius: '50%', padding: '8px', overflow: 'hidden'}}>
                                     <img src="/images/logo.png" alt="SVRTV Logo" className="w-full h-full object-contain" style={{borderRadius: '50%'}} />
                                 </div>
                                 {/* Divider */}
                                 <div className="w-px h-16 bg-white/30"></div>
                                 {/* Foundation Logo - Circle */}
                                 {campaign.foundation_logo ? (
-                                    <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{width: '110px', height: '110px', borderRadius: '50%', padding: '8px'}}>
+                                    <div className="bg-white shadow-lg flex items-center justify-center flex-shrink-0" style={{width: '110px', height: '110px', borderRadius: '50%', padding: '8px', overflow: 'hidden'}}>
                                         <img
                                             src={`http://localhost:5000${campaign.foundation_logo}`}
                                             alt={`${campaign.foundation_name} Logo`}
                                             className="w-full h-full object-contain"
+                                            style={{borderRadius: '50%'}}
                                         />
                                     </div>
                                 ) : (
