@@ -35,6 +35,223 @@ const quillFormats = [
     'link', 'image', 'video'
 ];
 
+// ── Semantic tag suggestions map (donation-focused) ─────────────────────────
+const TAG_SYNONYMS = {
+    // ── Age groups
+    elderly:        ['Senior Care', 'Elderly Care', 'Senior Citizens', 'Aging Support', 'Geriatric Care', 'Retirement Aid'],
+    senior:         ['Senior Care', 'Elderly Care', 'Senior Citizens', 'Aging Support', 'Geriatric Care'],
+    aging:          ['Senior Citizens', 'Elderly Care', 'Aging Support', 'Geriatric Care'],
+    child:          ['Children', 'Youth', 'Child Welfare', 'Child Development', 'Childcare', 'Kids', 'Minors'],
+    youth:          ['Youth Development', 'Teens', 'Young Adults', 'Children', 'Kids', 'Scholar Program'],
+    teen:           ['Teens', 'Youth', 'Young Adults', 'Adolescents', 'Youth Development'],
+    infant:         ['Infants', 'Newborns', 'Maternal Care', 'Childcare', 'Child Health'],
+    // ── Education
+    education:      ['Learning', 'Literacy', 'Scholarship', 'Academic Support', 'Schooling', 'Tutoring', 'School Supplies'],
+    school:         ['Education', 'Learning', 'Literacy', 'Academic Support', 'Scholarship', 'School Feeding'],
+    scholar:        ['Scholarship', 'Education', 'Academic Support', 'Tuition Aid', 'Student Grant'],
+    literacy:       ['Reading Program', 'Education', 'Learning', 'Basic Education', 'Adult Education'],
+    tuition:        ['Tuition Aid', 'Scholarship', 'Education', 'Student Grant', 'School Fees'],
+    training:       ['Skills Training', 'Livelihood', 'Vocational', 'Employment', 'Capacity Building'],
+    vocational:     ['Skills Training', 'Technical Education', 'TESDA', 'Livelihood', 'Trade Skills'],
+    // ── Health & Medical
+    health:         ['Healthcare', 'Medical Aid', 'Wellness', 'Mental Health', 'Public Health', 'Nutrition', 'Free Clinic'],
+    medical:        ['Healthcare', 'Medical Aid', 'Hospital', 'Medicine', 'Treatment', 'Wellness', 'Free Medical'],
+    hospital:       ['Medical Aid', 'Healthcare', 'Hospitalization', 'Free Clinic', 'Medicine', 'Treatment'],
+    medicine:       ['Medical Aid', 'Healthcare', 'Treatment', 'Pharmacy Aid', 'Drug Access'],
+    mental:         ['Mental Health', 'Psychological Support', 'Counseling', 'Wellbeing', 'Therapy', 'Stress Relief'],
+    nutrition:      ['Food Aid', 'Feeding Program', 'Malnutrition', 'Health', 'Child Nutrition'],
+    vaccine:        ['Immunization', 'Child Health', 'Public Health', 'Healthcare', 'Disease Prevention'],
+    dental:         ['Dental Care', 'Oral Health', 'Free Clinic', 'Healthcare', 'Medical Aid'],
+    // ── Food & Hunger
+    food:           ['Nutrition', 'Hunger Relief', 'Food Aid', 'Feeding Program', 'Malnutrition', 'Food Security'],
+    hunger:         ['Food Aid', 'Nutrition', 'Hunger Relief', 'Feeding Program', 'Food Security', 'Zero Hunger'],
+    feeding:        ['Feeding Program', 'Food Aid', 'Nutrition', 'Hunger Relief', 'School Feeding'],
+    malnutrition:   ['Nutrition', 'Food Aid', 'Feeding Program', 'Child Nutrition', 'Health'],
+    // ── Shelter & Housing
+    shelter:        ['Housing', 'Homeless', 'Refuge', 'Disaster Relief', 'Housing Support', 'Evacuation Center'],
+    housing:        ['Shelter', 'Homeless', 'Housing Support', 'Affordable Housing', 'Relocation'],
+    homeless:       ['Shelter', 'Housing', 'Street Dwellers', 'Urban Poor', 'Housing Support'],
+    // ── Disaster & Emergency
+    disaster:       ['Calamity', 'Emergency Relief', 'Disaster Relief', 'Crisis Support', 'Rescue', 'Typhoon Relief'],
+    calamity:       ['Disaster Relief', 'Emergency Aid', 'Crisis Response', 'Rescue', 'Typhoon Aid'],
+    typhoon:        ['Typhoon Relief', 'Disaster Relief', 'Emergency Aid', 'Calamity', 'Crisis Support'],
+    flood:          ['Flood Relief', 'Disaster Relief', 'Emergency Aid', 'Calamity', 'Evacuation'],
+    earthquake:     ['Earthquake Relief', 'Disaster Relief', 'Emergency Aid', 'Crisis Support', 'Rescue'],
+    emergency:      ['Emergency Aid', 'Disaster Relief', 'Crisis Response', 'Rescue', 'Relief Operations'],
+    relief:         ['Disaster Relief', 'Emergency Aid', 'Calamity Relief', 'Crisis Response', 'Relief Goods'],
+    rescue:         ['Emergency Relief', 'Disaster Response', 'Search and Rescue', 'Crisis Aid'],
+    // ── Poverty & Livelihood
+    poverty:        ['Livelihood', 'Economic Aid', 'Financial Assistance', 'Welfare', 'Indigent', 'Subsistence'],
+    livelihood:     ['Skills Training', 'Employment', 'Entrepreneurship', 'Economic Aid', 'Microfinance'],
+    employment:     ['Livelihood', 'Job Placement', 'Skills Training', 'Economic Aid', 'Work Program'],
+    microfinance:   ['Livelihood', 'Micro-lending', 'Small Business', 'Economic Aid', 'Entrepreneurship'],
+    entrepreneur:   ['Entrepreneurship', 'Small Business', 'Livelihood', 'Microfinance', 'Self-Employment'],
+    indigent:       ['Poverty', 'Financial Assistance', 'Welfare', 'Economic Aid', 'Subsistence'],
+    // ── Women & Gender
+    women:          ["Women's Rights", 'Gender Equality', 'Mothers', 'Female Empowerment', 'Maternal', 'Solo Parent'],
+    gender:         ["Women's Rights", 'Gender Equality', 'LGBTQ+', 'Female Empowerment', 'Gender-Based Violence'],
+    maternal:       ['Maternal Care', 'Mothers', "Women's Health", 'Child Health', 'Prenatal Care'],
+    solo:           ['Solo Parent', 'Single Mother', 'Family Support', "Women's Welfare"],
+    // ── Environment
+    environment:    ['Ecology', 'Conservation', 'Green', 'Reforestation', 'Climate', 'Nature', 'Sustainability'],
+    climate:        ['Climate Change', 'Ecology', 'Conservation', 'Reforestation', 'Green Advocacy'],
+    reforestation:  ['Tree Planting', 'Environment', 'Ecology', 'Conservation', 'Nature'],
+    ocean:          ['Marine Conservation', 'Ocean Cleanup', 'Ecology', 'Environment', 'Coastal'],
+    // ── Disability
+    disability:     ['Persons with Disability', 'PWD', 'Special Needs', 'Accessibility', 'Inclusive'],
+    pwd:            ['Persons with Disability', 'Special Needs', 'Disability Support', 'Accessibility'],
+    special:        ['Special Needs', 'Persons with Disability', 'PWD', 'Inclusive Education'],
+    // ── Community
+    community:      ['Community Development', 'Grassroots', 'Neighborhood', 'Local Support', 'Barangay'],
+    barangay:       ['Community', 'Local Support', 'Grassroots', 'Neighborhood Development'],
+    rural:          ['Rural Development', 'Remote Communities', 'Agricultural Aid', 'Community Support'],
+    urban:          ['Urban Poor', 'City Development', 'Community', 'Slum Improvement'],
+    // ── Water & Sanitation
+    water:          ['Clean Water', 'Sanitation', 'WASH', 'Water Access', 'Water Safety', 'Potable Water'],
+    sanitation:     ['WASH', 'Clean Water', 'Hygiene', 'Public Health', 'Waste Management'],
+    hygiene:        ['Sanitation', 'WASH', 'Clean Water', 'Public Health', 'Hygiene Kits'],
+    // ── Faith & Spiritual
+    spiritual:      ['Faith-Based', 'Religion', 'Church', 'Ministry', 'Pastoral Care', 'Mission'],
+    faith:          ['Faith-Based', 'Spiritual', 'Church', 'Ministry', 'Mission', 'Pastoral Care'],
+    mission:        ['Outreach', 'Ministry', 'Faith-Based', 'Evangelical', 'Community Mission'],
+    outreach:       ['Community Outreach', 'Mission', 'Ministry', 'Relief Operations', 'Social Work'],
+    // ── Indigenous
+    indigenous:     ['Indigenous People', 'Tribal', 'Cultural Heritage', 'IP Communities', 'Lumad', 'Ancestral Domain'],
+    tribal:         ['Indigenous People', 'Tribal Communities', 'Cultural Heritage', 'IP Communities'],
+    // ── Animals
+    animal:         ['Animal Welfare', 'Wildlife', 'Rescue', 'Veterinary', 'Pet Support', 'Stray Animals'],
+    wildlife:       ['Animal Welfare', 'Conservation', 'Environment', 'Wildlife Protection', 'Ecology'],
+    // ── Arts & Culture
+    arts:           ['Culture', 'Creative Arts', 'Music', 'Drama', 'Cultural Heritage', 'Fine Arts'],
+    culture:        ['Cultural Heritage', 'Arts', 'Music', 'Traditions', 'Indigenous Culture'],
+    // ── Sports & Recreation
+    sports:         ['Athletics', 'Youth Sports', 'Recreation', 'Physical Wellness', 'Sports Program'],
+    // ── Donation-specific
+    donation:       ['General Donation', 'Charitable Giving', 'Philanthropy', 'Donors', 'Fundraising'],
+    fundraising:    ['Fundraiser', 'Charity Event', 'Donation Drive', 'Campaign', 'Crowdfunding'],
+    volunteer:      ['Volunteering', 'Community Service', 'Outreach', 'Social Work', 'Civic Action'],
+    charity:        ['Charitable', 'Philanthropy', 'Non-profit', 'Donation', 'Foundation'],
+    scholarship:    ['Education', 'Tuition Aid', 'Student Grant', 'Academic Support', 'Scholar Program'],
+    medical_mission:['Free Medical', 'Medical Outreach', 'Free Clinic', 'Healthcare', 'Medical Aid'],
+    goods:          ['Relief Goods', 'Donation Drive', 'Food Aid', 'Livelihood Supplies', 'In-Kind Donation'],
+    cash:           ['Cash Assistance', 'Financial Aid', 'Monetary Donation', 'Direct Giving'],
+    sponsor:        ['Sponsorship', 'Scholar Sponsor', 'Patron', 'Benefactor', 'Corporate Giving'],
+    beneficiary:    ['Beneficiaries', 'Recipients', 'Program Participants', 'Aid Recipients'],
+    impact:         ['Success Story', 'Change Maker', 'Transformational', 'Community Impact'],
+    story:          ['Success Story', 'Testimony', 'Impact Story', 'Donor Story', 'Beneficiary Story'],
+    testimony:      ['Success Story', 'Testimony', 'Impact Story', 'Life Change', 'Transformation'],
+    success:        ['Success Story', 'Achievement', 'Impact', 'Transformation', 'Progress'],
+    help:           ['Aid', 'Assistance', 'Support', 'Relief', 'Outreach', 'Charity'],
+    support:        ['Aid', 'Assistance', 'Help', 'Relief', 'Community Support'],
+    campaign:       ['Fundraising Campaign', 'Donation Drive', 'Cause', 'Advocacy', 'Initiative'],
+    advocate:       ['Advocacy', 'Campaign', 'Awareness', 'Social Change', 'Reform'],
+    awareness:      ['Advocacy', 'Awareness Campaign', 'Social Issue', 'Education', 'Outreach'],
+
+    // ── Foundation-specific keywords (SVRTV Partner Foundations) ────────────
+    // 1. Anawim — Elderly Home
+    anawim:         ['Elderly Home', 'Senior Living', 'Senior Care', 'Aging Support', 'Geriatric Care', 'Retirement Aid', 'Residential Care'],
+    'home for the aged': ['Elderly Home', 'Senior Living', 'Senior Care', 'Anawim', 'Aging Support'],
+    'old age':      ['Senior Care', 'Elderly Home', 'Aging Support', 'Geriatric Care', 'Senior Citizens'],
+    aged:           ['Elderly Care', 'Senior Citizens', 'Aging Support', 'Residential Care'],
+    grandparent:    ['Senior Care', 'Elderly Home', 'Aging Support', 'Senior Citizens'],
+    lolo:           ['Senior Citizens', 'Elderly Care', 'Aging Support', 'Elderly Home'],
+    lola:           ['Senior Citizens', 'Elderly Care', 'Aging Support', 'Elderly Home'],
+
+    // 2. Jeremiah Foundation — Abused Girls
+    jeremiah:       ['Abused Girls', 'Child Abuse', 'Trauma Recovery', 'Rescue & Rehabilitation', 'Safe House', "Women's Welfare"],
+    abuse:          ['Abused Girls', 'Trauma Recovery', 'Child Abuse', 'Safe House', 'Rescue & Rehabilitation', 'GBV Support'],
+    abused:         ['Abused Girls', 'Child Abuse', 'Trauma Recovery', 'Safe House', 'Rehabilitation', 'Victim Support'],
+    trauma:         ['Trauma Recovery', 'Psychological Support', 'Counseling', 'Safe House', 'Rescue & Rehabilitation'],
+    survivor:       ['Survivor', 'Trauma Recovery', 'Rehabilitation', 'Empowerment', 'Safe House'],
+    victim:         ['Victim Support', 'Trauma Recovery', 'Safe House', 'Rescue & Rehabilitation', 'GBV Support'],
+    gbv:            ['Gender-Based Violence', 'Victim Support', 'Safe House', 'Trauma Recovery', 'Abused Girls'],
+    violence:       ['GBV Support', 'Abused Girls', 'Safe House', 'Trauma Recovery', 'Child Abuse'],
+    safehouse:      ['Safe House', 'Abused Girls', 'Rescue & Rehabilitation', 'Shelter', 'Trauma Recovery'],
+
+    // 3. Grace to be Born — Unwed Mothers
+    grace:          ['Unwed Mothers', 'Maternal Care', 'Newborn Support', 'Pregnancy Aid', 'Mother & Child'],
+    unwed:          ['Unwed Mothers', 'Maternal Care', 'Single Mother', 'Pregnancy Aid', 'Mother & Child'],
+    pregnant:       ['Pregnancy Aid', 'Unwed Mothers', 'Maternal Care', 'Prenatal Care', 'Mother & Child'],
+    pregnancy:      ['Pregnancy Aid', 'Prenatal Care', 'Maternal Care', 'Unwed Mothers', 'Newborn Support'],
+    newborn:        ['Newborn Support', 'Maternal Care', 'Infant Care', 'Pregnancy Aid', 'Mother & Child'],
+    prenatal:       ['Prenatal Care', 'Pregnancy Aid', 'Maternal Care', 'Unwed Mothers', 'Mother & Child'],
+    postnatal:      ['Postnatal Care', 'Maternal Care', 'Newborn Support', 'Mother & Child'],
+    mother:         ['Unwed Mothers', 'Maternal Care', 'Solo Parent', 'Mother & Child', 'Family Support'],
+    nanay:          ['Unwed Mothers', 'Maternal Care', 'Mother & Child', 'Solo Parent'],
+
+    // 4. Pag-Asa ng Pamilya — Scholarships
+    'pag-asa':      ['Scholarship', 'Education', 'Family Support', 'Academic Aid', 'School Supplies', 'Tuition Aid'],
+    pagasa:         ['Scholarship', 'Education', 'Family Support', 'Academic Aid', 'Youth Development'],
+    pamilya:        ['Family Support', 'Scholarship', 'Education', 'Child Welfare', 'Community Development'],
+    family:         ['Family Support', 'Scholarship', 'Child Welfare', 'Pag-Asa ng Pamilya', 'Community Support'],
+    hope:           ['Hope', 'Scholarship', 'Education', 'Youth Development', 'Transformation'],
+
+    // 5. SVRTV Foundation — Media Evangelization
+    svrtv:          ['Media Evangelization', 'Radio Ministry', 'Television Ministry', 'Broadcast', 'Faith-Based Media', 'Evangelism'],
+    media:          ['Media Evangelization', 'Radio Ministry', 'Television Ministry', 'Broadcast', 'Faith-Based Media'],
+    radio:          ['Radio Ministry', 'Media Evangelization', 'Broadcast', 'Faith-Based Media', 'Evangelism'],
+    television:     ['Television Ministry', 'Media Evangelization', 'Broadcast', 'Evangelism', 'Faith-Based Media'],
+    broadcast:      ['Broadcast', 'Media Evangelization', 'Radio Ministry', 'Television Ministry'],
+    evangelism:     ['Evangelism', 'Ministry', 'Media Evangelization', 'Mission', 'Faith-Based'],
+    evangelize:     ['Evangelism', 'Media Evangelization', 'Ministry', 'Mission', 'Faith-Based Media'],
+    shepherd:       ['Pastoral Care', 'Ministry', 'Faith-Based', 'Evangelism', 'Community Mission'],
+
+    // 6. LOJ Prison Ministry — Women Inmates
+    prison:         ['Prison Ministry', 'Women Inmates', 'Rehabilitation', 'Reintegration', 'Inmates', 'Jail Ministry'],
+    jail:           ['Jail Ministry', 'Prison Ministry', 'Women Inmates', 'Rehabilitation', 'Reintegration'],
+    inmate:         ['Women Inmates', 'Prison Ministry', 'Rehabilitation', 'Reintegration', 'Jail Ministry'],
+    inmates:        ['Women Inmates', 'Prison Ministry', 'Rehabilitation', 'Reintegration', 'Jail Ministry'],
+    detention:      ['Women Inmates', 'Prison Ministry', 'Rehabilitation', 'Jail Ministry'],
+    rehabilitation: ['Rehabilitation', 'Reintegration', 'Prison Ministry', 'Women Inmates', 'Trauma Recovery'],
+    reintegration:  ['Reintegration', 'Rehabilitation', 'Prison Ministry', 'Women Inmates', 'Life Skills'],
+    loj:            ['Prison Ministry', 'Pastoral Care', 'Ministry', 'Women Inmates', 'Counseling', 'Faith-Based'],
+
+    // 7. LOJ Pastoral Care — Counseling
+    pastoral:       ['Pastoral Care', 'Counseling', 'Spiritual Support', 'Mental Health', 'Ministry', 'Wellbeing'],
+    counseling:     ['Pastoral Care', 'Counseling', 'Mental Health', 'Psychological Support', 'Wellbeing'],
+    counsel:        ['Pastoral Care', 'Counseling', 'Psychological Support', 'Wellbeing', 'Therapy'],
+    therapist:      ['Counseling', 'Therapy', 'Psychological Support', 'Mental Health', 'Pastoral Care'],
+    wellbeing:      ['Wellbeing', 'Pastoral Care', 'Counseling', 'Mental Health', 'Psychological Support'],
+    emotional:      ['Emotional Support', 'Counseling', 'Pastoral Care', 'Psychological Support', 'Wellbeing'],
+
+    // 8. He Cares Mission — Street Children
+    'he cares':     ['Street Children', 'Street Kids', 'Mission', 'Child Welfare', 'Urban Poor', 'Outreach'],
+    hecares:        ['Street Children', 'Street Kids', 'Mission', 'Child Welfare', 'Urban Poor'],
+    street:         ['Street Children', 'Street Kids', 'Urban Poor', 'Homeless', 'Child Welfare', 'Outreach'],
+    streetkids:     ['Street Children', 'Street Kids', 'Urban Poor', 'Child Welfare', 'Mission'],
+    'street children': ['Street Children', 'Child Welfare', 'Urban Poor', 'Mission', 'Outreach'],
+    'street kids':  ['Street Kids', 'Street Children', 'Urban Poor', 'Child Welfare', 'Mission'],
+    batang:         ['Street Children', 'Child Welfare', 'Youth', 'Urban Poor'],
+    kalye:          ['Street Children', 'Urban Poor', 'Street Kids', 'Child Welfare'],
+
+    // 9. JCCFC — Cancer Patients
+    jccfc:          ['Cancer Patients', 'Cancer Care', 'Oncology', 'Medical Aid', 'Terminal Illness', 'Patient Support'],
+    cancer:         ['Cancer Patients', 'Cancer Care', 'Oncology', 'Medical Aid', 'Terminal Illness', 'JCCFC'],
+    oncology:       ['Cancer Care', 'Oncology', 'Cancer Patients', 'Medical Aid', 'Terminal Illness'],
+    terminal:       ['Terminal Illness', 'Cancer Care', 'Palliative Care', 'Medical Aid', 'Patient Support'],
+    palliative:     ['Palliative Care', 'Terminal Illness', 'Cancer Patients', 'Patient Support', 'Hospice'],
+    chemotherapy:   ['Cancer Care', 'Cancer Patients', 'Medical Aid', 'Oncology', 'Treatment Support'],
+    chemo:          ['Cancer Care', 'Cancer Patients', 'Medical Aid', 'Oncology', 'Treatment Support'],
+    patient:        ['Patient Support', 'Medical Aid', 'Cancer Patients', 'Healthcare', 'Hospital'],
+};
+
+const getSemanticSuggestions = (query, existingCategories, selectedTags) => {
+    if (!query || query.length < 2) return [];
+    const q = query.toLowerCase();
+    const suggestions = new Set();
+    Object.entries(TAG_SYNONYMS).forEach(([keyword, related]) => {
+        if (keyword.includes(q) || q.includes(keyword)) {
+            related.forEach(r => suggestions.add(r));
+        }
+    });
+    const catNames = existingCategories.map(c => c.name.toLowerCase());
+    return [...suggestions].filter(s =>
+        !catNames.includes(s.toLowerCase()) &&
+        !selectedTags.includes(s)
+    ).slice(0, 8);
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function AdminStories() {
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -45,6 +262,7 @@ export default function AdminStories() {
     const [isManagingCategories, setIsManagingCategories] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [editingCategory, setEditingCategory] = useState(null);
+    const [categoryToDelete, setCategoryToDelete] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [editingStory, setEditingStory] = useState(null);
     const [selectedImages, setSelectedImages] = useState([]);
@@ -66,7 +284,9 @@ export default function AdminStories() {
     const [storyToDelete, setStoryToDelete] = useState(null);
     const [publishMode, setPublishMode] = useState('draft'); // draft, now, scheduled
     const [showTagDropdown, setShowTagDropdown] = useState(false);
+    const [tagSearch, setTagSearch] = useState('');
     const tagDropdownRef = useRef(null);
+    const tagInputRef = useRef(null);
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [statusModalStory, setStatusModalStory] = useState(null);
     const [statusModalValue, setStatusModalValue] = useState('draft');
@@ -104,6 +324,7 @@ export default function AdminStories() {
         const handleClickOutside = (e) => {
             if (tagDropdownRef.current && !tagDropdownRef.current.contains(e.target)) {
                 setShowTagDropdown(false);
+                setTagSearch('');
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -207,6 +428,27 @@ export default function AdminStories() {
         }
     };
 
+    // Silently save a new custom tag to the story_categories table.
+    // If it already exists (409/400 from backend), we just ignore it.
+    const saveTagToCategories = async (tagName) => {
+        if (!tagName || !tagName.trim()) return;
+        try {
+            const response = await fetch('http://localhost:5000/api/admin/story-categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: tagName.trim() })
+            });
+            if (response.ok) {
+                // Refresh the category list so it shows up immediately in Manage Categories
+                fetchStoryCategories();
+                toast.success(`Added "${tagName}" to Manage Categories`, { duration: 3000 });
+            }
+            // If 400 (already exists) or other error — silently ignore, tag is still added to the story
+        } catch (err) {
+            console.warn('Could not save tag to categories:', err.message);
+        }
+    };
+
     const handleAddCategory = async () => {
         if (!newCategoryName.trim()) return;
         try {
@@ -246,7 +488,6 @@ export default function AdminStories() {
     };
 
     const handleDeleteCategory = async (id) => {
-        if (!confirm('Are you sure? This will remove the category option.')) return;
         try {
             const response = await fetch(`http://localhost:5000/api/admin/story-categories/${id}`, {
                 method: 'DELETE'
@@ -254,6 +495,7 @@ export default function AdminStories() {
             if (response.ok) {
                 toast.success('Category deleted');
                 fetchStoryCategories();
+                setCategoryToDelete(null);
             }
         } catch (error) { toast.error('Error deleting'); }
     };
@@ -632,63 +874,237 @@ export default function AdminStories() {
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Tag Categories</label>
                                         <div className="flex gap-2 items-stretch">
-                                            {/* Dropdown trigger */}
+                                            {/* Smart search tag input */}
                                             <div className="relative flex-1" ref={tagDropdownRef}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowTagDropdown(prev => !prev)}
-                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/20 bg-white flex items-center justify-between min-h-[48px] text-left transition-all"
+                                                {/* Tag chips + type-to-search input */}
+                                                <div
+                                                    className={`w-full min-h-[48px] px-3 py-2 border rounded-lg bg-white flex flex-wrap gap-1.5 items-center cursor-text transition-all ${
+                                                        showTagDropdown
+                                                            ? 'border-[#63A6B2] ring-2 ring-[#63A6B2]/20'
+                                                            : 'border-gray-300 hover:border-gray-400'
+                                                    }`}
+                                                    onClick={() => { setShowTagDropdown(true); tagInputRef.current?.focus(); }}
                                                 >
-                                                    <div className="flex flex-wrap gap-1.5 flex-1">
-                                                        {Array.isArray(formData.tags) && formData.tags.length > 0 ? (
-                                                            formData.tags.map(tag => (
-                                                                <span key={tag} className="px-2.5 py-0.5 bg-[#63A6B2] text-white text-xs rounded-full font-medium">
-                                                                    {tag}
-                                                                </span>
-                                                            ))
-                                                        ) : (
-                                                            <span className="text-gray-400 text-sm">Select categories...</span>
-                                                        )}
-                                                    </div>
-                                                    <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 ml-2 transition-transform duration-200 ${showTagDropdown ? 'rotate-180' : ''}`} />
-                                                </button>
+                                                     {/* Selected tag chips — teal = predefined category, amber = custom new tag */}
+                                                    {Array.isArray(formData.tags) && formData.tags.map(tag => {
+                                                        const isCustom = !categories.some(cat => cat.name === tag);
+                                                        return (
+                                                            <span
+                                                                key={tag}
+                                                                title={isCustom ? 'Custom tag (not in predefined categories)' : 'Predefined category'}
+                                                                className={`inline-flex items-center gap-1 pl-2 pr-1 py-0.5 text-xs rounded-full font-medium flex-shrink-0 border ${
+                                                                    isCustom
+                                                                        ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                                                        : 'bg-[#63A6B2] text-white border-[#63A6B2]'
+                                                                }`}
+                                                            >
+                                                                {isCustom && (
+                                                                    <span className="text-[8px] font-black tracking-wider bg-amber-400 text-white rounded-full px-1 py-0.5 leading-none mr-0.5">NEW</span>
+                                                                )}
+                                                                {tag}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }));
+                                                                    }}
+                                                                    className={`w-4 h-4 rounded-full flex items-center justify-center transition-colors ${
+                                                                        isCustom ? 'bg-amber-200 hover:bg-amber-300 text-amber-700' : 'bg-white/20 hover:bg-white/40 text-white'
+                                                                    }`}
+                                                                >
+                                                                    <X className="w-2.5 h-2.5" />
+                                                                </button>
+                                                            </span>
+                                                        );
+                                                    })}
 
-                                                {/* Dropdown panel */}
-                                                {showTagDropdown && (
-                                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-52 overflow-y-auto">
-                                                        {categories.length === 0 ? (
-                                                            <div className="px-4 py-3 text-sm text-gray-400">No categories yet. Use "Manage Categories" to add some.</div>
-                                                        ) : (
-                                                            categories.map(cat => {
-                                                                const isSelected = Array.isArray(formData.tags) && formData.tags.includes(cat.name);
-                                                                return (
-                                                                    <button
-                                                                        key={cat.category_id}
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setFormData(prev => ({
-                                                                                ...prev,
-                                                                                tags: isSelected
-                                                                                    ? prev.tags.filter(t => t !== cat.name)
-                                                                                    : [...(Array.isArray(prev.tags) ? prev.tags : []), cat.name]
-                                                                            }));
-                                                                        }}
-                                                                        className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100 last:border-0"
-                                                                    >
-                                                                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                                                                            isSelected ? 'bg-[#63A6B2] border-[#63A6B2]' : 'border-gray-300'
-                                                                        }`}>
-                                                                            {isSelected && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
-                                                                        </div>
-                                                                        <span className={`text-sm ${isSelected ? 'font-semibold text-[#63A6B2]' : 'text-gray-700'}`}>
-                                                                            {cat.name}
-                                                                        </span>
-                                                                    </button>
-                                                                );
-                                                            })
-                                                        )}
-                                                    </div>
-                                                )}
+                                                    {/* Search input */}
+                                                    <input
+                                                        ref={tagInputRef}
+                                                        type="text"
+                                                        value={tagSearch}
+                                                        onChange={(e) => { setTagSearch(e.target.value); setShowTagDropdown(true); }}
+                                                        onFocus={() => setShowTagDropdown(true)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                const trimmed = tagSearch.trim();
+                                                                if (!trimmed) return;
+                                                                const isNew = !categories.some(cat => cat.name.toLowerCase() === trimmed.toLowerCase());
+                                                                if (!Array.isArray(formData.tags) || !formData.tags.includes(trimmed)) {
+                                                                    setFormData(prev => ({ ...prev, tags: [...(Array.isArray(prev.tags) ? prev.tags : []), trimmed] }));
+                                                                }
+                                                                if (isNew) saveTagToCategories(trimmed);
+                                                                setTagSearch('');
+                                                            } else if (e.key === 'Backspace' && tagSearch === '' && Array.isArray(formData.tags) && formData.tags.length > 0) {
+                                                                setFormData(prev => ({ ...prev, tags: prev.tags.slice(0, -1) }));
+                                                            } else if (e.key === 'Escape') {
+                                                                setShowTagDropdown(false);
+                                                                setTagSearch('');
+                                                            }
+                                                        }}
+                                                        placeholder={Array.isArray(formData.tags) && formData.tags.length > 0 ? 'Add more...' : 'Search or create a tag...'}
+                                                        className="flex-1 min-w-[140px] outline-none bg-transparent text-sm text-gray-700 placeholder-gray-400 py-0.5"
+                                                    />
+
+                                                    {/* Chevron toggle */}
+                                                    <button
+                                                        type="button"
+                                                        tabIndex={-1}
+                                                        onClick={(e) => { e.stopPropagation(); setShowTagDropdown(prev => !prev); }}
+                                                        className="ml-auto pl-2"
+                                                    >
+                                                        <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${showTagDropdown ? 'rotate-180' : ''}`} />
+                                                    </button>
+                                                </div>
+
+                                                {/* Smart dropdown panel */}
+                                                {showTagDropdown && (() => {
+                                                    const q = tagSearch.trim().toLowerCase();
+                                                    const selectedTags = Array.isArray(formData.tags) ? formData.tags : [];
+
+                                                    // 1. Categories that match the query
+                                                    const filtered = categories.filter(cat =>
+                                                        cat.name.toLowerCase().includes(q)
+                                                    );
+
+                                                    // 2. Semantic suggestions (related terms not already in categories)
+                                                    const semanticSuggestions = q.length >= 2
+                                                        ? getSemanticSuggestions(q, categories, selectedTags)
+                                                        : [];
+
+                                                    const exactMatch = categories.some(cat => cat.name.toLowerCase() === q);
+                                                    const exactMatchInSemantic = semanticSuggestions.some(s => s.toLowerCase() === q);
+                                                    const alreadySelected = q && selectedTags.some(t => t.toLowerCase() === q);
+                                                    const showCreateOption = q && !exactMatch && !exactMatchInSemantic && !alreadySelected;
+                                                    const hasAnything = filtered.length > 0 || semanticSuggestions.length > 0 || showCreateOption;
+
+                                                    return (
+                                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+
+                                                            {/* ── Empty state ── */}
+                                                            {!hasAnything && (
+                                                                <div className="px-4 py-3 text-sm text-gray-400 italic">
+                                                                    {categories.length === 0
+                                                                        ? 'No categories yet. Type anything and press Enter to create a custom tag.'
+                                                                        : q ? 'No matches found. Press Enter to add as a new custom tag.' : 'Start typing to search or create a tag…'}
+                                                                </div>
+                                                            )}
+
+                                                            {/* ── Create custom tag ── */}
+                                                            {showCreateOption && (
+                                                                <button
+                                                                    type="button"
+                                                                    onMouseDown={(e) => {
+                                                                        e.preventDefault();
+                                                                        const trimmed = tagSearch.trim();
+                                                                        setFormData(prev => ({ ...prev, tags: [...(Array.isArray(prev.tags) ? prev.tags : []), trimmed] }));
+                                                                        saveTagToCategories(trimmed);
+                                                                        setTagSearch('');
+                                                                    }}
+                                                                    className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-amber-50 transition-colors text-left border-b border-dashed border-amber-200 bg-amber-50/30 sticky top-0 z-10 backdrop-blur-sm"
+                                                                >
+                                                                    <span className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center flex-shrink-0">
+                                                                        <Plus className="w-3 h-3 text-white" />
+                                                                    </span>
+                                                                    <span className="text-sm font-semibold text-amber-800 flex-1">
+                                                                        Create and auto-save &ldquo;<span className="italic">{tagSearch}</span>&rdquo; to Manage Categories
+                                                                    </span>
+                                                                    <span className="ml-auto text-[10px] text-amber-600 bg-amber-200/50 border border-amber-300 px-1.5 py-0.5 rounded-full font-bold">NEW</span>
+                                                                </button>
+                                                            )}
+
+                                                            {/* ── Section: Categories ── */}
+                                                            {filtered.length > 0 && (
+                                                                <>
+                                                                    <div className="px-4 py-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-widest bg-gray-50 border-b border-gray-100 sticky top-0">
+                                                                        📂 Categories
+                                                                    </div>
+                                                                    {filtered.map(cat => {
+                                                                        const isSelected = selectedTags.includes(cat.name);
+                                                                        const idx = q ? cat.name.toLowerCase().indexOf(q) : -1;
+                                                                        return (
+                                                                            <button
+                                                                                key={cat.category_id}
+                                                                                type="button"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    setFormData(prev => ({
+                                                                                        ...prev,
+                                                                                        tags: isSelected
+                                                                                            ? prev.tags.filter(t => t !== cat.name)
+                                                                                            : [...(Array.isArray(prev.tags) ? prev.tags : []), cat.name]
+                                                                                    }));
+                                                                                    setTagSearch('');
+                                                                                }}
+                                                                                className={`w-full px-4 py-2.5 flex items-center gap-3 transition-colors text-left border-b border-gray-100 last:border-0 ${
+                                                                                    isSelected ? 'bg-[#63A6B2]/5' : 'hover:bg-gray-50'
+                                                                                }`}
+                                                                            >
+                                                                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                                                                                    isSelected ? 'bg-[#63A6B2] border-[#63A6B2]' : 'border-gray-300'
+                                                                                }`}>
+                                                                                    {isSelected && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+                                                                                </div>
+                                                                                <span className={`text-sm flex-1 ${ isSelected ? 'font-semibold text-[#63A6B2]' : 'text-gray-700' }`}>
+                                                                                    {q && idx >= 0
+                                                                                        ? <>
+                                                                                            {cat.name.slice(0, idx)}
+                                                                                            <span className="bg-yellow-100 text-yellow-800 rounded px-0.5 font-semibold">{cat.name.slice(idx, idx + q.length)}</span>
+                                                                                            {cat.name.slice(idx + q.length)}
+                                                                                          </>
+                                                                                        : cat.name
+                                                                                    }
+                                                                                </span>
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </>
+                                                            )}
+
+                                                            {/* ── Section: Smart Suggestions ── */}
+                                                            {semanticSuggestions.length > 0 && (
+                                                                <>
+                                                                    <div className="px-4 py-1.5 text-[10px] text-purple-500 font-bold uppercase tracking-widest bg-purple-50 border-b border-purple-100 border-t border-t-gray-100 sticky top-0">
+                                                                        ✨ Suggested for "{tagSearch}"
+                                                                    </div>
+                                                                    {semanticSuggestions.map(suggestion => {
+                                                                        const isSelected = selectedTags.includes(suggestion);
+                                                                        return (
+                                                                            <button
+                                                                                key={suggestion}
+                                                                                type="button"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    if (!isSelected) {
+                                                                                        setFormData(prev => ({
+                                                                                            ...prev,
+                                                                                            tags: [...(Array.isArray(prev.tags) ? prev.tags : []), suggestion]
+                                                                                        }));
+                                                                                    }
+                                                                                    setTagSearch('');
+                                                                                }}
+                                                                                className={`w-full px-4 py-2.5 flex items-center gap-3 transition-colors text-left border-b border-purple-50 last:border-0 ${
+                                                                                    isSelected ? 'bg-purple-50/60' : 'hover:bg-purple-50'
+                                                                                }`}
+                                                                            >
+                                                                                <span className="w-4 h-4 rounded-full border-2 border-dashed border-purple-300 flex items-center justify-center flex-shrink-0">
+                                                                                    {isSelected && <span className="text-purple-500 text-[10px] font-bold leading-none">✓</span>}
+                                                                                </span>
+                                                                                <span className={`text-sm flex-1 ${ isSelected ? 'line-through text-gray-400' : 'text-purple-700' }`}>
+                                                                                    {suggestion}
+                                                                                </span>
+                                                                                {!isSelected && (
+                                                                                    <span className="text-[10px] text-purple-400 font-semibold bg-purple-100 px-1.5 py-0.5 rounded-full">suggest</span>
+                                                                                )}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
 
                                             {/* Manage Categories button */}
@@ -700,11 +1116,10 @@ export default function AdminStories() {
                                                 Manage Categories
                                             </button>
                                         </div>
-                                        {Array.isArray(formData.tags) && formData.tags.length > 0 && (
-                                            <p className="mt-1.5 text-xs text-gray-500">
-                                                {formData.tags.length} {formData.tags.length === 1 ? 'category' : 'categories'} selected: <span className="font-medium text-[#63A6B2]">{formData.tags.join(', ')}</span>
-                                            </p>
-                                        )}
+                                        {/* Helper hint */}
+                                        <p className="mt-1.5 text-xs text-gray-400">
+                                            Type to search • Press <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Enter</kbd> or click a suggestion to add • <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Backspace</kbd> removes last tag
+                                        </p>
                                     </div>
                                 </div>
 
@@ -1239,7 +1654,7 @@ export default function AdminStories() {
                                                     <Edit className="w-4 h-4" />
                                                 </button>
                                                 <button 
-                                                    onClick={() => handleDeleteCategory(cat.category_id)}
+                                                    onClick={() => setCategoryToDelete(cat)}
                                                     className="p-1.5 text-red-500 hover:bg-white rounded shadow-sm"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
@@ -1251,6 +1666,32 @@ export default function AdminStories() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Delete Confirmation Modal (Nested) */}
+                    {categoryToDelete && (
+                        <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200">
+                                <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Category</h3>
+                                <p className="text-gray-600 mb-6 font-medium">
+                                    Are you sure you want to delete <span className="text-red-500">&ldquo;{categoryToDelete.name}&rdquo;</span>? This will remove it as an option.
+                                </p>
+                                <div className="flex justify-end gap-3 font-semibold">
+                                    <button
+                                        onClick={() => setCategoryToDelete(null)}
+                                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteCategory(categoryToDelete.category_id)}
+                                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition shadow-sm"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
