@@ -138,8 +138,12 @@ export default function DonationConfirmation() {
                 <div className="bg-gradient-to-br from-[#63A6B2] to-[#4a8a95] rounded-2xl p-6 text-white shadow-2xl mb-6">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-teal-100 text-sm font-semibold mb-1">REFERENCE NUMBER</p>
-                            <p className="text-2xl font-bold tracking-wide">DON-{donation.donation_id}</p>
+                            {donation.receipt_number && (
+                                <>
+                                    <p className="text-teal-100 text-sm font-semibold mb-1">REFERENCE NUMBER</p>
+                                    <p className="text-2xl font-bold tracking-wide">{donation.receipt_number}</p>
+                                </>
+                            )}
                         </div>
                         <div className="text-right">
                             <p className="text-teal-100 text-sm font-semibold mb-1">AMOUNT</p>
