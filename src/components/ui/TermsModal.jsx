@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 const TermsModal = ({ isOpen, onClose, onAccept }) => {
-  const [isScrolledToBottom, setIsScrolledToBottom] = useState(false);
+  const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
   const [siteSettings, setSiteSettings] = useState({ terms: '' });
 
   useEffect(() => {
@@ -76,22 +76,16 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
 
         {/* Footer */}
         <div style={{flexShrink: 0, padding: '1.5rem', borderTop: '1px solid #e5e7eb', background: 'white', display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-          {!isScrolledToBottom && (
-            <p style={{fontSize: '0.75rem', textAlign: 'center', color: '#6b7280', fontWeight: 600}}>
-              Please scroll to the bottom to accept the Terms of Service
-            </p>
-          )}
           <div style={{display: 'flex', gap: '0.75rem'}}>
             <button
               onClick={onAccept}
-              disabled={!isScrolledToBottom}
               style={{
                 flex: 1, padding: '0.75rem 1.5rem', borderRadius: '0.5rem',
                 fontWeight: 600, fontSize: '0.875rem', textTransform: 'uppercase',
-                cursor: isScrolledToBottom ? 'pointer' : 'not-allowed',
+                cursor: 'pointer',
                 border: 'none',
-                background: isScrolledToBottom ? 'linear-gradient(to right, #63A6B2, #4a8a95)' : '#d1d5db',
-                color: isScrolledToBottom ? 'white' : '#9ca3af',
+                background: 'linear-gradient(to right, #63A6B2, #4a8a95)',
+                color: 'white',
                 transition: 'all 0.2s'
               }}
             >

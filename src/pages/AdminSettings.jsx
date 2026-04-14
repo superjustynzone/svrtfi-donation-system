@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import {
     Save, RefreshCw, CheckCircle,
-    LayoutTemplate, Upload, X, ShieldCheck, FileText
+    LayoutTemplate, Upload, X, ShieldCheck, FileText, Download, List
 } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
@@ -12,6 +12,7 @@ import 'react-quill-new/dist/quill.snow.css';
 export default function AdminSettings() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const logoInputRef = useRef(null);
+    const csvFileRef = useRef(null);
 
     // ─── Site branding state ──────────────────────────────────────────
     const getSettings = () => {
@@ -57,6 +58,66 @@ export default function AdminSettings() {
     const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
     const [savedTerms, setSavedTerms] = useState(false);
     const [savedPrivacy, setSavedPrivacy] = useState(false);
+
+    // ─── Receipt Sequence State ───────────────────────────────────────
+    const [isSavingSeq, setIsSavingSeq] = useState(false);
+    const [savedSeq, setSavedSeq] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [sequences, setSequences] = useState([]);
+    const [isLoadingView, setIsLoadingView] = useState(false);
+
+    const handleViewSequences = async () => {
+        setShowViewModal(true);
+        setIsLoadingView(true);
+        try {
+            const res = await fetch('http://localhost:5000/api/admin/receipt-sequences');
+            const data = await res.json();
+            if (res.ok) {
+                setSequences(data);
+            } else {
+                toast.error('Failed to fetch sequences');
+            }
+        } catch (err) {
+            toast.error('Connection error.');
+            console.error(err);
+        } finally {
+            setIsLoadingView(false);
+        }
+    };
+
+    const handleCSVUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+            toast.error('Please upload a CSV file.');
+            if (csvFileRef.current) csvFileRef.current.value = '';
+            return;
+        }
+
+        setIsSavingSeq(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('http://localhost:5000/api/admin/receipt-sequences/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success(data.message || 'Sequences uploaded successfully!');
+                setSavedSeq(true);
+                setTimeout(() => setSavedSeq(false), 3000);
+            } else {
+                toast.error(data.message || 'Failed to upload sequences.');
+            }
+        } catch (err) {
+            toast.error('Connection error.');
+        } finally {
+            setIsSavingSeq(false);
+            if (csvFileRef.current) csvFileRef.current.value = '';
+        }
+    };
 
     useEffect(() => {
         fetchSiteSettings();
@@ -205,7 +266,67 @@ export default function AdminSettings() {
                         </div>
                     </section>
 
-                    {/* ② TERMS & CONDITIONS ────────────────────────── */}
+                    {/* ② RECEIPT SEQUENCES ─────────────────────────── */}
+                    <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="bg-gradient-to-r from-slate-50 to-white px-6 pt-6 pb-5 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-[#63A6B2]/10 rounded-lg">
+                                    <FileText className="w-4 h-4 text-[#63A6B2]" />
+                                </div>
+                                <h2 className="text-base font-bold text-slate-800">Receipt Sequences</h2>
+                            </div>
+                            <p className="text-sm text-slate-500 mt-1">Manage bulk receipt sequence numbers for your email receipts. Warning: Uploading a new CSV will overwrite existing unused sequences.</p>
+                        </div>
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Upload Box */}
+                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 flex flex-col justify-between">
+                                    <div>
+                                        <div className="w-10 h-10 rounded-lg bg-[#63A6B2]/10 border border-[#63A6B2]/20 flex items-center justify-center mb-3">
+                                            <Upload className="w-5 h-5 text-[#63A6B2]" />
+                                        </div>
+                                        <h3 className="text-sm font-bold text-slate-800 mb-1">Upload New Sequences</h3>
+                                        <p className="text-xs text-slate-500 leading-relaxed max-w-sm mb-5">
+                                            Upload a CSV containing your sequence numbers in the first column. Existing unused sequences will be deleted.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 mt-auto">
+                                        <button type="button" onClick={() => csvFileRef.current?.click()} disabled={isSavingSeq}
+                                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#63A6B2] text-white text-xs font-semibold rounded-lg hover:bg-[#4a8a95] transition-all shadow-sm shadow-[#63A6B2]/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            {isSavingSeq ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} 
+                                            {isSavingSeq ? 'Uploading...' : 'Choose CSV File'}
+                                        </button>
+                                        <input ref={csvFileRef} type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
+                                    </div>
+                                </div>
+
+                                {/* Manage Box */}
+                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 flex flex-col justify-between">
+                                    <div>
+                                        <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100/50 flex items-center justify-center mb-3">
+                                            <List className="w-5 h-5 text-emerald-600" />
+                                        </div>
+                                        <h3 className="text-sm font-bold text-slate-800 mb-1">Sequence Management</h3>
+                                        <p className="text-xs text-slate-500 leading-relaxed max-w-sm mb-5">
+                                            Download a template to get started, or view the status of currently uploaded sequences.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 mt-auto">
+                                        <button type="button" onClick={handleViewSequences}
+                                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-sm">
+                                            <List className="w-4 h-4" /> View Sequences
+                                        </button>
+                                        <a href="http://localhost:5000/api/admin/receipt-sequences/template" download
+                                           className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">
+                                            <Download className="w-4 h-4" /> Download Template
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* ③ TERMS & CONDITIONS ────────────────────────── */}
                     <section className="bg-white rounded-2xl border border-gray-100 shadow-sm">
                         <div className="px-6 pt-6 pb-4 border-b border-gray-100">
                             <div className="flex items-center gap-2">
@@ -248,6 +369,81 @@ export default function AdminSettings() {
                     </section>
                 </div>
             </main>
+
+            {/* VIEW SEQUENCES MODAL */}
+            {showViewModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800 tracking-tight">Receipt Sequences</h3>
+                                <p className="text-sm text-slate-500 mt-1">Review your uploaded sequence numbers.</p>
+                            </div>
+                            <button onClick={() => setShowViewModal(false)}
+                                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+                            {isLoadingView ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <RefreshCw className="w-8 h-8 text-[#63A6B2] animate-spin" />
+                                </div>
+                            ) : sequences.length === 0 ? (
+                                <div className="text-center py-12 bg-white rounded-xl border border-slate-200 border-dashed">
+                                    <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                                    <p className="text-slate-500 font-medium">No sequences found</p>
+                                    <p className="text-sm text-slate-400 mt-1">Upload a CSV file to add sequences.</p>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50/80 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                                                <th className="px-5 py-3">Sequence Number</th>
+                                                <th className="px-5 py-3">Status</th>
+                                                <th className="px-5 py-3">Added On</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 text-sm">
+                                            {sequences.map(seq => (
+                                                <tr key={seq.id} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="px-5 py-3 font-mono font-medium text-slate-700">{seq.sequence_number}</td>
+                                                    <td className="px-5 py-3">
+                                                        {seq.is_used ? (
+                                                            <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold uppercase tracking-wide">
+                                                                Used
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 text-[11px] font-bold uppercase tracking-wide">
+                                                                Available
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-5 py-3 text-slate-500">
+                                                        {new Date(seq.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 border-t border-slate-100 bg-white shrink-0 flex justify-end">
+                             <button onClick={() => setShowViewModal(false)}
+                                    className="px-5 py-2 min-w-[100px] bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl transition-all shadow-sm">
+                                Close
+                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

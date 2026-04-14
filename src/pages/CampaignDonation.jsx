@@ -34,8 +34,8 @@ export default function CampaignDonation() {
     }, []);
     const [showPrivacyModal, setShowPrivacyModal] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
-    const [isPrivacyScrolledToBottom, setIsPrivacyScrolledToBottom] = useState(false);
-    const [isTermsScrolledToBottom, setIsTermsScrolledToBottom] = useState(false);
+    const [isPrivacyScrolledToBottom, setIsPrivacyScrolledToBottom] = useState(true);
+    const [isTermsScrolledToBottom, setIsTermsScrolledToBottom] = useState(true);
 
     // Detect logged-in user
     const loggedInUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
@@ -537,13 +537,8 @@ export default function CampaignDonation() {
                                     type="checkbox"
                                     id="privacy"
                                     checked={agreedToPrivacy}
-                                    disabled={!isPrivacyScrolledToBottom || !isTermsScrolledToBottom}
                                     onChange={(e) => setAgreedToPrivacy(e.target.checked)}
-                                    className={`w-5 h-5 mt-0.5 text-[#63A6B2] rounded focus:ring-[#63A6B2] flex-shrink-0 ${
-                                        isPrivacyScrolledToBottom && isTermsScrolledToBottom
-                                            ? 'cursor-pointer'
-                                            : 'cursor-not-allowed opacity-50'
-                                    }`}
+                                    className="w-5 h-5 mt-0.5 text-[#63A6B2] rounded focus:ring-[#63A6B2] flex-shrink-0 cursor-pointer"
                                 />
                                 <label htmlFor="privacy" className="text-sm text-gray-700 cursor-pointer leading-relaxed">
                                     I agree to the{' '}
@@ -886,17 +881,9 @@ export default function CampaignDonation() {
                         </div>
                         {/* Footer */}
                         <div className="p-6 border-t border-gray-200 flex-shrink-0">
-                            {!isPrivacyScrolledToBottom && (
-                                <p className="text-xs text-center text-gray-500 mb-3 font-semibold animate-pulse">
-                                    Please scroll to the bottom to accept the Privacy Policy
-                                </p>
-                            )}
                             <button
                                 onClick={() => { setShowPrivacyModal(false); setAgreedToPrivacy(true); }}
-                                disabled={!isPrivacyScrolledToBottom}
-                                className={`w-full py-3 text-white rounded-xl font-bold hover:shadow-lg transition-all ${isPrivacyScrolledToBottom
-                                    ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95]'
-                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                                className="w-full py-3 text-white rounded-xl font-bold bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] hover:shadow-lg transition-all"
                             >
                                 I Understand
                             </button>
@@ -931,17 +918,9 @@ export default function CampaignDonation() {
                         </div>
                         {/* Footer */}
                         <div className="p-6 border-t border-gray-200 flex-shrink-0">
-                            {!isTermsScrolledToBottom && (
-                                <p className="text-xs text-center text-gray-500 mb-3 font-semibold animate-pulse">
-                                    Please scroll to the bottom to accept the Terms of Service
-                                </p>
-                            )}
                             <button
                                 onClick={() => setShowTermsModal(false)}
-                                disabled={!isTermsScrolledToBottom}
-                                className={`w-full py-3 text-white rounded-xl font-bold hover:shadow-lg transition-all ${isTermsScrolledToBottom
-                                    ? 'bg-gradient-to-r from-[#63A6B2] to-[#4a8a95]'
-                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                                className="w-full py-3 text-white rounded-xl font-bold bg-gradient-to-r from-[#63A6B2] to-[#4a8a95] hover:shadow-lg transition-all"
                             >
                                 I Understand
                             </button>

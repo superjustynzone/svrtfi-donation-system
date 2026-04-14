@@ -774,10 +774,12 @@ function ReceiptModal({ data: d, handleClose }) {
                                     <div className="text-right">
                                         <h1 className="text-3xl font-bold mb-1">Official Receipt</h1>
                                         <p className="text-teal-100 text-sm mb-3">Tax Deductible Donation</p>
-                                        <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
-                                            <p className="text-xs text-teal-100">Receipt No.</p>
-                                            <p className="text-xl font-bold">RCP-2026-{String(d.donation_id).padStart(6, '0')}</p>
-                                        </div>
+                                        {d.receipt_number && (
+                                            <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
+                                                <p className="text-xs text-teal-100">Receipt No.</p>
+                                                <p className="text-xl font-bold">{d.receipt_number}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

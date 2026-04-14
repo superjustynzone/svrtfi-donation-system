@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Send, RefreshCw, FileText, CheckCircle, Server, List, History, Settings, Users, ArrowRight, Mail, Search, Clock, ShieldCheck, MailWarning, Eye, X } from 'lucide-react';
+import { Send, RefreshCw, FileText, CheckCircle, Server, List, History, Settings, Users, ArrowRight, Mail, Search, Clock, ShieldCheck, MailWarning, Eye, X, ChevronUp, ChevronDown, Code, Download } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 export default function AdminMailing() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -69,6 +72,145 @@ export default function AdminMailing() {
 
     // CSV Import State
     const [isImporting, setIsImporting] = useState(false);
+
+    // Export State
+    const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+
+    // Code View States
+    const [isLetterCodeView, setIsLetterCodeView] = useState(false);
+    const [isBlastCodeView, setIsBlastCodeView] = useState(false);
+    const [isReceiptCodeView, setIsReceiptCodeView] = useState(false);
+
+    // Search State
+    const [subscriberSearchTerm, setSubscriberSearchTerm] = useState('');
+
+    // Sorting State
+    const [sortConfig, setSortConfig] = useState({ key: 'subscribed_at', direction: 'desc' });
+
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedSubscribers = [...subscribers].sort((a, b) => {
+        if (!sortConfig.key) return 0;
+        
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+
+        // Handle specific columns
+        if (sortConfig.key === 'subscriber') {
+            aVal = `${a.first_name} ${a.last_name}`.toLowerCase();
+            bVal = `${b.first_name} ${b.last_name}`.toLowerCase();
+        } else if (sortConfig.key === 'campaign') {
+            aVal = (a.campaign_name || '').toLowerCase();
+            bVal = (b.campaign_name || '').toLowerCase();
+        } else if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const filteredAndSortedSubscribers = sortedSubscribers.filter(sub => {
+        if (!subscriberSearchTerm) return true;
+        const q = subscriberSearchTerm.toLowerCase();
+        const fullName = `${sub.first_name} ${sub.last_name}`.toLowerCase();
+        const email = (sub.email || '').toLowerCase();
+        return fullName.includes(q) || email.includes(q);
+    });
+
+    // Export Functions
+    const handleExportCSV = () => {
+        try {
+            const headers = ['First Name', 'Last Name', 'Email', 'Campaign', 'Status', 'Subscribed At'];
+            const rows = filteredAndSortedSubscribers.map(s => [
+                s.first_name,
+                s.last_name,
+                s.email,
+                s.campaign_name || 'Global',
+                s.status,
+                new Date(s.subscribed_at).toLocaleDateString()
+            ]);
+
+            const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `mailing_list_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success('CSV Exported successfully!');
+        } catch (err) {
+            toast.error('Failed to export CSV');
+        } finally {
+            setIsExportDropdownOpen(false);
+        }
+    };
+
+    const handleExportExcel = () => {
+        try {
+            const data = filteredAndSortedSubscribers.map(s => ({
+                'First Name': s.first_name,
+                'Last Name': s.last_name,
+                'Email': s.email,
+                'Campaign': s.campaign_name || 'Global',
+                'Status': s.status,
+                'Subscribed At': new Date(s.subscribed_at).toLocaleDateString()
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Subscribers");
+            XLSX.writeFile(workbook, `mailing_list_${new Date().toISOString().split('T')[0]}.xlsx`);
+            toast.success('Excel Exported successfully!');
+        } catch (err) {
+            toast.error('Failed to export Excel');
+        } finally {
+            setIsExportDropdownOpen(false);
+        }
+    };
+
+    const handleExportPDF = () => {
+        try {
+            const doc = new jsPDF();
+            doc.setFontSize(18);
+            doc.setTextColor(99, 166, 178);
+            doc.text("Shepherd's Voice - Mailing List Report", 14, 20);
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Generated: ${new Date().toLocaleString()} | Total: ${filteredAndSortedSubscribers.length} recipients`, 14, 28);
+
+            autoTable(doc, {
+                head: [["Name", "Email", "Campaign", "Status", "Joined"]],
+                body: filteredAndSortedSubscribers.map(s => [
+                    `${s.first_name} ${s.last_name}`,
+                    s.email,
+                    s.campaign_name || 'Global',
+                    s.status.toUpperCase(),
+                    new Date(s.subscribed_at).toLocaleDateString()
+                ]),
+                startY: 35,
+                headStyles: { fillColor: [99, 166, 178], textColor: [255, 255, 255] },
+                alternateRowStyles: { fillColor: [245, 250, 251] },
+            });
+
+            doc.save(`mailing_list_${new Date().toISOString().split('T')[0]}.pdf`);
+            toast.success('PDF Exported successfully!');
+        } catch (err) {
+            toast.error('Failed to export PDF');
+        } finally {
+            setIsExportDropdownOpen(false);
+        }
+    };
 
     // SMTP Details State
     const [smtpSettings, setSmtpSettings] = useState({
@@ -1138,8 +1280,27 @@ export default function AdminMailing() {
                                         <p className="text-xs text-gray-400 mt-0.5">Manage users who receive automated updates.</p>
                                     </div>
                                     <div className="flex items-center gap-3">
+                                        <div className="relative group mr-2">
+                                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#63A6B2] transition-colors" />
+                                            <input 
+                                                type="text"
+                                                placeholder="Search names or email..."
+                                                value={subscriberSearchTerm}
+                                                onChange={(e) => setSubscriberSearchTerm(e.target.value)}
+                                                className="pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-xs font-medium focus:bg-white focus:border-[#63A6B2] focus:ring-2 focus:ring-[#63A6B2]/10 outline-none transition-all w-[240px]"
+                                            />
+                                            {subscriberSearchTerm && (
+                                                <button 
+                                                    onClick={() => setSubscriberSearchTerm('')}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+
                                         <div className="flex items-center gap-2 mr-2">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Active Campaign:</span>
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Active Campaign:</span>
                                             <select 
                                                 value={subscriberFilterCampaign} 
                                                 onChange={e => setSubscriberFilterCampaign(e.target.value)}
@@ -1164,11 +1325,42 @@ export default function AdminMailing() {
                                             <FileText className="w-4 h-4" /> Template
                                         </button>
 
-                                        <label className="px-4 py-2 bg-[#63A6B2]/10 text-[#63A6B2] rounded-xl text-sm font-bold cursor-pointer hover:bg-[#63A6B2]/20 flex items-center gap-2 transition-all">
-                                            {isImporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <List className="w-4 h-4" />}
-                                            {isImporting ? 'Importing...' : 'Import CSV'}
-                                            <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} disabled={isImporting} />
-                                        </label>
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+                                                className="px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-gray-50 transition-all shadow-sm"
+                                            >
+                                                <Download className="w-4 h-4 text-[#63A6B2]" /> 
+                                                Export
+                                                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExportDropdownOpen ? 'rotate-180' : ''}`} />
+                                            </button>
+
+                                            {isExportDropdownOpen && (
+                                                <>
+                                                    <div className="fixed inset-0 z-10" onClick={() => setIsExportDropdownOpen(false)} />
+                                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-20 animate-in fade-in zoom-in-95 duration-200">
+                                                        <button onClick={handleExportCSV} className="w-full px-4 py-2.5 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+                                                                <FileText className="w-4 h-4" />
+                                                            </div>
+                                                            CSV File
+                                                        </button>
+                                                        <button onClick={handleExportExcel} className="w-full px-4 py-2.5 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500">
+                                                                <List className="w-4 h-4" />
+                                                            </div>
+                                                            Excel Sheet
+                                                        </button>
+                                                        <button onClick={handleExportPDF} className="w-full px-4 py-2.5 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                                            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500">
+                                                                <FileText className="w-4 h-4" />
+                                                            </div>
+                                                            PDF Report
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
 
                                         <button
                                             onClick={() => {
@@ -1185,15 +1377,75 @@ export default function AdminMailing() {
                                     <table className="w-full text-left">
                                         <thead>
                                             <tr className="bg-gray-50">
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Subscriber</th>
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Campaign</th>
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center whitespace-nowrap">Receipt Pref</th>
-                                                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Account Status</th>
+                                                <th 
+                                                    className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap cursor-pointer hover:bg-gray-100 transition-colors"
+                                                    onClick={() => handleSort('subscriber')}
+                                                >
+                                                    <div className="flex items-center gap-1">
+                                                        Subscriber
+                                                        {sortConfig.key === 'subscriber' ? (
+                                                            sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                        ) : (
+                                                            <div className="w-3 h-3 flex flex-col opacity-20">
+                                                                <ChevronUp className="w-3 h-3 -mb-1" />
+                                                                <ChevronDown className="w-3 h-3" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th 
+                                                    className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap cursor-pointer hover:bg-gray-100 transition-colors"
+                                                    onClick={() => handleSort('campaign')}
+                                                >
+                                                    <div className="flex items-center gap-1">
+                                                        Campaign
+                                                        {sortConfig.key === 'campaign' ? (
+                                                            sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                        ) : (
+                                                            <div className="w-3 h-3 flex flex-col opacity-20">
+                                                                <ChevronUp className="w-3 h-3 -mb-1" />
+                                                                <ChevronDown className="w-3 h-3" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th 
+                                                    className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center whitespace-nowrap cursor-pointer hover:bg-gray-100 transition-colors"
+                                                    onClick={() => handleSort('receipts_opt_in')}
+                                                >
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        Receipt Pref
+                                                        {sortConfig.key === 'receipts_opt_in' ? (
+                                                            sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                        ) : (
+                                                            <div className="w-3 h-3 flex flex-col opacity-20">
+                                                                <ChevronUp className="w-3 h-3 -mb-1" />
+                                                                <ChevronDown className="w-3 h-3" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th 
+                                                    className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                                                    onClick={() => handleSort('status')}
+                                                >
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        Account Status
+                                                        {sortConfig.key === 'status' ? (
+                                                            sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                        ) : (
+                                                            <div className="w-3 h-3 flex flex-col opacity-20">
+                                                                <ChevronUp className="w-3 h-3 -mb-1" />
+                                                                <ChevronDown className="w-3 h-3" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-50">
-                                            {subscribers.length > 0 ? subscribers.map((sub) => (
+                                            {filteredAndSortedSubscribers.length > 0 ? filteredAndSortedSubscribers.map((sub) => (
                                                 <tr key={sub.subscriber_id} className="hover:bg-[#63A6B2]/5 transition-colors group">
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-3">
@@ -1457,23 +1709,42 @@ export default function AdminMailing() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Message Body (Rich HTML Editor)</label>
-                                <div className="quill-editor-container bg-white rounded-2xl overflow-hidden border border-gray-200">
-                                    <ReactQuill 
-                                        theme="snow"
-                                        value={letterForm.message}
-                                        onChange={content => setLetterForm(p => ({ ...p, message: content }))}
-                                        className="min-h-[250px] text-sm"
-                                        placeholder="Compose your professional thank you letter here..."
-                                        modules={{
-                                            toolbar: [
-                                                [{ 'header': [1, 2, 3, false] }],
-                                                ['bold', 'italic', 'underline', 'strike'],
-                                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                                ['link', 'image', 'clean']
-                                            ]
-                                        }}
-                                    />
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase">Message Body ({isLetterCodeView ? 'Raw HTML Code' : 'Rich HTML Editor'})</label>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setIsLetterCodeView(!isLetterCodeView)}
+                                        className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all border ${isLetterCodeView ? 'bg-[#63A6B2] text-white border-[#63A6B2]' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'}`}
+                                    >
+                                        <Code className="w-3 h-3" />
+                                        {isLetterCodeView ? 'Switch to Visual' : 'Switch to Code'}
+                                    </button>
+                                </div>
+                                <div className="quill-editor-container bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-inner">
+                                    {isLetterCodeView ? (
+                                        <textarea
+                                            value={letterForm.message}
+                                            onChange={e => setLetterForm(p => ({ ...p, message: e.target.value }))}
+                                            className="w-full min-h-[300px] p-4 text-xs font-mono bg-[#1E1E1E] text-emerald-400 outline-none resize-y border-none"
+                                            placeholder="Write your raw HTML code here..."
+                                        />
+                                    ) : (
+                                        <ReactQuill 
+                                            theme="snow"
+                                            value={letterForm.message}
+                                            onChange={content => setLetterForm(p => ({ ...p, message: content }))}
+                                            className="min-h-[250px] text-sm"
+                                            placeholder="Compose your professional thank you letter here..."
+                                            modules={{
+                                                toolbar: [
+                                                    [{ 'header': [1, 2, 3, false] }],
+                                                    ['bold', 'italic', 'underline', 'strike'],
+                                                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                    ['link', 'image', 'clean']
+                                                ]
+                                            }}
+                                        />
+                                    )}
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     <span className="text-[10px] font-bold text-[#63A6B2] uppercase tracking-wider">Shortcuts:</span>
@@ -1692,23 +1963,42 @@ export default function AdminMailing() {
                                 <input type="text" value={blastForm.title} onChange={e => setBlastForm(p => ({ ...p, title: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#63A6B2] outline-none" placeholder="e.g. Monthly Newsletter - April 2026" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Message Body (Rich HTML Editor)</label>
-                                <div className="quill-editor-container bg-white rounded-2xl overflow-hidden border border-gray-200">
-                                    <ReactQuill 
-                                        theme="snow"
-                                        value={blastForm.message}
-                                        onChange={content => setBlastForm(p => ({ ...p, message: content }))}
-                                        className="min-h-[250px] text-sm"
-                                        placeholder="Compose your blast email content..."
-                                        modules={{
-                                            toolbar: [
-                                                [{ 'header': [1, 2, 3, false] }],
-                                                ['bold', 'italic', 'underline', 'strike'],
-                                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                                ['link', 'image', 'clean']
-                                            ]
-                                        }}
-                                    />
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase">Message Body ({isBlastCodeView ? 'Raw HTML Code' : 'Rich HTML Editor'})</label>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setIsBlastCodeView(!isBlastCodeView)}
+                                        className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all border ${isBlastCodeView ? 'bg-[#63A6B2] text-white border-[#63A6B2]' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'}`}
+                                    >
+                                        <Code className="w-3 h-3" />
+                                        {isBlastCodeView ? 'Switch to Visual' : 'Switch to Code'}
+                                    </button>
+                                </div>
+                                <div className="quill-editor-container bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-inner">
+                                    {isBlastCodeView ? (
+                                        <textarea
+                                            value={blastForm.message}
+                                            onChange={e => setBlastForm(p => ({ ...p, message: e.target.value }))}
+                                            className="w-full min-h-[300px] p-4 text-xs font-mono bg-[#1E1E1E] text-emerald-400 outline-none resize-y border-none"
+                                            placeholder="Write your raw HTML code here..."
+                                        />
+                                    ) : (
+                                        <ReactQuill 
+                                            theme="snow"
+                                            value={blastForm.message}
+                                            onChange={content => setBlastForm(p => ({ ...p, message: content }))}
+                                            className="min-h-[250px] text-sm"
+                                            placeholder="Compose your blast email content..."
+                                            modules={{
+                                                toolbar: [
+                                                    [{ 'header': [1, 2, 3, false] }],
+                                                    ['bold', 'italic', 'underline', 'strike'],
+                                                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                    ['link', 'image', 'clean']
+                                                ]
+                                            }}
+                                        />
+                                    )}
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     <span className="text-[10px] font-bold text-[#63A6B2] uppercase tracking-wider">Shortcuts:</span>
@@ -1818,23 +2108,42 @@ export default function AdminMailing() {
                                     placeholder="e.g. Official Donation Receipt" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Message Body (Rich HTML Editor)</label>
-                                <div className="quill-editor-container bg-white rounded-2xl overflow-hidden border border-gray-200">
-                                    <ReactQuill 
-                                        theme="snow"
-                                        value={receiptTemplate.message}
-                                        onChange={content => setReceiptTemplate(p => ({ ...p, message: content }))}
-                                        className="min-h-[250px] text-sm"
-                                        placeholder="Thank you for your generous support! Your donation helps..."
-                                        modules={{
-                                            toolbar: [
-                                                [{ 'header': [1, 2, 3, false] }],
-                                                ['bold', 'italic', 'underline', 'strike'],
-                                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                                ['link', 'image', 'clean']
-                                            ]
-                                        }}
-                                    />
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase">Receipt Body ({isReceiptCodeView ? 'Raw HTML Code' : 'Rich HTML Editor'})</label>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setIsReceiptCodeView(!isReceiptCodeView)}
+                                        className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all border ${isReceiptCodeView ? 'bg-[#63A6B2] text-white border-[#63A6B2]' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'}`}
+                                    >
+                                        <Code className="w-3 h-3" />
+                                        {isReceiptCodeView ? 'Switch to Visual' : 'Switch to Code'}
+                                    </button>
+                                </div>
+                                <div className="quill-editor-container bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-inner">
+                                    {isReceiptCodeView ? (
+                                        <textarea
+                                            value={receiptTemplate.message}
+                                            onChange={e => setReceiptTemplate(p => ({ ...p, message: e.target.value }))}
+                                            className="w-full min-h-[300px] p-4 text-xs font-mono bg-[#1E1E1E] text-emerald-400 outline-none resize-y border-none"
+                                            placeholder="Write your raw HTML code here..."
+                                        />
+                                    ) : (
+                                        <ReactQuill 
+                                            theme="snow"
+                                            value={receiptTemplate.message}
+                                            onChange={content => setReceiptTemplate(p => ({ ...p, message: content }))}
+                                            className="min-h-[250px] text-sm"
+                                            placeholder="Customize your receipt content..."
+                                            modules={{
+                                                toolbar: [
+                                                    [{ 'header': [1, 2, 3, false] }],
+                                                    ['bold', 'italic', 'underline', 'strike'],
+                                                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                    ['link', 'image', 'clean']
+                                                ]
+                                            }}
+                                        />
+                                    )}
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     <span className="text-[10px] font-bold text-[#63A6B2] uppercase tracking-wider">Shortcuts:</span>
