@@ -583,16 +583,37 @@ router.patch("/:id/complete", async (req, res) => {
     try {
         await client.query("BEGIN");
 
-        const donationResult = await client.query(
-            `UPDATE donations SET completed_at = NOW(), status = 'completed' WHERE donation_id = $1 RETURNING *`,
+        // 1. Fetch current donation and check for existing receipt
+        const donationCheck = await client.query(
+            `SELECT receipt_number FROM donations WHERE donation_id = $1 FOR UPDATE`,
             [req.params.id]
         );
 
-        if (donationResult.rows.length === 0) {
+        if (donationCheck.rows.length === 0) {
             await client.query("ROLLBACK");
             return res.status(404).json({ message: "Donation not found" });
         }
 
+        let receiptNumber = donationCheck.rows[0].receipt_number;
+
+        // 2. Assign receipt sequence if one doesn't exist
+        if (!receiptNumber) {
+            const seqResult = await client.query(
+                `SELECT id, sequence_number FROM receipt_sequences WHERE is_used = FALSE ORDER BY id ASC LIMIT 1 FOR UPDATE SKIP LOCKED`
+            );
+            if (seqResult.rows.length > 0) {
+                receiptNumber = seqResult.rows[0].sequence_number;
+                await client.query(`UPDATE receipt_sequences SET is_used = TRUE WHERE id = $1`, [seqResult.rows[0].id]);
+            }
+        }
+
+        // 3. Mark donation as completed
+        const donationResult = await client.query(
+            `UPDATE donations SET completed_at = NOW(), status = 'completed', receipt_number = $2 WHERE donation_id = $1 RETURNING *`,
+            [req.params.id, receiptNumber || null]
+        );
+
+        // 4. Mark transaction as completed
         await client.query(
             `UPDATE payment_transactions SET payment_status = 'completed' WHERE donation_id = $1`,
             [req.params.id]

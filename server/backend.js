@@ -296,7 +296,7 @@ app.put("/api/admin/site-settings", async (req, res) => {
 
 // Download CSV Template for Mailing List
 app.get("/api/admin/subscribers/template", (req, res) => {
-  const csvContent = "first_name,last_name,email\nJohn,Doe,john@example.com\nJane,Smith,jane@example.com";
+  const csvContent = "first_name,last_name,email,campaign_id\nJohn,Doe,john@example.com,1\nJane,Smith,jane@example.com,2";
   res.setHeader("Content-Type", "text/csv");
   res.attachment("mailing_list_template.csv");
   res.status(200).send(csvContent);
@@ -323,6 +323,7 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
     const emailIndex = headers.indexOf("email");
     const firstNameIndex = headers.indexOf("first_name");
     const lastNameIndex = headers.indexOf("last_name");
+    const campaignIdIndex = headers.indexOf("campaign_id");
 
     if (emailIndex === -1) {
       return res.status(400).json({ message: "CSV must have an 'email' column" });
@@ -337,6 +338,9 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
       const email = columns[emailIndex];
       const firstName = firstNameIndex !== -1 ? columns[firstNameIndex] : "";
       const lastName = lastNameIndex !== -1 ? columns[lastNameIndex] : "";
+      const rowCampaignId = campaignIdIndex !== -1 && columns[campaignIdIndex] ? columns[campaignIdIndex] : null;
+      
+      const finalCampaignId = rowCampaignId || campaignId;
 
       if (!email || !email.includes("@")) {
         errorCount++;
@@ -348,7 +352,7 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
         if (existing.rows.length === 0) {
           await pool.query(
             "INSERT INTO subscribers (email, first_name, last_name, full_name, receipts_opt_in, campaign_id) VALUES ($1, $2, $3, $4, TRUE, $5)",
-            [email, firstName, lastName, `${firstName} ${lastName}`.trim(), campaignId]
+            [email, firstName, lastName, `${firstName} ${lastName}`.trim(), finalCampaignId]
           );
           successCount++;
         } else {
@@ -671,6 +675,7 @@ const initDB = async () => {
         { name: 'message', type: 'TEXT' },
         { name: 'cancellation_reason', type: 'TEXT' },
         { name: 'status', type: "VARCHAR(50) DEFAULT 'pending'" },
+        { name: 'receipt_number', type: 'VARCHAR(50)' },
         { name: 'campaign_id_cascade', type: 'CAMPAIGN_ID_CASCADE' }
       ];
 
@@ -1582,6 +1587,86 @@ app.put("/api/user/profile/:id", async (req, res) => {
 // ─────────────────────────────────────────────
 const chatbotRoutes = require("./ChatbotBackend");
 app.use("/api/chatbot", chatbotRoutes);
+
+// ─────────────────────────────────────────────
+// Receipt Sequences CSV Upload
+// ─────────────────────────────────────────────
+app.get("/api/admin/receipt-sequences/template", (req, res) => {
+  const csvContent = "sequence_number\nREC-0001\nREC-0002\nREC-0003";
+  res.setHeader("Content-Type", "text/csv");
+  res.attachment("receipt_sequences_template.csv");
+  res.status(200).send(csvContent);
+});
+
+app.get("/api/admin/receipt-sequences", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM receipt_sequences ORDER BY id ASC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching sequences:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/receipt-sequences/upload", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+  try {
+    const filePath = req.file.path;
+    const fileContent = fs.readFileSync(filePath, "utf8");
+    const rows = fileContent.split(/\r?\n/).filter(row => row.trim() !== "");
+
+    if (rows.length === 0) {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return res.status(400).json({ message: "CSV file is empty" });
+    }
+
+    // Overwrite: clear existing sequences
+    await pool.query("TRUNCATE TABLE receipt_sequences RESTART IDENTITY CASCADE");
+
+    let successCount = 0;
+    let duplicateCount = 0;
+    let errorCount = 0;
+
+    let startIndex = 0;
+    const firstRowLower = rows[0].split(",")[0].trim().toLowerCase();
+    if (firstRowLower.includes('sequence') || firstRowLower.includes('receipt')) {
+        startIndex = 1;
+    }
+
+    for (let i = startIndex; i < rows.length; i++) {
+      const sequence = rows[i].split(",")[0].trim();
+      if (!sequence) continue;
+
+      try {
+        const existing = await pool.query("SELECT sequence_number FROM receipt_sequences WHERE sequence_number = $1", [sequence]);
+        if (existing.rows.length === 0) {
+          await pool.query(
+            "INSERT INTO receipt_sequences (sequence_number, is_used) VALUES ($1, FALSE)",
+            [sequence]
+          );
+          successCount++;
+        } else {
+          duplicateCount++;
+        }
+      } catch (err) {
+        console.error("Sequence import error:", err);
+        errorCount++;
+      }
+    }
+
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+    res.json({
+      message: `Sequences imported: \${successCount} successful, \${duplicateCount} duplicates skipped.`,
+      stats: { successCount, duplicateCount, errorCount }
+    });
+  } catch (err) {
+    console.error("❌ CSV Sequence Import Error:", err);
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ message: "Error parsing CSV file", error: err.message });
+  }
+});
 
 // Start server - Listen on port 5000 (standard for this project)
 app.listen(5000, () => {

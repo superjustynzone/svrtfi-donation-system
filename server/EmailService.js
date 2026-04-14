@@ -116,7 +116,8 @@ const sendDonationReceipt = async (donationData) => {
         donor_name, donor_email, amount, campaign_name, donation_id, 
         payment_method, date, frequency, donor_phone, message, 
         receipt_upload, address, address2, barangay, province, city, 
-        zip_code, country, tin_number, foundation_name, foundation_logo 
+        zip_code, country, tin_number, foundation_name, foundation_logo,
+        receipt_number
     } = donationData;
 
     // Build a full address string
@@ -125,7 +126,7 @@ const sendDonationReceipt = async (donationData) => {
         .join(', ') || '—';
 
     // Fetch user-configured template from DB
-    let templateTitle = `Official Donation Receipt - RCP-${donation_id}`;
+    let templateTitle = receipt_number ? `Official Donation Receipt - ${receipt_number}` : 'Official Donation Receipt';
     let thankYouMsg = "Thank you for your generous support! Your donation helps us make a difference.";
     let customMessagePrefix = null; // If set, prepended above the standard receipt
 
@@ -245,10 +246,12 @@ const sendDonationReceipt = async (donationData) => {
                             </div>
                         </td>
                         <td width="30%" align="right">
+                            ${receipt_number ? `
                             <div style="background: rgba(255,255,255,0.15); padding: 12px 18px; border-radius: 12px; backdrop-filter: blur(5px);">
                                 <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Receipt No.</p>
-                                <p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 800;">RCP-2026-${String(donation_id).padStart(6, '0')}</p>
+                                <p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 800;">${receipt_number}</p>
                             </div>
+                            ` : ''}
                         </td>
                     </tr>
                 </table>
