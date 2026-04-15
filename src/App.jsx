@@ -32,6 +32,8 @@ import AdminReports from './pages/AdminReports';
 import AdminMailing from './pages/AdminMailing';
 import Profile from './pages/Profile';
 import VerifyEmail from './pages/VerifyEmail';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import DonationNotification from './components/DonationNotification';
 import ChatBot from './components/ChatBot/ChatBot';
 
@@ -42,8 +44,22 @@ import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 
 function App() {
 
-  // Auto-redirect based on role on mount
-  const user = JSON.parse(localStorage.getItem('user'));
+  // Safe user retrieval helper
+  const getSafeUser = () => {
+    try {
+      const stored = localStorage.getItem('user');
+      if (!stored || stored === 'undefined') return null;
+      return JSON.parse(stored);
+    } catch (err) {
+      console.error("Auth parsing error:", err);
+      // If corrupted, clear it to prevent further crashes
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      return null;
+    }
+  };
+
+  const user = getSafeUser();
 
   const getDefaultRoute = () => {
     if (!user) return "/login";
@@ -52,7 +68,8 @@ function App() {
     if (user.role === "viewer") return "/";
 
     // admins → admin dashboard
-    if (["admin", "finance", "encoder", "auditor"].includes(user.role)) {
+    const adminRoles = ["admin", "super_admin", "finance", "encoder", "auditor"];
+    if (adminRoles.includes(user.role?.toLowerCase())) {
       return "/admin_dashboard";
     }
 
@@ -73,6 +90,8 @@ function App() {
           {/* Auth */}
           <Route path="/login" element={<GuestRoute><UserLogin /></GuestRoute>} />
           <Route path="/signup" element={<GuestRoute><UserSignUp /></GuestRoute>} />
+          <Route path="/forgot-password" element={<GuestRoute><ForgotPassword /></GuestRoute>} />
+          <Route path="/reset-password" element={<GuestRoute><ResetPassword /></GuestRoute>} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
           {/* Public pages */}
@@ -117,7 +136,17 @@ function App() {
 
 // ROLE-BASED ADMIN PROTECTION
 const AdminRoute = ({ children }) => {
-  const user = JSON.parse(localStorage.getItem('user'));
+  const getSafeUser = () => {
+    try {
+      const stored = localStorage.getItem('user');
+      if (!stored || stored === 'undefined') return null;
+      return JSON.parse(stored);
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const user = getSafeUser();
 
   if (!user) return <Navigate to="/login" replace />;
 
@@ -125,7 +154,8 @@ const AdminRoute = ({ children }) => {
   if (user.role === "viewer") return <Navigate to="/" replace />;
 
   // valid admin roles
-  if (!["admin", "finance", "encoder", "auditor"].includes(user.role)) {
+  const adminRoles = ["admin", "super_admin", "finance", "encoder", "auditor"];
+  if (!adminRoles.includes(user.role?.toLowerCase())) {
     return <Navigate to="/" replace />;
   }
 
@@ -143,10 +173,21 @@ const UserRoute = ({ children }) => {
 
 // GUEST-BASED PROTECTION (Blocks logged-in users from login/signup)
 const GuestRoute = ({ children }) => {
-  const user = JSON.parse(localStorage.getItem('user'));
+  const getSafeUser = () => {
+    try {
+      const stored = localStorage.getItem('user');
+      if (!stored || stored === 'undefined') return null;
+      return JSON.parse(stored);
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const user = getSafeUser();
 
   if (user) {
-    if (["admin", "super_admin", "finance", "encoder", "auditor"].includes(user.role?.toLowerCase())) {
+    const adminRoles = ["admin", "super_admin", "finance", "encoder", "auditor"];
+    if (adminRoles.includes(user.role?.toLowerCase())) {
       return <Navigate to="/admin_dashboard" replace />;
     }
     return <Navigate to="/" replace />;

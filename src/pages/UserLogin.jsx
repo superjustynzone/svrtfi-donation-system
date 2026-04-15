@@ -38,14 +38,23 @@ const UserLogin = () => {
 
   const onSubmit = async (data) => {
     try {
-      if (!executeRecaptcha) {
-        toast.error('ReCAPTCHA is not yet available');
-        return;
-      }
-      
       setIsLoading(true);
 
-      const token = await executeRecaptcha('login');
+      let token = '';
+      try {
+        if (!executeRecaptcha) {
+          console.warn('ReCAPTCHA is not yet initialized');
+          toast.error('Security check is still loading. Please try again in a moment.');
+          setIsLoading(false);
+          return;
+        }
+        token = await executeRecaptcha('login');
+      } catch (recaptchaError) {
+        console.error('ReCAPTCHA execution failed:', recaptchaError);
+        toast.error('Security check failed. Please refresh the page.');
+        setIsLoading(false);
+        return;
+      }
 
       const response = await axios.post('http://localhost:5000/api/auth/login', {
         email: data.email,
@@ -61,8 +70,8 @@ const UserLogin = () => {
       toast.success('Login successful! Redirecting...');
 
       setTimeout(() => {
-        const role = response.data.user.role.toLowerCase();
-
+        const user = response.data.user;
+        const role = user.role?.toLowerCase() || "";
         const adminRoles = ["admin", "super_admin", "finance", "encoder", "auditor"];
 
         if (adminRoles.includes(role)) {
@@ -73,6 +82,7 @@ const UserLogin = () => {
       }, 1000);
 
     } catch (err) {
+      console.error("Login submission error:", err);
       toast.error(err.response?.data?.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
@@ -137,9 +147,11 @@ const UserLogin = () => {
                   }
                 })}
               />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
-              )}
+              <div className="min-h-[20px] mt-1">
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email.message}</p>
+                )}
+              </div>
             </div>
 
             {/* Password Field */}
@@ -173,9 +185,11 @@ const UserLogin = () => {
                   )}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>
-              )}
+              <div className="min-h-[20px] mt-1">
+                {errors.password && (
+                  <p className="text-sm text-red-500">{errors.password.message}</p>
+                )}
+              </div>
             </div>
 
             {/* Hidden CSRF Token Field */}

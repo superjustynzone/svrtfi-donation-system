@@ -14,6 +14,7 @@ const pool = new Pool({
 });
 
 const axios = require("axios");
+const { sendPasswordResetCode } = require("./EmailService");
 
 // ReCAPTCHA Verification Helper
 const verifyCaptcha = async (token) => {
@@ -120,6 +121,87 @@ router.post("/login", async (req, res) => {
 
   } catch (err) {
     console.error("LOGIN ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// FORGOT PASSWORD REQUEST
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required." });
+  }
+
+  try {
+    const userRes = await pool.query(
+      `SELECT a.user_id, u.first_name 
+       FROM auth_users a 
+       JOIN users u ON a.user_id = u.user_id 
+       WHERE a.email = $1`,
+      [email]
+    );
+
+    if (userRes.rows.length === 0) {
+      // Return success anyway to prevent email enumeration attacks
+      return res.json({ message: "If your email is registered, you will receive a reset code." });
+    }
+
+    const user = userRes.rows[0];
+    const verificationCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Store the reset code
+    await pool.query(
+      "UPDATE auth_users SET verification_code = $1 WHERE email = $2",
+      [verificationCode, email]
+    );
+
+    try {
+      await sendPasswordResetCode(email, user.first_name, verificationCode);
+    } catch (emailErr) {
+      console.error("Failed to send password reset email:", emailErr);
+      // Fall through to success anyway
+    }
+
+    res.json({ message: "If your email is registered, you will receive a reset code." });
+  } catch (err) {
+    console.error("FORGOT PASSWORD ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// RESET PASSWORD 
+router.post("/reset-password", async (req, res) => {
+  const { email, code, newPassword } = req.body;
+
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ message: "All fields are required." });
+  }
+
+  try {
+    const userRes = await pool.query(
+      "SELECT user_id FROM auth_users WHERE email = $1 AND verification_code = $2",
+      [email, code]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid or expired reset code." });
+    }
+
+    const { user_id } = userRes.rows[0];
+
+    // Hash new password
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password and clear code
+    await pool.query(
+      "UPDATE auth_users SET hash_password = $1, verification_code = NULL, updated_at = NOW() WHERE user_id = $2",
+      [newHash, user_id]
+    );
+
+    res.json({ message: "Password has been successfully reset. You can now log in." });
+  } catch (err) {
+    console.error("RESET PASSWORD ERROR:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

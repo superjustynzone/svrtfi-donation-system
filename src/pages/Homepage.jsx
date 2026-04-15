@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Heart, Users, HandHeart, TrendingUp, Calendar, ChevronRight, Phone, Mail, MapPin } from 'lucide-react';
-import { Toaster } from "sonner";
-export { Toaster };
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 

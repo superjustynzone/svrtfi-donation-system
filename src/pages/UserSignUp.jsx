@@ -83,13 +83,23 @@ const UserSignUp = () => {
 
   const onSubmit = async (data) => {
     try {
-      if (!executeRecaptcha) {
-        toast.error('ReCAPTCHA is not yet available');
-        return;
-      }
       setIsLoading(true);
 
-      const token = await executeRecaptcha('signup');
+      let token = '';
+      try {
+        if (!executeRecaptcha) {
+          console.warn('ReCAPTCHA is not yet initialized');
+          toast.error('Security check is still loading. Please try again in a moment.');
+          setIsLoading(false);
+          return;
+        }
+        token = await executeRecaptcha('signup');
+      } catch (recaptchaError) {
+        console.error('ReCAPTCHA execution failed:', recaptchaError);
+        toast.error('Security check failed. Please refresh the page.');
+        setIsLoading(false);
+        return;
+      }
 
       const response = await axios.post('http://localhost:5000/api/auth_users/register', {
         firstName: data.firstName,
@@ -110,6 +120,7 @@ const UserSignUp = () => {
       }, 1500);
 
     } catch (err) {
+      console.error("Signup submission error:", err);
       toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -180,9 +191,11 @@ const UserSignUp = () => {
                     }
                   })}
                 />
-                {errors.firstName && (
-                  <p className="mt-1 text-sm text-red-500">{errors.firstName.message}</p>
-                )}
+                <div className="min-h-[20px] mt-1">
+                  {errors.firstName && (
+                    <p className="text-sm text-red-500">{errors.firstName.message}</p>
+                  )}
+                </div>
               </div>
 
               {/* Last Name */}
@@ -203,9 +216,11 @@ const UserSignUp = () => {
                     }
                   })}
                 />
-                {errors.lastName && (
-                  <p className="mt-1 text-sm text-red-500">{errors.lastName.message}</p>
-                )}
+                <div className="min-h-[20px] mt-1">
+                  {errors.lastName && (
+                    <p className="text-sm text-red-500">{errors.lastName.message}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -227,9 +242,11 @@ const UserSignUp = () => {
                   }
                 })}
               />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
-              )}
+              <div className="min-h-[20px] mt-1">
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email.message}</p>
+                )}
+              </div>
             </div>
 
             {/* Password Field */}
@@ -268,9 +285,11 @@ const UserSignUp = () => {
                   )}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>
-              )}
+              <div className="min-h-[20px] mt-1">
+                {errors.password && (
+                  <p className="text-sm text-red-500">{errors.password.message}</p>
+                )}
+              </div>
 
               {/* Password Strength Meter */}
               {currentPassword && (
@@ -343,9 +362,11 @@ const UserSignUp = () => {
                   )}
                 </button>
               </div>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-500">{errors.confirmPassword.message}</p>
-              )}
+              <div className="min-h-[20px] mt-1">
+                {errors.confirmPassword && (
+                  <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
+                )}
+              </div>
             </div>
 
             {/* Hidden CSRF Token Field */}
@@ -381,9 +402,11 @@ const UserSignUp = () => {
                   </button>
                 </label>
               </div>
-              {errors.terms && (
-                <p className="mt-1 text-sm text-red-500">{errors.terms.message}</p>
-              )}
+              <div className="min-h-[20px] mt-1">
+                {errors.terms && (
+                  <p className="text-sm text-red-500">{errors.terms.message}</p>
+                )}
+              </div>
             </div>
 
             {/* ReCAPTCHA v3 is invisible */}
