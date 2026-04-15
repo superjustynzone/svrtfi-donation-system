@@ -130,6 +130,28 @@ router.get("/summary", verifyAdmin, async (req, res) => {
     }
 });
 
+// GET /api/admin/reports/advanced-table - Large dataset for SearchBuilder
+router.get("/advanced-table", verifyAdmin, async (req, res) => {
+    try {
+        const donationsQuery = await pool.query(`
+            SELECT 
+                d.donation_id, d.amount, d.payment_method, d.initiated_at,
+                c.campaign_name, pt.payment_status, pt.payment_reference,
+                COALESCE(NULLIF(TRIM(dn.first_name || ' ' || dn.last_name), ''), dn.email, 'Anonymous') as donor_name,
+                dn.email as donor_email
+            FROM donations d
+            JOIN campaigns c ON d.campaign_id = c.campaign_id
+            JOIN payment_transactions pt ON d.donation_id = pt.donation_id
+            LEFT JOIN donors dn ON d.donor_id = dn.donor_id
+            ORDER BY d.initiated_at DESC LIMIT 2000
+        `);
+        res.json(donationsQuery.rows);
+    } catch (err) {
+        console.error("Advanced table fetch error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/admin/reports/trends - Data for charts with filters
 router.get("/trends", verifyAdmin, async (req, res) => {
     const { interval = 'month', startDate, endDate, campaignId, foundationId, donorId, userId } = req.query;

@@ -302,7 +302,7 @@ export default function AdminMailing() {
                 setCampaigns(data);
                 if (data.length > 0) {
                     if (!selectedCampaignId) setSelectedCampaignId(data[0].campaign_id);
-                    if (!subscriberFilterCampaign) setSubscriberFilterCampaign(data[0].campaign_id);
+                    if (!subscriberFilterCampaign) setSubscriberFilterCampaign('all');
                 }
             }
         } catch (err) { console.error('Error fetching campaigns:', err); }
@@ -1306,6 +1306,7 @@ export default function AdminMailing() {
                                                 onChange={e => setSubscriberFilterCampaign(e.target.value)}
                                                 className="min-w-[180px] bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-bold text-[#63A6B2] shadow-sm outline-none focus:ring-1 focus:ring-[#63A6B2]"
                                             >
+                                                <option value="all">All Campaigns</option>
                                                 {campaigns.map(c => (
                                                     <option key={c.campaign_id} value={c.campaign_id}>{c.campaign_name}</option>
                                                 ))}
@@ -1364,7 +1365,7 @@ export default function AdminMailing() {
 
                                         <button
                                             onClick={() => {
-                                                setSubscriberForm(p => ({ ...p, campaign_id: subscriberFilterCampaign }));
+                                                setSubscriberForm(p => ({ ...p, campaign_id: subscriberFilterCampaign === 'all' ? '' : subscriberFilterCampaign }));
                                                 setIsAddSubscriberModalOpen(true);
                                             }}
                                             className="px-4 py-2 bg-[#63A6B2] text-white rounded-xl text-sm font-bold shadow-sm hover:bg-[#4a8a95] flex items-center gap-2"

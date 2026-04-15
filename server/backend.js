@@ -1668,6 +1668,12 @@ app.post("/api/admin/receipt-sequences/upload", upload.single("file"), async (re
   }
 });
 
+// ─────────────────────────────────────────────
+// Analytics Routes (GA4 + Partial Donations + Top Donors per Campaign)
+// ─────────────────────────────────────────────
+const analyticsRouter = require("./AnalyticsBackend");
+app.use("/api/admin/analytics", analyticsRouter);
+
 // Start server - Listen on port 5000 (standard for this project)
 app.listen(5000, () => {
   console.log("Nagana na yah! Running on http://localhost:5000");
