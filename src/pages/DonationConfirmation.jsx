@@ -140,10 +140,14 @@ export default function DonationConfirmation() {
                         <div>
                             {donation.receipt_number && (
                                 <>
-                                    <p className="text-teal-100 text-sm font-semibold mb-1">REFERENCE NUMBER</p>
+                                    <p className="text-teal-100 text-sm font-semibold mb-1">RECEIPT NUMBER</p>
                                     <p className="text-2xl font-bold tracking-wide">{donation.receipt_number}</p>
                                 </>
                             )}
+                            <div className="mt-2">
+                                <p className="text-teal-100 text-xs font-semibold mb-0.5">PAYMENT REFERENCE</p>
+                                <p className="text-sm font-mono opacity-90">{donation.payment_reference || 'N/A'}</p>
+                            </div>
                         </div>
                         <div className="text-right">
                             <p className="text-teal-100 text-sm font-semibold mb-1">AMOUNT</p>
@@ -192,7 +196,7 @@ export default function DonationConfirmation() {
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 font-semibold mb-1">Transaction ID</p>
-                            <p className="text-gray-900 font-mono text-sm">GC-{donation.donation_id}-5F8A98</p>
+                            <p className="text-gray-900 font-mono text-sm">{donation.transaction_id || 'N/A'}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 font-semibold mb-1">Donor Name</p>

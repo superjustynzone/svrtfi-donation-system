@@ -1,5 +1,14 @@
 //Backend.js (Handles the Backend)
 console.log("🚀 BACKEND VERSION: TXN_FIX_V4");
+
+// Prevent server crash on unhandled errors (especially SMTP/Network issues)
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('⚠️ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('⚠️ Uncaught Exception:', err);
+});
+
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -64,7 +73,28 @@ const upload = multer({
 // ─────────────────────────────────────────────
 // Mailing Routes (Priority)
 // ─────────────────────────────────────────────
-const { sendEmail, sendVerificationCode } = require("./EmailService");
+const { sendEmail, sendVerificationCode, clearTransporterCache } = require("./EmailService");
+
+// Smart HTML wrapper logic to avoid double-nesting tags
+const wrapEmailHtml = (content) => {
+  const isFullHtml = /<html|<!DOCTYPE/i.test(content);
+  if (isFullHtml) {
+    return content; // Return as-is if it's already a full document
+  }
+  // Otherwise wrap in professional container
+  return `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #334155; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; max-width: 600px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <img src="https://feast.ph/wp-content/uploads/2024/02/Feast-Logo.png" alt="Logo" style="height: 50px;">
+        </div>
+        <div style="font-size: 16px;">
+            ${content}
+        </div>
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #94a3b8; text-align: center;">
+            Shepherd's Voice Radio and Television Foundation, Inc.
+        </div>
+    </div>`;
+};
 
 app.post("/api/admin/send-email", async (req, res) => {
   const { to, subject, message } = req.body;
@@ -74,9 +104,7 @@ app.post("/api/admin/send-email", async (req, res) => {
   const result = await sendEmail(
     to,
     subject,
-    `<div style="font-family: sans-serif; line-height: 1.6; color: #333; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-            ${message.replace(/\n/g, '<br>')}
-        </div>`
+    wrapEmailHtml(message)
   );
 
   if (result.success) {
@@ -215,7 +243,7 @@ app.get("/api/admin/smtp-settings", async (req, res) => {
       // settings.password = "********"; 
       res.json(settings);
     } else {
-      res.json({ provider: "Gmail", host: "smtp.gmail.com", port: 465, user_email: "", encryption: "SSL/TLS" });
+      res.json({ provider: "Gmail", host: "smtp.gmail.com", port: 465, user_email: "", sender_email: "", encryption: "SSL/TLS" });
     }
   } catch (err) {
     console.error("Error fetching SMTP settings:", err);
@@ -232,8 +260,9 @@ app.post("/api/admin/smtp-settings", async (req, res) => {
     if (existing.rows.length > 0) {
       // Update
       const id = existing.rows[0].id;
-      let updateFields = ["provider = $1", "host = $2", "port = $3", "user_email = $4", "encryption = $5", "updated_at = NOW()"];
-      let values = [provider, host, port, user_email, encryption];
+      const finalUser = provider === 'SendGrid' ? 'apikey' : user_email;
+      let updateFields = ["provider = $1", "host = $2", "port = $3", "user_email = $4", "encryption = $5", "sender_email = $6", "updated_at = NOW()"];
+      let values = [provider, host, port, finalUser, encryption, req.body.sender_email || finalUser];
 
       // Only update password if it's provided and not the stars/placeholder
       if (password && password !== "********" && password.trim() !== "") {
@@ -247,11 +276,16 @@ app.post("/api/admin/smtp-settings", async (req, res) => {
       );
     } else {
       // Insert
+      const finalUser = provider === 'SendGrid' ? 'apikey' : user_email;
       await pool.query(
-        "INSERT INTO smtp_settings (provider, host, port, user_email, password, encryption) VALUES ($1, $2, $3, $4, $5, $6)",
-        [provider, host, port, user_email, password, encryption]
+        "INSERT INTO smtp_settings (provider, host, port, user_email, password, encryption, sender_email) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        [provider, host, port, finalUser, password, encryption, req.body.sender_email || finalUser]
       );
     }
+    
+    // Clear the transporter cache so new settings are applied
+    clearTransporterCache();
+    
     res.json({ message: "SMTP settings updated successfully!" });
   } catch (err) {
     console.error("Error saving SMTP settings:", err);
@@ -676,6 +710,7 @@ const initDB = async () => {
         { name: 'cancellation_reason', type: 'TEXT' },
         { name: 'status', type: "VARCHAR(50) DEFAULT 'pending'" },
         { name: 'receipt_number', type: 'VARCHAR(50)' },
+        { name: 'transaction_id', type: 'VARCHAR(50) UNIQUE' },
         { name: 'campaign_id_cascade', type: 'CAMPAIGN_ID_CASCADE' }
       ];
 
@@ -1202,24 +1237,13 @@ app.post("/api/admin/bulk-send-emails", async (req, res) => {
         personalizedHtml = personalizedHtml.replace(regex, val);
       });
 
-      // Wrap in standard container - Trusting Quill HTML
-      const finalHtml = `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; padding: 40px 20px; text-align: center;">
-          <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: left; border: 1px solid #eef2f6;">
-              <div style="background: linear-gradient(135deg, #63A6B2 0%, #4a8a95 100%); padding: 30px; text-align: center;">
-                  <img src="https://svrtf.org/images/logo.png" alt="SVRTV Logo" style="width: 70px; height: 70px; border-radius: 50%; background: white; padding: 5px; object-fit: contain;">
-              </div>
-              <div style="padding: 40px; color: #334155; line-height: 1.8; font-size: 15px; overflow-wrap: break-word;">
-                  ${personalizedHtml}
-              </div>
-              <div style="background-color: #f8fafc; padding: 25px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
-                  <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #63A6B2;">Shepherd's Voice Radio and Television Foundation, Inc.</p>
-                  <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;">456 Faith Avenue, Manila, Metro Manila 1003<br>
-                  © 2026 SVRTF. All rights reserved.</p>
-              </div>
-          </div>
-      </div>`;
+      // Wrap in standard container - Detect if double-wrapping is needed
+      const finalHtml = wrapEmailHtml(personalizedHtml);
 
+      // Use the pooled transporter by calling sendEmail
+      // We still await for logging purposes in this specific loop, 
+      // but pooling will keep the connection alive.
+      // To really fix 'Too many login attempts', the caching was the key.
       const result = await sendEmail(emailAddr, personalizedSubject, finalHtml, from_email, cc);
       if (result.success) successCount++;
       else {
@@ -1658,7 +1682,7 @@ app.post("/api/admin/receipt-sequences/upload", upload.single("file"), async (re
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     res.json({
-      message: `Sequences imported: \${successCount} successful, \${duplicateCount} duplicates skipped.`,
+      message: `Sequences imported: ${successCount} successful, ${duplicateCount} duplicates skipped.`,
       stats: { successCount, duplicateCount, errorCount }
     });
   } catch (err) {
@@ -1675,6 +1699,16 @@ const analyticsRouter = require("./AnalyticsBackend");
 app.use("/api/admin/analytics", analyticsRouter);
 
 // Start server - Listen on port 5000 (standard for this project)
-app.listen(5000, () => {
+const server = app.listen(5000, () => {
   console.log("Nagana na yah! Running on http://localhost:5000");
-});
+}).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error('\x1b[31m%s\x1b[0m', '❌ PORT CONFLICT: Port 5000 is already in use.');
+        console.error('\x1b[33m%s\x1b[0m', '💡 FIX: This usually means another terminal is running node backend.js.');
+        console.error('\x1b[33m%s\x1b[0m', '💡 ACTION: Please close the other terminal or kill the process to start this one.');
+        // We do NOT call process.exit(1) here to let any other logic (like existing background tasks) finish if possible,
+        // although usually this is a fatal error for the new instance.
+    } else {
+        console.error('❌ Server Error:', err);
+    }
+});

@@ -8,51 +8,85 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
 
+let transporterCache = null;
+
+const clearTransporterCache = () => {
+    if (transporterCache) {
+        try {
+            // Close the current transporter pool before clearing
+            transporterCache.close();
+            console.log("🛑 Closed existing SMTP connection pool.");
+        } catch (err) {
+            console.error("Error closing SMTP pool:", err);
+        }
+    }
+    transporterCache = null;
+    console.log("♻️ SMTP Transporter cache cleared.");
+};
 
 const getTransporter = async () => {
+    if (transporterCache) return transporterCache;
     try {
         const res = await pool.query("SELECT * FROM smtp_settings ORDER BY id DESC LIMIT 1");
         if (res.rows.length > 0) {
             const s = res.rows[0];
-            return nodemailer.createTransport({
+            const isGmail = s.host && s.host.toLowerCase().includes('gmail');
+            
+            transporterCache = nodemailer.createTransport({
+                pool: true,
                 host: s.host,
                 port: s.port,
-                secure: s.port === 465, // true for 465, false for other ports
+                secure: parseInt(s.port) === 465,
                 auth: {
                     user: s.user_email,
                     pass: s.password,
                 },
                 tls: {
-                    rejectUnauthorized: false // Helps with some shared hosting
+                    rejectUnauthorized: false
                 },
+                // Gmail is extremely sensitive to multiple login attempts.
+                // Limit to 1 connection and higher delay for Gmail.
+                maxConnections: isGmail ? 1 : 5,
+                maxMessages: 100,
+                rateDelta: isGmail ? 2000 : 1000,
+                rateLimit: isGmail ? 1 : 5,
                 connectionTimeout: 60000,
                 socketTimeout: 60000,
                 greetingTimeout: 30000
             });
+            console.log(`🔌 Created ${isGmail ? 'conservative ' : ''}pooled transporter for ${s.provider} (${s.host}) as user: ${s.user_email}`);
+            return transporterCache;
         }
     } catch (err) {
         console.error("Error getting SMTP settings from DB, falling back to ENV:", err);
     }
 
-    // Fallback to ENV settings
-    return nodemailer.createTransport({
+    // Fallback to ENV settings (Usually Gmail)
+    transporterCache = nodemailer.createTransport({
         service: "gmail",
+        pool: true,
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS,
         },
+        maxConnections: 1,
+        maxMessages: 100,
+        rateLimit: 1,
         connectionTimeout: 60000,
         socketTimeout: 60000,
         greetingTimeout: 30000
     });
+    console.log(`🔌 Created conservative pooled transporter for Gmail (Fallback) as user: ${process.env.EMAIL_USER}`);
+    return transporterCache;
 };
+
 
 const sendEmail = async (to, subject, html, customFrom = null, ccEmail = null, attachments = []) => {
     let result = { success: false };
     try {
         const transporter = await getTransporter();
-        const res = await pool.query("SELECT user_email FROM smtp_settings LIMIT 1");
-        const fromEmail = res.rows.length > 0 && res.rows[0].user_email ? res.rows[0].user_email : process.env.EMAIL_USER;
+        const res = await pool.query("SELECT user_email, sender_email FROM smtp_settings LIMIT 1");
+        const fromEmail = res.rows.length > 0 ? (res.rows[0].sender_email || res.rows[0].user_email) : process.env.EMAIL_USER;
 
         let processedHtml = html || "";
         let finalAttachments = attachments ? [...attachments] : [];
@@ -579,4 +613,4 @@ const processDonationCompletion = async (donationId) => {
     }
 };
 
-module.exports = { sendEmail, sendDonationReceipt, sendVerificationCode, sendPasswordResetCode, processDonationCompletion };
+module.exports = { sendEmail, sendVerificationCode, sendPasswordResetCode, clearTransporterCache, processDonationCompletion };

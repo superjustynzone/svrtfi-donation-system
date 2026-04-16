@@ -52,17 +52,36 @@ function getGAClient() {
 
     try {
         const { BetaAnalyticsDataClient } = require("@google-analytics/data");
-        const resolvedKey = path.isAbsolute(keyFile)
-            ? keyFile
-            : path.join(__dirname, keyFile);
-        console.log("🔑 [GA4] Initializing client with key:", resolvedKey);
+        const fs = require("fs");
+        
+        // Smart Path Resolution
+        const pathsToTry = [
+            path.isAbsolute(keyFile) ? keyFile : null,
+            path.join(__dirname, keyFile),
+            path.join(__dirname, "..", keyFile),
+            path.join(process.cwd(), keyFile)
+        ].filter(Boolean);
+
+        let resolvedKey = null;
+        for (const p of pathsToTry) {
+            if (fs.existsSync(p)) {
+                resolvedKey = p;
+                break;
+            }
+        }
+
+        if (!resolvedKey) {
+            console.error("❌ [GA4] Key file not found in any standard location:", keyFile);
+            return null;
+        }
+
+        console.log("🔑 [GA4] Initializing client with resolved key:", resolvedKey);
         gaClient = new BetaAnalyticsDataClient({ keyFilename: resolvedKey });
         gaConfigured = true;
         console.log("✅ [GA4] Client initialized successfully for property:", propertyId);
         return gaClient;
     } catch (err) {
         console.error("❌ [GA4] Client init failed:", err.message);
-        console.error(err.stack);
         return null;
     }
 }
@@ -110,7 +129,10 @@ router.get("/ga-overview", verifyAdmin, async (req, res) => {
     if (!data) {
         return res.json({
             configured: false,
-            message: "Google Analytics not configured. Add GA_PROPERTY_ID and GA_KEY_FILE_PATH to your .env file.",
+            message: "Google Analytics not configured.",
+            missingFile: true,
+            expectedPath: path.join(__dirname, process.env.GA_KEY_FILE_PATH || "key.json"),
+            propertyId: process.env.GA_PROPERTY_ID || "Not set"
         });
     }
 

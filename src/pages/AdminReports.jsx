@@ -923,6 +923,13 @@ export default function AdminReports() {
                                     <div>
                                         <p className="font-bold text-amber-800">Google Analytics Not Yet Active</p>
                                         <p className="text-sm text-amber-700 mt-1">{gaOverview.message}</p>
+                                        {gaOverview.missingFile && (
+                                            <div className="mt-4 p-3 bg-white/50 border border-amber-200 rounded-lg">
+                                                <p className="text-[10px] font-bold text-amber-800 uppercase mb-1">Missing Key File:</p>
+                                                <p className="text-[11px] font-mono text-amber-700 break-all select-all">{gaOverview.expectedPath}</p>
+                                                <p className="text-[10px] text-amber-600 mt-2 italic">Please move your JSON key file to this location and click refresh.</p>
+                                            </div>
+                                        )}
                                         <p className="text-xs text-amber-600 mt-2">DB-powered sections below (Partial Donations, Top Donors per Campaign) are always available.</p>
                                     </div>
                                 </div>

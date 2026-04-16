@@ -218,6 +218,7 @@ export default function AdminMailing() {
         host: 'smtp.gmail.com',
         port: '465',
         user: 'svrtfi@gmail.com',
+        sender_email: '',
         password: '********', // Placeholder for existing password
         encryption: 'SSL/TLS',
         status: 'Connected'
@@ -225,10 +226,10 @@ export default function AdminMailing() {
     const [isSavingSmtp, setIsSavingSmtp] = useState(false);
 
     const smtpProviders = [
-        { name: 'Gmail', host: 'smtp.gmail.com', port: '465', encryption: 'SSL/TLS' },
-        { name: 'SendGrid', host: 'smtp.sendgrid.net', port: '465', encryption: 'SSL/TLS' },
-        { name: 'Outlook', host: 'smtp.office365.com', port: '587', encryption: 'STARTTLS' },
-        { name: 'Custom', host: '', port: '', encryption: 'SSL/TLS' }
+        { name: 'Gmail', host: 'smtp.gmail.com', port: '465', encryption: 'SSL/TLS', defaultUser: '' },
+        { name: 'SendGrid', host: 'smtp.sendgrid.net', port: '587', encryption: 'STARTTLS', defaultUser: 'apikey' },
+        { name: 'Outlook', host: 'smtp.office365.com', port: '587', encryption: 'STARTTLS', defaultUser: '' },
+        { name: 'Custom', host: '', port: '', encryption: 'SSL/TLS', defaultUser: '' }
     ];
 
     useEffect(() => {
@@ -260,6 +261,7 @@ export default function AdminMailing() {
                     host: data.host || 'smtp.gmail.com',
                     port: data.port || '465',
                     user: data.user_email || '',
+                    sender_email: data.sender_email || '',
                     password: '********', // Don't show the real password
                     encryption: data.encryption || 'SSL/TLS',
                     status: 'Connected'
@@ -277,9 +279,10 @@ export default function AdminMailing() {
                 body: JSON.stringify({
                     provider: smtpSettings.provider,
                     host: smtpSettings.host,
-                    port: parseInt(smtpSettings.port),
+                    port: smtpSettings.port,
                     user_email: smtpSettings.user,
-                    password: smtpSettings.password,
+                    sender_email: smtpSettings.sender_email,
+                    password: smtpSettings.password === '********' ? '' : smtpSettings.password,
                     encryption: smtpSettings.encryption
                 })
             });
@@ -1061,8 +1064,10 @@ export default function AdminMailing() {
                                                                 provider: p.name,
                                                                 host: p.name === 'Custom' ? prev.host : p.host,
                                                                 port: p.name === 'Custom' ? prev.port : p.port,
-                                                                encryption: p.name === 'Custom' ? prev.encryption : p.encryption
-                                                            }));
+                                                                encryption: p.name === 'Custom' ? prev.encryption : p.encryption,
+                                                                 user: p.defaultUser !== undefined ? (p.defaultUser || prev.user) : prev.user,
+                                                                 password: '' 
+                                                             }));
                                                             if (p.name !== 'Custom') {
                                                                 toast.info(`Switched to ${p.name} configuration`, { icon: '📧' });
                                                             }
@@ -1098,13 +1103,30 @@ export default function AdminMailing() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">User Email / API Key</label>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 flex items-center gap-2">
+                                                        Verified Sender Email
+                                                        <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-bold">REQUIRED</span>
+                                                    </label>
+                                                    <input 
+                                                        type="email" 
+                                                        value={smtpSettings.sender_email} 
+                                                        onChange={e => setSmtpSettings(p => ({ ...p, sender_email: e.target.value }))}
+                                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#63A6B2]" 
+                                                        placeholder="e.g. info@svrtf.org"
+                                                    />
+                                                    <p className="text-[10px] text-gray-400 mt-1 italic">Must be verified in your provider dashboard.</p>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 flex items-center gap-2">
+                                                        API Username / Login Email
+                                                        <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold">AUTH</span>
+                                                    </label>
                                                     <input 
                                                         type="text" 
                                                         value={smtpSettings.user} 
                                                         onChange={e => setSmtpSettings(p => ({ ...p, user: e.target.value }))}
                                                         className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#63A6B2]" 
-                                                        placeholder="email@example.com"
+                                                        placeholder="SendGrid: 'apikey' or Gmail: 'your@email.com'"
                                                     />
                                                 </div>
                                                 <div>

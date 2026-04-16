@@ -21,4 +21,11 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+# Credentials
+.env
+server/*.json
+!server/package.json
+!server/*_schema.json
+!server/cols.json
+!server/tables.json
+

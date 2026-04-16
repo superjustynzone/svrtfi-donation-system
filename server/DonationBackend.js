@@ -19,6 +19,13 @@ const generatePaymentReference = () => {
     return ref;
 };
 
+// Helper: generate a standardized transaction ID
+const generateTransactionId = () => {
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(1000 + Math.random() * 9000);
+    return `TXN-${timestamp}-${random}`;
+};
+
 // ─────────────────────────────────────────────
 // POST /api/donations — Create a new donation
 // Always creates a donors row first, then links via donor_id
@@ -143,13 +150,14 @@ router.post("/", async (req, res) => {
                 : null;
 
         // ── Step 3: Insert into donations ──
+        const transactionId = generateTransactionId();
         const donationResult = await client.query(
             `INSERT INTO donations (
                 user_id, campaign_id, donor_id, amount, payment_method,
                 donation_source, currency, frequency, next_due_date,
-                initiated_at, message, status
-            ) VALUES ($1, $2, $3, $4, $5, $6, 'PHP', $7, $8, NOW(), $9, 'pending')
-            RETURNING donation_id, initiated_at`,
+                initiated_at, message, status, transaction_id
+            ) VALUES ($1, $2, $3, $4, $5, $6, 'PHP', $7, $8, NOW(), $9, 'pending', $10)
+            RETURNING donation_id, initiated_at, transaction_id`,
             [
                 user_id || null,
                 campaign_id,
@@ -160,6 +168,7 @@ router.post("/", async (req, res) => {
                 frequency,
                 next_due_date,
                 message || null,
+                transactionId
             ]
         );
 
@@ -191,6 +200,7 @@ router.post("/", async (req, res) => {
             donor_id: donorId,
             payment_reference: paymentReference,
             initiated_at: donation.initiated_at,
+            transaction_id: donation.transaction_id,
         });
     } catch (err) {
         await client.query("ROLLBACK");
