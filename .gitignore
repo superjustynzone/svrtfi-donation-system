@@ -29,3 +29,4 @@ server/*.json
 !server/cols.json
 !server/tables.json
 
+.vercel

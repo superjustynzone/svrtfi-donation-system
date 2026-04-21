@@ -265,13 +265,28 @@ export default function AdminTransactions() {
 
             let res;
             if (file) {
-                const formData = new FormData();
-                formData.append('status', newStatus);
-                formData.append('receipt_image', file);
+                // Upload receipt to serverless receipt endpoint which also updates DB optionally
+                const reader = new FileReader();
+                const base64 = await new Promise((resolve, reject) => {
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
+                const uploadRes = await fetch('/api/receipt-upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ contentBase64: base64, fileName: file.name, transaction_id: txnId })
+                });
+
+                const uploadData = await uploadRes.json();
+                if (!uploadRes.ok) throw new Error(uploadData.error || 'Receipt upload failed');
+
+                // Then update status with receipt path
                 res = await fetch(url, {
                     method: 'PATCH',
-                    headers: { Authorization: `Bearer ${token}` },
-                    body: formData
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ status: newStatus, receipt_image_path: uploadData.path })
                 });
             } else {
                 res = await fetch(url, {

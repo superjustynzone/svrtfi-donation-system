@@ -2,7 +2,8 @@
 const express = require("express");
 const router = express.Router();
 const { Pool } = require("pg");
-const multer = require("multer");
+// Replaced multer with shim for serverless compatibility
+const multer = require("./multer-shim")();
 const path = require("path");
 const fs = require("fs");
 // Load environment variables

@@ -4,7 +4,8 @@ const router = express.Router();
 const { Pool } = require("pg");
 const { processDonationCompletion } = require("./EmailService");
 const path = require("path");
-const multer = require("multer");
+// Replaced multer with shim for serverless compatibility
+const multer = require("./multer-shim")();
 const fs = require("fs");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 

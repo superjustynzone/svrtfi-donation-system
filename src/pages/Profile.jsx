@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import supabase from '../lib/supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Mail, Phone, MapPin, Heart, Users, Edit2, Eye, Download, LogOut, ChevronDown, FileText, X, CheckCircle, CreditCard, RefreshCw, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -94,44 +95,35 @@ export default function Profile() {
         toast.info('Uploading image...');
 
         try {
-            const formData = new FormData();
-            formData.append('image', file);
-            formData.append('userId', storedUser.user_id);
+            // Preferred: direct client upload to Supabase Storage
+            const fileExt = file.name.split('.').pop();
+            const filePath = `profiles/user_${storedUser.user_id}_${Date.now()}.${fileExt}`;
 
-            const response = await fetch('http://localhost:5000/api/user/profile/upload-image', {
-                method: 'POST',
-                body: formData
+            const { data: uploadData, error: uploadErr } = await supabase.storage.from('profiles').upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true,
             });
 
-            const data = await response.json();
-
-            if (data.success) {
-                const fullImagePath = `http://localhost:5000${data.imagePath}`;
-                toast.success('Profile image uploaded successfully!');
-
-                // Update userData
-                setUserData(prev => ({
-                    ...prev,
-                    profileImage: fullImagePath
-                }));
-
-                // Update localStorage to persist across pages and sync with admin
-                const updatedUser = {
-                    ...storedUser,
-                    profileImage: fullImagePath,
-                    avatarImage: fullImagePath,  // keep admin key in sync too
-                };
-                localStorage.setItem('user', JSON.stringify(updatedUser));
-
-                // Notify admin header / settings in any open tab
-                window.dispatchEvent(new Event('userProfileUpdated'));
-                window.dispatchEvent(new Event('adminProfileUpdated'));
-
+            if (uploadErr) {
+                console.error('Supabase upload error:', uploadErr);
+                toast.error('Failed to upload image');
                 setImagePreview(null);
-            } else {
-                toast.error(data.message || 'Failed to upload image');
-                setImagePreview(null);
+                return;
             }
+
+            const { data: publicData } = supabase.storage.from('profiles').getPublicUrl(filePath);
+            const fullImagePath = publicData?.publicUrl || '';
+
+            toast.success('Profile image uploaded successfully!');
+
+            setUserData(prev => ({ ...prev, profileImage: fullImagePath }));
+
+            const updatedUser = { ...storedUser, profileImage: fullImagePath, avatarImage: fullImagePath };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            window.dispatchEvent(new Event('userProfileUpdated'));
+            window.dispatchEvent(new Event('adminProfileUpdated'));
+
+            setImagePreview(null);
         } catch (error) {
             console.error('Upload error:', error);
             toast.error('Failed to upload image. Please try again.');

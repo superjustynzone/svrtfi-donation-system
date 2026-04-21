@@ -70,7 +70,7 @@ export default function AdminSettings() {
         setShowViewModal(true);
         setIsLoadingView(true);
         try {
-            const res = await fetch('http://localhost:5000/api/admin/receipt-sequences');
+            const res = await fetch('/api/admin/settings/receipt-sequences');
             const data = await res.json();
             if (res.ok) {
                 setSequences(data);
@@ -86,77 +86,72 @@ export default function AdminSettings() {
     };
 
     const handleCSVUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-            toast.error('Please upload a CSV file.');
-            if (csvFileRef.current) csvFileRef.current.value = '';
-            return;
-        }
-
-        setIsSavingSeq(true);
-        const formData = new FormData();
-        formData.append('file', file);
-
         try {
-            const res = await fetch('http://localhost:5000/api/admin/receipt-sequences/upload', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            if (res.ok) {
-                toast.success(data.message || 'Sequences uploaded successfully!');
-                setSavedSeq(true);
-                setTimeout(() => setSavedSeq(false), 3000);
-            } else {
-                toast.error(data.message || 'Failed to upload sequences.');
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+                toast.error('Please upload a CSV file.');
+                if (csvFileRef.current) csvFileRef.current.value = '';
+                return;
             }
+
+            setIsSavingSeq(true);
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                try {
+                    const dataUrl = ev.target.result; // data:text/csv;base64,....
+                    const base64 = dataUrl.split(',')[1];
+                    const payload = { fileName: file.name, contentBase64: base64 };
+                    const res = await fetch('/api/admin/settings/receipt-sequences/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        toast.success(data.message || 'Sequences uploaded successfully!');
+                        setSavedSeq(true);
+                        setTimeout(() => setSavedSeq(false), 3000);
+                    } else {
+                        toast.error(data.message || 'Failed to upload sequences.');
+                    }
+                } catch (err) {
+                    toast.error('Connection error.');
+                } finally {
+                    setIsSavingSeq(false);
+                    if (csvFileRef.current) csvFileRef.current.value = '';
+                }
+            };
+            reader.readAsDataURL(file);
         } catch (err) {
             toast.error('Connection error.');
-        } finally {
             setIsSavingSeq(false);
             if (csvFileRef.current) csvFileRef.current.value = '';
         }
-    };
+        };
 
-    useEffect(() => {
-        fetchSiteSettings();
-    }, []);
-
-    const fetchSiteSettings = async () => {
-        try {
-            const res = await fetch('http://localhost:5000/api/admin/site-settings');
-            const data = await res.json();
-            if (res.ok) {
-                if (data.terms_and_conditions) setTerms(data.terms_and_conditions);
-                if (data.privacy_policy) setPrivacy(data.privacy_policy);
+        const handleSavePolicy = async (key, value, setSaving, setSaved) => {
+            setSaving(true);
+            try {
+                const res = await fetch('/api/admin/settings/site-settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ setting_key: key, setting_value: value })
+                });
+                if (res.ok) {
+                    toast.success('Successfully saved!');
+                    setSaved(true);
+                    setTimeout(() => setSaved(false), 3000);
+                } else {
+                    toast.error('Failed to save settings.');
+                }
+            } catch (err) {
+                toast.error('Connection error.');
+            } finally {
+                setSaving(false);
             }
-        } catch (err) {
-            console.error('Failed to fetch site settings', err);
-        }
-    };
-
-    const handleSavePolicy = async (key, value, setSaving, setSaved) => {
-        setSaving(true);
-        try {
-            const res = await fetch('http://localhost:5000/api/admin/site-settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ setting_key: key, setting_value: value })
-            });
-            if (res.ok) {
-                toast.success('Successfully saved!');
-                setSaved(true);
-                setTimeout(() => setSaved(false), 3000);
-            } else {
-                toast.error('Failed to save settings.');
-            }
-        } catch (err) {
-            toast.error('Connection error.');
-        } finally {
-            setSaving(false);
-        }
-    };
+        };
+    
 
     // ─── Shared button styles ─────────────────────────────────────────
     const saveBtnClass = (active) =>
@@ -316,7 +311,7 @@ export default function AdminSettings() {
                                                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-sm">
                                             <List className="w-4 h-4" /> View Sequences
                                         </button>
-                                        <a href="http://localhost:5000/api/admin/receipt-sequences/template" download
+                                                     <a href="/api/admin/settings/receipt-sequences/template" download
                                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">
                                             <Download className="w-4 h-4" /> Download Template
                                         </a>

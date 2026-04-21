@@ -670,32 +670,39 @@ export default function AdminMailing() {
     const handleImportCSV = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
-        const formData = new FormData();
-        formData.append('file', file);
-        if (subscriberFilterCampaign) {
-            formData.append('campaign_id', subscriberFilterCampaign);
-        }
-
         setIsImporting(true);
         try {
-            const res = await fetch('http://localhost:5000/api/admin/subscribers/import', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            if (res.ok) {
-                toast.success(data.message);
-                fetchSubscribers();
-            } else {
-                toast.error(data.message || 'Import failed.');
-            }
+            // Convert file to base64 and call serverless import endpoint
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64 = reader.result.split(',')[1];
+                try {
+                    const res = await fetch('/api/subscribers-import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contentBase64: base64, fileName: file.name, campaign_id: subscriberFilterCampaign })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        toast.success(data.insertedCount ? `${data.insertedCount} subscribers imported` : 'Import successful');
+                        fetchSubscribers();
+                    } else {
+                        toast.error(data.message || 'Import failed.');
+                    }
+                } catch (err) {
+                    console.error('Import error:', err);
+                    toast.error('Connection error during import.');
+                } finally {
+                    setIsImporting(false);
+                    e.target.value = '';
+                }
+            };
+            reader.readAsDataURL(file);
         } catch (err) {
             console.error('Import error:', err);
             toast.error('Connection error during import.');
-        } finally {
             setIsImporting(false);
-            e.target.value = ''; // Reset input
+            e.target.value = '';
         }
     };
 

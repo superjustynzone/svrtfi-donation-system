@@ -14,7 +14,8 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 const { Pool } = require("pg");
-const multer = require("multer");
+// Replaced multer with shim for serverless compatibility
+const multer = require("./multer-shim")();
 const fs = require("fs");
 
 const app = express();
@@ -1788,4 +1789,4 @@ const server = app.listen(5000, () => {
     } else {
         console.error('❌ Server Error:', err);
     }
-});
+});

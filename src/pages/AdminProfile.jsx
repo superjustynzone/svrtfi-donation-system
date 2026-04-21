@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
+import supabase from '../lib/supabaseClient';
 import { provinces, citiesByProvince } from '../data/philippineLocations';
 
 export default function AdminProfile() {
@@ -94,29 +95,39 @@ export default function AdminProfile() {
         toast.info('Uploading photo...');
 
         try {
-            const formData = new FormData();
-            formData.append('image', file);
-            formData.append('userId', user.user_id);
+            // Try direct upload to Supabase Storage first
+            const fileExt = file.name.split('.').pop();
+            const filePath = `profiles/user_${user.user_id}_${Date.now()}.${fileExt}`;
+            const { data: uploadData, error: uploadErr } = await supabase.storage.from('profiles').upload(filePath, file, { upsert: true });
+            if (uploadErr) throw uploadErr;
 
-            const response = await fetch('http://localhost:5000/api/user/profile/upload-image', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+            const { data: publicData } = supabase.storage.from('profiles').getPublicUrl(filePath);
+            const fullImagePath = publicData?.publicUrl || '';
+            applyAvatarChange(fullImagePath);
+            toast.success('Profile photo updated!');
+        } catch (err) {
+            // Fallback to existing backend or base64 preview
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('userId', user.user_id);
 
-            if (data.success) {
-                const fullImagePath = `http://localhost:5000${data.imagePath}`;
-                applyAvatarChange(fullImagePath);
-                toast.success('Profile photo updated!');
-            } else {
-                throw new Error(data.message || 'Upload failed');
+                const response = await fetch('http://localhost:5000/api/user/profile/upload-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const fullImagePath = `http://localhost:5000${data.imagePath}`;
+                    applyAvatarChange(fullImagePath);
+                    toast.success('Profile photo updated!');
+                } else {
+                    readImage(file, img => { applyAvatarChange(img); toast.success('Profile photo updated!'); });
+                }
+            } catch (fallbackErr) {
+                readImage(file, img => { applyAvatarChange(img); toast.success('Profile photo updated!'); });
             }
-        } catch {
-            // Fallback to base64 if backend unavailable
-            readImage(file, img => {
-                applyAvatarChange(img);
-                toast.success('Profile photo updated!');
-            });
         } finally {
             setIsUploadingAvatar(false);
         }
