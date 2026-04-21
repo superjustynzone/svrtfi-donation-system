@@ -1110,7 +1110,7 @@ export default function Profile() {
                                                                 </div>
                                                             </td>
                                                             <td className="py-4 px-4 text-right">
-                                                                {(donation.status === 'active' || !donation.status) && (
+                                                                {(donation.status !== 'cancelled' && donation.status !== 'pending_cancellation') && (
                                                                     <button 
                                                                         onClick={() => handleCancelRecurring(donation.donation_id)}
                                                                         className="px-4 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-bold uppercase hover:bg-red-600 hover:text-white transition shadow-sm"

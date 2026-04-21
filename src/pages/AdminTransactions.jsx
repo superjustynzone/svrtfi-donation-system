@@ -3,7 +3,7 @@ import {
     CreditCard, Search, Calendar, Download,
     ChevronLeft, ChevronRight, RefreshCw,
     CheckCircle, XCircle, Clock, TrendingUp, AlertCircle,
-    Eye, X, FileText, MessageSquare
+    Eye, X, FileText, MessageSquare, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminSidebar from '../components/AdminSidebar';
@@ -219,6 +219,15 @@ export default function AdminTransactions() {
         pending: 0,
         totalAmount: 0
     });
+    const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
 
     // receipt modal states
     const [viewReceiptId, setViewReceiptId] = useState(null);
@@ -429,15 +438,75 @@ export default function AdminTransactions() {
                                 <div className="overflow-x-auto">
                                     <table className="w-full">
                                         <thead className="bg-gray-50 border-b border-gray-200">
-                                            <tr>
-                                                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase tracking-wide">Donor</th>
-                                                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase tracking-wide">Amount</th>
-                                                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase tracking-wide">Method</th>
-                                                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase tracking-wide">Reference</th>
-                                                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase tracking-wide">Date</th>
-                                                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase tracking-wide">Status</th>
-                                                <th className="text-right py-4 px-6 text-xs font-semibold text-gray-600 uppercase tracking-wide">Actions</th>
-                                            </tr>
+                                    <tr>
+                                        <th 
+                                            className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => handleSort('donor')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Donor
+                                                {sortConfig.key === 'donor' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                ) : (
+                                                    <div className="w-3 h-3 flex flex-col opacity-20">
+                                                        <ChevronUp className="w-3 h-3 -mb-1" />
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th 
+                                            className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => handleSort('amount')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Amount
+                                                {sortConfig.key === 'amount' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                ) : (
+                                                    <div className="w-3 h-3 flex flex-col opacity-20">
+                                                        <ChevronUp className="w-3 h-3 -mb-1" />
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest">Method</th>
+                                        <th 
+                                            className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => handleSort('reference')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Reference
+                                                {sortConfig.key === 'reference' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                ) : (
+                                                    <div className="w-3 h-3 flex flex-col opacity-20">
+                                                        <ChevronUp className="w-3 h-3 -mb-1" />
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th 
+                                            className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => handleSort('date')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Date
+                                                {sortConfig.key === 'date' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                ) : (
+                                                    <div className="w-3 h-3 flex flex-col opacity-20">
+                                                        <ChevronUp className="w-3 h-3 -mb-1" />
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest">Status</th>
+                                        <th className="text-right py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest">Actions</th>
+                                    </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
                                             {loading ? (
@@ -452,16 +521,30 @@ export default function AdminTransactions() {
                                                         <td className="py-4 px-6"><div className="h-4 bg-gray-100 rounded w-16 ml-auto" /></td>
                                                     </tr>
                                                 ))
-                                            ) : transactions.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="7" className="py-16 text-center">
-                                                        <CreditCard className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                                                        <p className="text-gray-500 font-semibold">No transactions found</p>
-                                                        <p className="text-sm text-gray-400">Try adjusting your filters</p>
-                                                    </td>
-                                                </tr>
                                             ) : (
-                                                transactions.map(txn => (
+                                                [...transactions].sort((a,b) => {
+                                                    if(!sortConfig.key) return 0;
+                                                    let aVal, bVal;
+                                                    if(sortConfig.key === 'donor') {
+                                                        aVal = (a.donor_name || 'Anonymous').toLowerCase();
+                                                        bVal = (b.donor_name || 'Anonymous').toLowerCase();
+                                                    } else if (sortConfig.key === 'amount') {
+                                                        aVal = parseFloat(a.amount || 0);
+                                                        bVal = parseFloat(b.amount || 0);
+                                                    } else if (sortConfig.key === 'reference') {
+                                                        aVal = (a.reference_number || '').toLowerCase();
+                                                        bVal = (b.reference_number || '').toLowerCase();
+                                                    } else if (sortConfig.key === 'date') {
+                                                        aVal = new Date(a.created_at);
+                                                        bVal = new Date(b.created_at);
+                                                    } else {
+                                                        aVal = a[sortConfig.key];
+                                                        bVal = b[sortConfig.key];
+                                                    }
+                                                    if(aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                                                    if(aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                                                    return 0;
+                                                }).map(txn => (
                                                     <tr key={txn.transaction_id} className="hover:bg-gray-50 transition">
                                                         <td className="py-4 px-6">
                                                             <p className="font-semibold text-gray-900 text-sm">{txn.donor_name || 'Anonymous'}</p>

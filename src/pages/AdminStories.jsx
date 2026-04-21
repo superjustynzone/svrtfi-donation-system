@@ -4,7 +4,7 @@ import {
     UserCog, Settings, AlertTriangle, Search, Menu, X, LogOut,
     Plus, Edit, Trash2, Calendar, Target, TrendingUp, Image as ImageIcon,
     MapPin, MoreVertical, Filter, ChevronDown, Upload, Star,
-    Send, FileEdit, Eye, EyeOff
+    Send, FileEdit, Eye, EyeOff, ArrowRight, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -1697,18 +1697,26 @@ export default function AdminStories() {
 
             {/* View Story Modal */}
             {showViewModal && viewingStory && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-                        {/* Story Carousel */}
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300">
+                    <div className="bg-[#f8fafc] rounded-[2rem] max-w-5xl w-full shadow-2xl max-h-[95vh] overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
+                        
+                        {/* Story Carousel Section (Mirrors public StoryDetails) */}
                         <div 
-                            className="relative h-80 w-full bg-gray-900 overflow-hidden group"
+                            className="relative h-[400px] md:h-[500px] w-full bg-gray-900 overflow-hidden group shrink-0"
                             onMouseEnter={() => setIsPaused(true)}
                             onMouseLeave={() => setIsPaused(false)}
                         >
+                            <button 
+                                onClick={() => { setShowViewModal(false); setViewingStory(null); setCurrentImageIndex(0); }}
+                                className="absolute top-6 right-6 z-30 bg-white/10 backdrop-blur-md text-white p-3 rounded-full border border-white/20 hover:bg-white/20 transition-all shadow-xl active:scale-95 group-hover:scale-110"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
                             {viewingStory.images && viewingStory.images.length > 0 ? (
                                 <>
                                     {/* Blurred Background Layer */}
-                                    <div className="absolute inset-0 scale-110 blur-3xl opacity-30 transition-opacity duration-1000">
+                                    <div className="absolute inset-0 scale-110 blur-3xl opacity-40 transition-opacity duration-1000">
                                         <img 
                                             src={`http://localhost:5000${viewingStory.images[currentImageIndex].image_file}`} 
                                             alt="Blurred Backdrop" 
@@ -1720,32 +1728,32 @@ export default function AdminStories() {
                                     <img 
                                         src={`http://localhost:5000${viewingStory.images[currentImageIndex].image_file}`} 
                                         alt={viewingStory.title} 
-                                        className="relative z-10 w-full h-full object-contain transition-all duration-700 ease-in-out" 
+                                        className="relative z-10 w-full h-full object-contain transition-all duration-700 ease-in-out py-8" 
                                     />
 
                                     {viewingStory.images.length > 1 && (
                                         <>
-                                            {/* Navigation Buttons */}
+                                            {/* Glassmorphism Navigation Buttons */}
                                             <button 
                                                 onClick={() => { setCurrentImageIndex(prev => (prev - 1 + viewingStory.images.length) % viewingStory.images.length); setProgress(0); }}
-                                                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 backdrop-blur-md text-white p-2.5 rounded-full border border-white/20 opacity-0 group-hover:opacity-100 transition-all hover:bg-white/20"
+                                                className="absolute left-6 top-1/2 -translate-y-1/2 z-20 bg-white/10 backdrop-blur-md text-white p-4 rounded-full border border-white/20 opacity-0 group-hover:opacity-100 transition-all hover:bg-white/20 hover:scale-110 active:scale-95 flex items-center justify-center shadow-2xl"
                                             >
-                                                <ChevronDown className="w-6 h-6 rotate-90" />
+                                                <ChevronLeft className="w-6 h-6" />
                                             </button>
                                             <button 
                                                 onClick={() => { setCurrentImageIndex(prev => (prev + 1) % viewingStory.images.length); setProgress(0); }}
-                                                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 backdrop-blur-md text-white p-2.5 rounded-full border border-white/20 opacity-0 group-hover:opacity-100 transition-all hover:bg-white/20"
+                                                className="absolute right-6 top-1/2 -translate-y-1/2 z-20 bg-white/10 backdrop-blur-md text-white p-4 rounded-full border border-white/20 opacity-0 group-hover:opacity-100 transition-all hover:bg-white/20 hover:scale-110 active:scale-95 flex items-center justify-center shadow-2xl"
                                             >
-                                                <ChevronDown className="w-6 h-6 -rotate-90" />
+                                                <ChevronRight className="w-6 h-6" />
                                             </button>
 
-                                            {/* Indicators */}
-                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+                                            {/* Modern Indicator Dots */}
+                                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2.5">
                                                 {viewingStory.images.map((_, idx) => (
                                                     <button 
                                                         key={idx} 
                                                         onClick={() => { setCurrentImageIndex(idx); setProgress(0); }}
-                                                        className={`h-1.5 rounded-full shadow-lg transition-all duration-500 ${idx === currentImageIndex ? 'w-8 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/70'}`} 
+                                                        className={`h-2 rounded-full shadow-lg transition-all duration-500 ${idx === currentImageIndex ? 'w-10 bg-white' : 'w-2 bg-white/40 hover:bg-white/70'}`} 
                                                     />
                                                 ))}
                                             </div>
@@ -1753,73 +1761,97 @@ export default function AdminStories() {
                                     )}
                                 </>
                             ) : (
-                                <div className="w-full h-full bg-gray-900" />
+                                <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                                    <ImageIcon className="w-20 h-20 text-gray-700" />
+                                </div>
                             )}
+
+                            {/* Gradient overlay at bottom for smoother transition */}
+                            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#f8fafc] to-transparent z-10 pointer-events-none" />
                         </div>
                         
-                        <div className="p-6 overflow-y-auto flex-1">
-                            {/* Header */}
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        {!viewingStory.is_published ? (
-                                            <span className="px-3 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700">Draft</span>
-                                        ) : (
-                                            <span className="px-3 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">Published</span>
-                                        )}
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-gray-900">{viewingStory.title}</h3>
-                                    <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-gray-100">
-                                        <div className="flex items-center gap-2 text-sm text-[#63A6B2] font-semibold">
-                                            <MapPin className="w-4 h-4 flex-shrink-0" />
-                                            <span>{viewingStory.foundation_name || 'No foundation'}</span>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-                                            <div className="flex items-center gap-1.5">
-                                                <Calendar className="w-4 h-4" />
-                                                <span className="font-medium text-gray-400 uppercase text-[10px] tracking-wider mr-1">Published</span>
-                                                <span className="font-semibold text-gray-700">{formatDate(viewingStory.created_at)}</span>
-                                            </div>
-                                            {viewingStory.author && (
-                                                <div className="flex items-center gap-1.5">
-                                                    <UserCog className="w-4 h-4 text-[#63A6B2]" />
-                                                    <span className="font-medium text-gray-400 uppercase text-[10px] tracking-wider mr-1">Author</span>
-                                                    <span className="font-semibold text-gray-700">{viewingStory.author}</span>
-                                                </div>
+                        {/* Scrollable Content Area */}
+                        <div className="p-4 md:p-8 overflow-y-auto flex-1 space-y-8 scrollbar-hide pb-20">
+                            
+                            {/* Meta Card (Redesigned to match StoryDetails) */}
+                            <div className="bg-white rounded-3xl shadow-xl shadow-blue-500/5 border border-gray-100 p-8 transform -mt-16 relative z-20 max-w-4xl mx-auto">
+                                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <p className="text-[10px] font-black text-[#63A6B2] uppercase tracking-[0.2em]">Story Preview</p>
+                                            {!viewingStory.is_published ? (
+                                                <span className="px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded border border-amber-200 bg-amber-50 text-amber-600">Draft</span>
+                                            ) : (
+                                                <span className="px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded border border-green-200 bg-green-50 text-green-600">Published</span>
                                             )}
                                         </div>
+                                        <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">
+                                            {viewingStory.title}
+                                        </h1>
+                                        <div className="flex items-center gap-2 mt-4 text-[#63A6B2] font-bold text-sm">
+                                            <MapPin className="w-4 h-4" />
+                                            <span>{viewingStory.foundation_name || 'General Operations'}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-4 text-left md:text-right shrink-0">
+                                        <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50">
+                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Published Date</p>
+                                            <p className="text-gray-900 font-extrabold text-sm">
+                                                {new Date(viewingStory.published_at || viewingStory.created_at).toLocaleDateString('en-US', {
+                                                    year: 'numeric', month: 'long', day: 'numeric'
+                                                })}
+                                            </p>
+                                        </div>
+                                        {viewingStory.author && (
+                                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Written By</p>
+                                                <div className="flex items-center md:justify-end gap-2">
+                                                    <span className="text-[#63A6B2] font-extrabold text-sm">{viewingStory.author}</span>
+                                                    <div className="w-6 h-6 rounded-full bg-[#63A6B2]/10 flex items-center justify-center">
+                                                        <UserCog className="w-3.5 h-3.5 text-[#63A6B2]" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <button onClick={() => { setShowViewModal(false); setViewingStory(null); setCurrentImageIndex(0); }} className="text-gray-400 hover:text-gray-600 transition flex-shrink-0 ml-4 bg-gray-100 p-2 rounded-full">
-                                    <X className="w-5 h-5" />
-                                </button>
                             </div>
 
-                            {/* Tags */}
-                            {viewingStory.tags && (
-                                <div className="flex flex-wrap gap-2 mb-6">
-                                    {viewingStory.tags.split(',').map((tag, idx) => (
-                                        <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                            {/* Story Content Card */}
+                            <div className="bg-white rounded-3xl shadow-xl shadow-blue-500/5 border border-gray-100 p-8 md:p-12 max-w-4xl mx-auto">
+                                <div 
+                                    className="prose prose-lg max-w-none text-gray-700 leading-relaxed ql-editor" 
+                                    style={{ padding: 0 }} 
+                                    dangerouslySetInnerHTML={{ __html: viewingStory.content || '<p class="text-gray-400 italic">No content available for this story.</p>' }} 
+                                />
+                            </div>
+
+                            {/* Tags Section */}
+                            <div className="bg-white/60 backdrop-blur-md rounded-2xl border border-white p-6 max-w-4xl mx-auto">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Discovery Tags</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {viewingStory.tags ? viewingStory.tags.split(',').map((tag, idx) => (
+                                        <span 
+                                            key={idx} 
+                                            className="bg-white text-gray-600 px-4 py-2 rounded-xl text-xs font-bold border border-gray-100 shadow-sm hover:border-[#63A6B2]/30 transition-colors"
+                                        >
                                             #{tag.trim()}
                                         </span>
-                                    ))}
+                                    )) : (
+                                        <span className="text-xs text-gray-400 italic">No tags assigned</span>
+                                    )}
                                 </div>
-                            )}
-
-                            {/* Content */}
-                            {viewingStory.content && (
-                                <div className="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div className="prose prose-sm max-w-none text-gray-700 ql-editor" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: viewingStory.content }} />
-                                </div>
-                            )}
-
-                            {/* Close Button */}
-                            <div className="flex justify-end border-t border-gray-100 pt-4">
+                            </div>
+                            
+                            {/* Close Reading Action */}
+                            <div className="flex justify-center pb-8">
                                 <button
                                     onClick={() => { setShowViewModal(false); setViewingStory(null); setCurrentImageIndex(0); }}
-                                    className="px-6 py-2.5 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition"
+                                    className="bg-gradient-to-r from-gray-900 to-gray-800 text-white px-10 py-4 rounded-full font-black text-sm hover:shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2 group"
                                 >
-                                    Close Reading
+                                    Done Reading
+                                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                 </button>
                             </div>
                         </div>

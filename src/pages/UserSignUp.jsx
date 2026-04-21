@@ -133,7 +133,7 @@ const UserSignUp = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#63A6B2] p-4 py-8">
-      <div className="w-full max-w-4xl bg-white rounded-lg shadow-2xl overflow-y-auto overflow-x-hidden flex min-h-[650px] relative">
+      <div className="w-full max-w-4xl bg-white rounded-xl shadow-2xl flex h-[720px] max-h-[90vh] overflow-hidden relative">
 
         {/* Left Side - Image */}
         <div className="hidden md:block md:w-1/2 relative">
@@ -150,8 +150,8 @@ const UserSignUp = () => {
           </div>
         </div>
 
-        {/* Right Side - Form */}
-        <div className="w-full md:w-1/2 p-8 pt-12 flex flex-col">
+        {/* Right Side - Form - Made scrollable internally to prevent layout jumping */}
+        <div className="w-full md:w-1/2 p-8 pt-12 flex flex-col h-full overflow-y-auto custom-scrollbar">
 
           {/* Logo */}
           <div className="flex justify-center mb-3">

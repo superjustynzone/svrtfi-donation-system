@@ -81,8 +81,8 @@ export default function FoundationDetails() {
 
             if (response.ok) {
                 const data = await response.json();
-                // Filter out current foundation and limit to 3
-                const filtered = data.filter(f => f.foundation_id !== parseInt(id)).slice(0, 3);
+                // Filter out current foundation and limit to 3. Handle BigInt id parsing differences safely.
+                const filtered = data.filter(f => String(f.foundation_id) !== String(id)).slice(0, 3);
                 setOtherFoundations(filtered);
             } else {
                 useMockOtherFoundations();
@@ -99,8 +99,8 @@ export default function FoundationDetails() {
             if (response.ok) {
                 const data = await response.json();
                 if (Array.isArray(data)) {
-                    // Find a featured published campaign linked to this foundation
-                    const featured = data.find(c => c.foundation_id === parseInt(id) && c.is_featured);
+                    // Find a featured published campaign linked to this foundation. Use String() to handle BigInt ID differences
+                    const featured = data.find(c => String(c.foundation_id) === String(id) && c.is_featured);
                     setFeaturedCampaign(featured || null);
                 } else {
                     setFeaturedCampaign(null);

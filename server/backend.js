@@ -74,24 +74,64 @@ const upload = multer({
 // Mailing Routes (Priority)
 // ─────────────────────────────────────────────
 const { sendEmail, sendVerificationCode, clearTransporterCache } = require("./EmailService");
+const deepUnescape = (html) => {
+  if (!html) return "";
+  let prev;
+  let current = html;
+  // Loop to handle potential multiple layers of encoding from the editor
+  do {
+    prev = current;
+    current = current
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, "&")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&#60;/g, "<")
+      .replace(/&#62;/g, ">");
+  } while (prev !== current);
+  return current;
+};
+
+const stripDocTags = (html) => {
+  if (!html) return "";
+  // Removes <html>, <head>, <body>, <!DOCTYPE>, <meta>, <title> tags 
+  // but keeps the content inside them.
+  return html
+    .replace(/<\/?(html|head|body|!DOCTYPE|meta|title)[^>]*>/gi, "")
+    .trim();
+};
 
 // Smart HTML wrapper logic to avoid double-nesting tags
 const wrapEmailHtml = (content) => {
-  const isFullHtml = /<html|<!DOCTYPE/i.test(content);
+  const unescaped = deepUnescape(content);
+  const cleaned = stripDocTags(unescaped);
+  
+  // Stricter check: Only bypass the wrapper if it starts as a standalone document 
+  // AND doesn't have other text before it.
+  const isFullHtml = /^\s*(<html|<!DOCTYPE)/i.test(unescaped);
+  
   if (isFullHtml) {
-    return content; // Return as-is if it's already a full document
+    // If it's a full document, we send the clean unescaped version as-is
+    return unescaped; 
   }
-  // Otherwise wrap in professional container
+
+  // Otherwise wrap in professional SVRTF Standard Layout
   return `
-    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #334155; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; max-width: 600px; margin: 0 auto;">
-        <div style="text-align: center; margin-bottom: 30px;">
-            <img src="https://feast.ph/wp-content/uploads/2024/02/Feast-Logo.png" alt="Logo" style="height: 50px;">
-        </div>
-        <div style="font-size: 16px;">
-            ${content}
-        </div>
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #94a3b8; text-align: center;">
-            Shepherd's Voice Radio and Television Foundation, Inc.
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: left; border: 1px solid #eef2f6;">
+            <div style="background: linear-gradient(135deg, #63A6B2 0%, #4a8a95 100%); padding: 30px; text-align: center;">
+                <img src="https://svrtf.org/images/logo.png" alt="SVRTV Logo" style="width: 60px; height: 60px; border-radius: 50%; background: white; padding: 5px; object-fit: contain;">
+            </div>
+            <div style="padding: 40px; color: #334155; line-height: 1.8; font-size: 15px; overflow-wrap: break-word;">
+                ${cleaned}
+            </div>
+            <div style="background-color: #f8fafc; padding: 25px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #63A6B2;">Shepherd's Voice Radio and Television Foundation, Inc.</p>
+                <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;">456 Faith Avenue, Manila, Metro Manila 1003<br>
+                © 2026 SVRTF. All rights reserved.</p>
+            </div>
         </div>
     </div>`;
 };
@@ -329,11 +369,19 @@ app.put("/api/admin/site-settings", async (req, res) => {
 });
 
 // Download CSV Template for Mailing List
-app.get("/api/admin/subscribers/template", (req, res) => {
-  const csvContent = "first_name,last_name,email,campaign_id\nJohn,Doe,john@example.com,1\nJane,Smith,jane@example.com,2";
-  res.setHeader("Content-Type", "text/csv");
-  res.attachment("mailing_list_template.csv");
-  res.status(200).send(csvContent);
+app.get("/api/admin/subscribers/template", async (req, res) => {
+  try {
+    const campaigns = await pool.query("SELECT campaign_name FROM campaigns WHERE status = 'active' LIMIT 5");
+    const sampleCampaigns = campaigns.rows.map(c => c.campaign_name).join("\nJohn,Doe,john@example.com,");
+    
+    const csvContent = `first_name,last_name,email,campaign_name\nJohn,Doe,john@example.com,${sampleCampaigns || 'General Operations'}\nJane,Smith,jane@example.com,General Operations`;
+    
+    res.setHeader("Content-Type", "text/csv");
+    res.attachment("mailing_list_template.csv");
+    res.status(200).send(csvContent);
+  } catch (err) {
+    res.status(500).send("first_name,last_name,email,campaign_name\nJohn,Doe,john@example.com,General Operations");
+  }
 });
 
 // Import CSV for Mailing List
@@ -345,11 +393,20 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
 
   try {
     const campaignId = (campaign_id && campaign_id !== 'all' && campaign_id !== 'global' && campaign_id !== '') ? campaign_id : null;
+    
+    // Fetch campaign lookup map (lowercase name -> id)
+    const campaignRes = await pool.query("SELECT campaign_id, campaign_name FROM campaigns");
+    const campaignMap = {};
+    campaignRes.rows.forEach(c => {
+      campaignMap[c.campaign_name.trim().toLowerCase()] = c.campaign_id;
+    });
+
     const filePath = req.file.path;
     const fileContent = fs.readFileSync(filePath, "utf8");
     const rows = fileContent.split(/\r?\n/).filter(row => row.trim() !== "");
 
     if (rows.length < 2) {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       return res.status(400).json({ message: "CSV file is empty or missing headers" });
     }
 
@@ -358,8 +415,10 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
     const firstNameIndex = headers.indexOf("first_name");
     const lastNameIndex = headers.indexOf("last_name");
     const campaignIdIndex = headers.indexOf("campaign_id");
+    const campaignNameIndex = headers.indexOf("campaign_name");
 
     if (emailIndex === -1) {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       return res.status(400).json({ message: "CSV must have an 'email' column" });
     }
 
@@ -372,7 +431,19 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
       const email = columns[emailIndex];
       const firstName = firstNameIndex !== -1 ? columns[firstNameIndex] : "";
       const lastName = lastNameIndex !== -1 ? columns[lastNameIndex] : "";
-      const rowCampaignId = campaignIdIndex !== -1 && columns[campaignIdIndex] ? columns[campaignIdIndex] : null;
+      
+      let rowCampaignId = null;
+      
+      // Try resolving by name first
+      if (campaignNameIndex !== -1 && columns[campaignNameIndex]) {
+        const name = columns[campaignNameIndex].toLowerCase();
+        rowCampaignId = campaignMap[name] || null;
+      }
+      
+      // Fallback to ID if provided
+      if (!rowCampaignId && campaignIdIndex !== -1 && columns[campaignIdIndex]) {
+        rowCampaignId = columns[campaignIdIndex];
+      }
       
       const finalCampaignId = rowCampaignId || campaignId;
 
@@ -382,10 +453,13 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
       }
 
       try {
-        const existing = await pool.query("SELECT email FROM subscribers WHERE email = $1", [email]);
+        const existing = await pool.query(
+          "SELECT subscriber_id FROM subscribers WHERE email = $1 AND (campaign_id = $2 OR (campaign_id IS NULL AND $2 IS NULL))", 
+          [email, finalCampaignId]
+        );
         if (existing.rows.length === 0) {
           await pool.query(
-            "INSERT INTO subscribers (email, first_name, last_name, full_name, receipts_opt_in, campaign_id) VALUES ($1, $2, $3, $4, TRUE, $5)",
+            "INSERT INTO subscribers (email, first_name, last_name, full_name, receipts_opt_in, newsletters_opt_in, campaign_id) VALUES ($1, $2, $3, $4, TRUE, TRUE, $5)",
             [email, firstName, lastName, `${firstName} ${lastName}`.trim(), finalCampaignId]
           );
           successCount++;
@@ -398,7 +472,6 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
       }
     }
 
-    // Clean up uploaded file
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     res.json({
@@ -407,6 +480,7 @@ app.post("/api/admin/subscribers/import", upload.single("file"), async (req, res
     });
   } catch (err) {
     console.error("❌ CSV Import Error:", err);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ message: "Error parsing CSV file", error: err.message });
   }
 });
@@ -1236,6 +1310,9 @@ app.post("/api/admin/bulk-send-emails", async (req, res) => {
         personalizedSubject = personalizedSubject.replace(regex, val);
         personalizedHtml = personalizedHtml.replace(regex, val);
       });
+
+      // Ensure raw HTML before wrapping
+      personalizedHtml = deepUnescape(personalizedHtml);
 
       // Wrap in standard container - Detect if double-wrapping is needed
       const finalHtml = wrapEmailHtml(personalizedHtml);

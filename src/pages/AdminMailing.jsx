@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Send, RefreshCw, FileText, CheckCircle, Server, List, History, Settings, Users, ArrowRight, Mail, Search, Clock, ShieldCheck, MailWarning, Eye, X, ChevronUp, ChevronDown, Code, Download } from 'lucide-react';
+import { Send, RefreshCw, FileText, CheckCircle, Server, List, History, Settings, Users, ArrowRight, Mail, Search, Clock, ShieldCheck, MailWarning, Eye, X, ChevronUp, ChevronDown, Code, Download, Upload } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import ReactQuill from 'react-quill-new';
@@ -1336,6 +1336,19 @@ export default function AdminMailing() {
                                             </select>
                                         </div>
 
+                                        <div className="flex flex-wrap items-center gap-2 mr-auto bg-gray-50/50 px-3 py-1.5 rounded-xl border border-dashed border-gray-200">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Valid Campaigns:</span>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                <span className="text-[10px] bg-white px-1.5 py-0.5 rounded border border-gray-100 text-gray-500 font-medium whitespace-nowrap">General Operations</span>
+                                                {campaigns.filter(c => c.status === 'active').slice(0, 3).map(c => (
+                                                    <span key={c.campaign_id} className="text-[10px] bg-[#63A6B2]/5 px-1.5 py-0.5 rounded border border-[#63A6B2]/10 text-[#63A6B2] font-semibold whitespace-nowrap">{c.campaign_name}</span>
+                                                ))}
+                                                {campaigns.filter(c => c.status === 'active').length > 3 && (
+                                                    <span className="text-[10px] text-gray-400 italic">+{campaigns.filter(c => c.status === 'active').length - 3} more</span>
+                                                )}
+                                            </div>
+                                        </div>
+
                                         <button onClick={fetchSubscribers} disabled={isLoadingSubscribers} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
                                             <RefreshCw className={`w-4 h-4 ${isLoadingSubscribers ? 'animate-spin' : ''}`} />
                                         </button>
@@ -1347,6 +1360,25 @@ export default function AdminMailing() {
                                         >
                                             <FileText className="w-4 h-4" /> Template
                                         </button>
+
+                                        <input 
+                                            type="file" 
+                                            id="subscriber-import-input" 
+                                            className="hidden" 
+                                            accept=".csv" 
+                                            onChange={handleImportCSV} 
+                                        />
+                                        <button
+                                            onClick={() => document.getElementById('subscriber-import-input').click()}
+                                            disabled={isImporting}
+                                            className="px-4 py-2 bg-white text-[#63A6B2] border border-[#63A6B2]/20 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#63A6B2]/5 transition-all shadow-sm"
+                                            title="Import Subscribers from CSV"
+                                        >
+                                            {isImporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                            Import
+                                        </button>
+
+                                        
 
                                         <div className="relative">
                                             <button
@@ -1464,6 +1496,22 @@ export default function AdminMailing() {
                                                         )}
                                                     </div>
                                                 </th>
+                                                <th 
+                                                    className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                                                    onClick={() => handleSort('subscribed_at')}
+                                                >
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        Joined Date
+                                                        {sortConfig.key === 'subscribed_at' ? (
+                                                            sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                        ) : (
+                                                            <div className="w-3 h-3 flex flex-col opacity-20">
+                                                                <ChevronUp className="w-3 h-3 -mb-1" />
+                                                                <ChevronDown className="w-3 h-3" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
                                             </tr>
                                         </thead>
@@ -1494,6 +1542,11 @@ export default function AdminMailing() {
                                                         <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${sub.status === 'Active' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-100 text-gray-500 border-gray-200'} border`}>
                                                             {sub.status || 'Active'}
                                                         </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <div className="text-[10px] font-bold text-gray-500 whitespace-nowrap">
+                                                            {formatDate(sub.subscribed_at)}
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-right relative">
                                                         <button 

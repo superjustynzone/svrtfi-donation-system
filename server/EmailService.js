@@ -4,6 +4,31 @@ const fs = require("fs");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 const { Pool } = require("pg");
 
+const deepUnescape = (str) => {
+    if (typeof str !== 'string') return "";
+    let unescaped = str
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&amp;/g, "&");
+        
+    // Simple loop to handle deep/double escaping
+    let prev = "";
+    let limit = 3;
+    while (unescaped !== prev && limit > 0) {
+        prev = unescaped;
+        unescaped = unescaped
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&amp;/g, "&");
+        limit--;
+    }
+    return unescaped;
+};
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
@@ -88,7 +113,7 @@ const sendEmail = async (to, subject, html, customFrom = null, ccEmail = null, a
         const res = await pool.query("SELECT user_email, sender_email FROM smtp_settings LIMIT 1");
         const fromEmail = res.rows.length > 0 ? (res.rows[0].sender_email || res.rows[0].user_email) : process.env.EMAIL_USER;
 
-        let processedHtml = html || "";
+        let processedHtml = deepUnescape(html || "");
         let finalAttachments = attachments ? [...attachments] : [];
         let cidCounter = 1;
 
@@ -563,6 +588,7 @@ const processDonationCompletion = async (donationId) => {
                 const tpl = tplRes.rows[0];
                 const donor_email = data.email;
                 if (donor_email) {
+                    
                     const replacements = {
                         '{{firstname}}':       data.first_name || '',
                         '{{lastname}}':        data.last_name  || '',

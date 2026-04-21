@@ -3,7 +3,7 @@ import {
     DollarSign, Search, Menu, Download,
     RefreshCw, Eye, EyeOff, X, CheckCircle, Clock,
     TrendingUp, Users, CreditCard, BarChart3, XCircle, FileText,
-    MessageSquare, Pencil, Trash2
+    MessageSquare, Pencil, Trash2, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -59,7 +59,7 @@ export default function AdminDonations() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
     const [filterFreq, setFilterFreq] = useState('All');
-    const [sortBy, setSortBy] = useState('newest');
+    const [sortConfig, setSortConfig] = useState({ key: 'newest', direction: 'desc' });
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
     const [isLoading, setIsLoading] = useState(true);
@@ -102,6 +102,14 @@ export default function AdminDonations() {
 
     useEffect(() => { fetchAll(); }, []);
 
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
     useEffect(() => {
         let data = [...donations];
         if (searchTerm) {
@@ -122,16 +130,42 @@ export default function AdminDonations() {
         if (filterFreq !== 'All') {
             data = data.filter(d => d.frequency === (filterFreq === 'Monthly' ? 'monthly' : 'one_time'));
         }
+        
         data.sort((a, b) => {
-            if (sortBy === 'newest') return new Date(b.initiated_at) - new Date(a.initiated_at);
-            if (sortBy === 'oldest') return new Date(a.initiated_at) - new Date(b.initiated_at);
-            if (sortBy === 'highest') return b.amount - a.amount;
-            if (sortBy === 'lowest') return a.amount - b.amount;
+            if (!sortConfig.key) return 0;
+            
+            let aVal, bVal;
+            if (sortConfig.key === 'newest') {
+                aVal = new Date(a.initiated_at);
+                bVal = new Date(b.initiated_at);
+            } else if (sortConfig.key === 'donor') {
+                aVal = (a.first_name + ' ' + a.last_name).toLowerCase();
+                bVal = (b.first_name + ' ' + b.last_name).toLowerCase();
+            } else if (sortConfig.key === 'campaign') {
+                aVal = (a.campaign_name || '').toLowerCase();
+                bVal = (b.campaign_name || '').toLowerCase();
+            } else if (sortConfig.key === 'amount') {
+                aVal = a.amount || 0;
+                bVal = b.amount || 0;
+            } else if (sortConfig.key === 'status') {
+                aVal = (a.payment_status || 'pending').toLowerCase();
+                bVal = (b.payment_status || 'pending').toLowerCase();
+            } else if (sortConfig.key === 'date') {
+                aVal = new Date(a.initiated_at);
+                bVal = new Date(b.initiated_at);
+            } else {
+                aVal = a[sortConfig.key];
+                bVal = b[sortConfig.key];
+            }
+
+            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
+
         setFiltered(data);
         setCurrentPage(1);
-    }, [searchTerm, filterStatus, filterFreq, sortBy, donations]);
+    }, [searchTerm, filterStatus, filterFreq, sortConfig, donations]);
 
     const fetchAll = async () => {
         setIsLoading(true);
@@ -371,12 +405,6 @@ export default function AdminDonations() {
                                 <option value="Monthly">Monthly</option>
                                 <option value="One-time">One-time</option>
                             </select>
-                            <select className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:border-[#63A6B2]" value={sortBy} onChange={e => setSortBy(e.target.value)}>
-                                <option value="newest">Newest First</option>
-                                <option value="oldest">Oldest First</option>
-                                <option value="highest">Highest Amount</option>
-                                <option value="lowest">Lowest Amount</option>
-                            </select>
                         </div>
                     </div>
 
@@ -386,15 +414,90 @@ export default function AdminDonations() {
                             <table className="w-full">
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Donor</th>
-                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Email Address</th>
-                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Campaign</th>
-                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Method</th>
-                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Frequency</th>
-                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Status</th>
-                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Date</th>
-                                        <th className="text-right py-4 px-6 text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                                        <th 
+                                            className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => handleSort('donor')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Donor
+                                                {sortConfig.key === 'donor' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                ) : (
+                                                    <div className="w-3 h-3 flex flex-col opacity-20">
+                                                        <ChevronUp className="w-3 h-3 -mb-1" />
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest">Email Address</th>
+                                        <th 
+                                            className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => handleSort('campaign')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Campaign
+                                                {sortConfig.key === 'campaign' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                ) : (
+                                                    <div className="w-3 h-3 flex flex-col opacity-20">
+                                                        <ChevronUp className="w-3 h-3 -mb-1" />
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th 
+                                            className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => handleSort('amount')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Amount
+                                                {sortConfig.key === 'amount' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                ) : (
+                                                    <div className="w-3 h-3 flex flex-col opacity-20">
+                                                        <ChevronUp className="w-3 h-3 -mb-1" />
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest">Method</th>
+                                        <th className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest">Frequency</th>
+                                        <th 
+                                            className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => handleSort('status')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Status
+                                                {sortConfig.key === 'status' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                ) : (
+                                                    <div className="w-3 h-3 flex flex-col opacity-20">
+                                                        <ChevronUp className="w-3 h-3 -mb-1" />
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th 
+                                            className="text-left py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => handleSort('date')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Date
+                                                {sortConfig.key === 'date' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                ) : (
+                                                    <div className="w-3 h-3 flex flex-col opacity-20">
+                                                        <ChevronUp className="w-3 h-3 -mb-1" />
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th className="text-right py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-widest">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
